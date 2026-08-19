@@ -26,9 +26,10 @@ def build_dns_packet(domain: str, tx_id: int = 0x1234, qtype: int = 1) -> bytes:
 
 
 def query_udp_dns(ip: str, domain: str, timeout: float = 2.0) -> Optional[float]:
-    """Execute raw UDP port 53 DNS query (GRC Socket benchmark)."""
+    """Execute raw UDP port 53 DNS query (Supports both IPv4 and IPv6)."""
     packet = build_dns_packet(domain)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    family = socket.AF_INET6 if ":" in ip else socket.AF_INET
+    sock = socket.socket(family, socket.SOCK_DGRAM)
     sock.settimeout(timeout)
     t0 = time.perf_counter()
     try:
