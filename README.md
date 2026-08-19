@@ -3,8 +3,8 @@
 # ⚡ Netools Suite v2.0
 **Modern DNS Searcher, GRC 3-Tier Benchmark, Sing-box Proxy Rotator & AI Gateway Router**
 
-[![Linux AppImage](https://img.shields.io/badge/Platform-Linux%20AppImage-blue?logo=linux)](https://github.com/decolua/singbox-rotator)
-[![Windows EXE](https://img.shields.io/badge/Platform-Windows%20EXE-blue?logo=windows)](https://github.com/decolua/singbox-rotator)
+[![Linux AppImage](https://img.shields.io/badge/Platform-Linux%20AppImage-blue?logo=linux)](https://github.com/Azhar457/Netools)
+[![Windows EXE](https://img.shields.io/badge/Platform-Windows%20EXE-blue?logo=windows)](https://github.com/Azhar457/Netools)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen?logo=python)](https://python.org)
 [![Sing-box 1.13+](https://img.shields.io/badge/Sing--box-1.13%2B-orange)](https://sing-box.sagernet.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -133,4 +133,4 @@ REM Output: dist\netools.exe
 ---
 
 ## 📄 License
-MIT License. Created with ❤️ by Decolua & Contributors.
+MIT License. Created with ❤️ by Azhar & Contributors.
