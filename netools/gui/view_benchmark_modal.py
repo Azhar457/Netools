@@ -13,7 +13,7 @@ from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMAR
 
 class GRCBenchmarkModal(ctk.CTkToplevel):
     def __init__(self, parent_app, dns_view):
-        super().__init__(parent_app, className="netools")
+        super().__init__(parent_app)
         self.parent_app = parent_app
         self.dns_view = dns_view
 
@@ -27,7 +27,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.results_map = {}
 
         self.providers = db.load_providers()
-        self.target_tlds = db.TARGET_TLD_DOMAINS
+        self.target_tlds = getattr(db, "TLD_PRESETS", getattr(db, "TARGET_TLD_DOMAINS", {}))
 
         self._build_widgets()
 
@@ -78,8 +78,8 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         ctk.CTkLabel(r2, text="TLD Target:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 6))
 
-        self.tld_var = ctk.StringVar(value="id_national")
         tld_choices = [f"{v['name']} ({k})" for k, v in self.target_tlds.items()]
+        self.tld_var = ctk.StringVar(value=tld_choices[0] if tld_choices else "indonesia")
         self.tld_cb = ctk.CTkComboBox(
             r2, variable=self.tld_var, values=tld_choices,
             width=320, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)

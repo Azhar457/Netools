@@ -12,14 +12,15 @@ def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, t
     """Send authenticated HTTP request to 9Router REST API."""
     url = f"{NINEROUTER_URL}{path}"
     data = json.dumps(body).encode("utf-8") if body is not None else None
+    headers = {"Content-Type": "application/json"}
+    if NINEROUTER_CLI_TOKEN:
+        headers["x-9r-cli-token"] = NINEROUTER_CLI_TOKEN
+
     req = urllib.request.Request(
         url,
         data=data,
         method=method,
-        headers={
-            "Content-Type": "application/json",
-            "x-9r-cli-token": NINEROUTER_CLI_TOKEN,
-        }
+        headers=headers
     )
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
