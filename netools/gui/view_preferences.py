@@ -135,6 +135,17 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             r_dns,
+            text="📋 Import DnsJumper (.ini)",
+            font=ctk.CTkFont(size=9, weight="bold"),
+            fg_color="#fab387",
+            text_color="#11111b",
+            hover_color="#f9e2af",
+            height=30,
+            command=self.import_dnsjumper_ini
+        ).pack(side="left", padx=3)
+
+        ctk.CTkButton(
+            r_dns,
             text="📤 Export DNS (.json)",
             font=ctk.CTkFont(size=9, weight="bold"),
             fg_color="#313244",
@@ -295,6 +306,21 @@ class PreferencesView(ctk.CTkScrollableFrame):
             self.main_app.dns_view.refresh_presets()
         except Exception as e:
             self.main_app.show_toast(f"Gagal mengimpor DNS: {e}", level="error")
+
+    def import_dnsjumper_ini(self):
+        file_path = filedialog.askopenfilename(
+            title="Pilih file DnsJumper.ini",
+            filetypes=[("DnsJumper Config", "*.ini"), ("All Files", "*.*")]
+        )
+        if not file_path:
+            return
+        
+        imported, msg = db.import_from_dnsjumper_ini(file_path)
+        if imported > 0:
+            self.main_app.show_toast(f"✓ {msg}", level="success")
+            self.main_app.dns_view.refresh_presets()
+        else:
+            self.main_app.show_toast(f"Gagal: {msg}", level="error")
 
     def export_dns_list(self):
         file_path = filedialog.asksaveasfilename(

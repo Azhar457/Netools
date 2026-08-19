@@ -384,12 +384,18 @@ def load_providers() -> Dict[str, Dict[str, Any]]:
             with open(CACHE_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict) and len(data) > 0:
-                    merged = dict(BUILTIN_PROVIDERS)
-                    merged.update(data)
+                    merged = {k: dict(v) for k, v in BUILTIN_PROVIDERS.items()}
+                    for k, v in data.items():
+                        if k in merged:
+                            merged[k].update(v)
+                            if "ipv6" not in v and "ipv6" in BUILTIN_PROVIDERS[k]:
+                                merged[k]["ipv6"] = BUILTIN_PROVIDERS[k]["ipv6"]
+                        else:
+                            merged[k] = v
                     return merged
         except Exception:
             pass
-    return dict(BUILTIN_PROVIDERS)
+    return {k: dict(v) for k, v in BUILTIN_PROVIDERS.items()}
 
 
 def save_providers(providers: Dict[str, Dict[str, Any]]):
@@ -468,6 +474,75 @@ def sync_cloud_providers() -> Tuple[bool, str, int]:
         return True, f"Successfully synchronized database! Added {added} new verified resolvers (Total: {len(current)}).", len(current)
     except Exception as e:
         return False, f"Sync error: {e}", len(BUILTIN_PROVIDERS)
+
+
+def import_from_dnsjumper_ini(filepath: str) -> Tuple[int, str]:
+    """Parse and import DNS resolvers from a standard Windows DnsJumper.ini file."""
+    try:
+        try:
+            with open(filepath, "r", encoding="utf-16le", errors="ignore") as f:
+                text = f.read()
+        except Exception:
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+
+        imported = 0
+        current_sec = ""
+        current_providers = load_providers()
+
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or line.startswith(";"):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                current_sec = line[1:-1]
+                continue
+            if "=" in line and ("ipv4" in current_sec.lower() or "ipv6" in current_sec.lower()):
+                k, v = line.split("=", 1)
+                k = k.strip()
+                parts = [p.strip() for p in v.split(",") if p.strip() and p.strip() not in ("True", "False")]
+                if not parts:
+                    continue
+
+                slug = re.sub(r'[^a-zA-Z0-9_-]', '_', k).lower().strip('_')
+                country_code = k[:2].upper() if (len(k) >= 3 and k[2:4] in (" -", "- ")) else "🌐"
+
+                if "ipv6" in current_sec.lower():
+                    if slug in current_providers:
+                        current_providers[slug]["ipv6"] = parts
+                    else:
+                        current_providers[slug] = {
+                            "name": k,
+                            "country": f"🌐 {country_code}",
+                            "region": "global",
+                            "ipv4": [],
+                            "ipv6": parts,
+                            "doh_url": "",
+                            "category": "general",
+                            "description": f"Imported from DnsJumper.ini ({k})"
+                        }
+                    imported += 1
+                else:
+                    if slug in current_providers:
+                        current_providers[slug]["ipv4"] = parts
+                    else:
+                        cat = "family" if "family" in current_sec.lower() else ("security" if "secure" in current_sec.lower() else "general")
+                        current_providers[slug] = {
+                            "name": k,
+                            "country": f"🌐 {country_code}",
+                            "region": "global",
+                            "ipv4": parts,
+                            "ipv6": [],
+                            "doh_url": "",
+                            "category": cat,
+                            "description": f"Imported from DnsJumper.ini ({k})"
+                        }
+                    imported += 1
+
+        save_providers(current_providers)
+        return imported, f"Berhasil mengimpor {imported} resolver dari DnsJumper.ini (Total Database: {len(current_providers)})!"
+    except Exception as e:
+        return 0, f"Gagal mengimpor DnsJumper.ini: {e}"
 
 
 # Target Domain Presets for 3-Tier GRC Benchmark (Including Wide Note Dataset)
