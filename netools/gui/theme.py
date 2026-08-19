@@ -7,6 +7,7 @@ import customtkinter as ctk
 
 # Color Palette (Catppuccin Mocha Inspired)
 COLOR_BG = "#181825"
+COLOR_BG_DARK = "#11111b"
 COLOR_CARD = "#1e1e2e"
 COLOR_BORDER = "#313244"
 COLOR_TEXT_PRIMARY = "#cdd6f4"
