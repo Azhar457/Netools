@@ -32,6 +32,7 @@ class NetoolsApp(ctk.CTk):
         super().__init__(className="netools")
         self.title("Netools Suite")
         self.minsize(850, 650)
+        self.withdraw()  # Hidden initially during preloader sequence
 
         center_window(self, width=920, height=720)
 
@@ -82,7 +83,7 @@ class NetoolsApp(ctk.CTk):
         title_label = ctk.CTkLabel(
             title_box,
             text="⚡ Netools Suite v2.0",
-            font=ctk.CTkFont(family="Sans", size=18, weight="bold"),
+            font=("sans-serif", 16, "bold"),
             text_color="#89b4fa"
         )
         title_label.pack(anchor="w")
@@ -90,7 +91,7 @@ class NetoolsApp(ctk.CTk):
         subtitle_label = ctk.CTkLabel(
             title_box,
             text="Unified Sing-box Rotator, Real-Time GRC DNS Benchmark & AI Gateway Router",
-            font=ctk.CTkFont(family="Sans", size=11),
+            font=("sans-serif", 10),
             text_color="#6c7086"
         )
         subtitle_label.pack(anchor="w")
@@ -102,7 +103,7 @@ class NetoolsApp(ctk.CTk):
         self.lbl_header_status = ctk.CTkLabel(
             status_box,
             text="● System Ready",
-            font=ctk.CTkFont(size=11, weight="bold"),
+            font=("sans-serif", 10, "bold"),
             text_color="#a6e3a1",
             padx=12,
             pady=4
@@ -180,15 +181,15 @@ class NetoolsApp(ctk.CTk):
 
 
 def main():
-    app = None
+    app = NetoolsApp()
 
     def on_splash_done():
-        nonlocal app
-        app = NetoolsApp()
-        app.mainloop()
+        app.deiconify()
+        app.lift()
+        app.focus_force()
 
-    splash = SplashScreen(on_complete=on_splash_done)
-    splash.mainloop()
+    splash = SplashScreen(main_app=app, on_complete=on_splash_done)
+    app.mainloop()
 
 
 if __name__ == "__main__":

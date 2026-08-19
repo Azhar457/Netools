@@ -20,36 +20,36 @@ COLOR_ACCENT_RED = "#f38ba8"
 COLOR_ACCENT_PURPLE = "#cba6f7"
 
 class Fonts:
-    """Standardized cross-platform font sizes (no more microscopic 9pt!)."""
+    """Standardized cross-platform font tuples (guaranteed 100% persistent, never GC'd)."""
     
     @staticmethod
-    def title(size: int = 16) -> ctk.CTkFont:
-        return ctk.CTkFont(size=size, weight="bold")
+    def title(size: int = 15):
+        return ("sans-serif", size, "bold")
     
     @staticmethod
-    def subtitle(size: int = 13) -> ctk.CTkFont:
-        return ctk.CTkFont(size=size, weight="bold")
+    def subtitle(size: int = 12):
+        return ("sans-serif", size, "bold")
     
     @staticmethod
-    def bold(size: int = 11) -> ctk.CTkFont:
-        return ctk.CTkFont(size=size, weight="bold")
+    def bold(size: int = 11):
+        return ("sans-serif", size, "bold")
     
     @staticmethod
-    def regular(size: int = 11) -> ctk.CTkFont:
-        return ctk.CTkFont(size=size, weight="normal")
+    def regular(size: int = 11):
+        return ("sans-serif", size, "normal")
     
     @staticmethod
-    def small(size: int = 10) -> ctk.CTkFont:
-        return ctk.CTkFont(size=size, weight="normal")
+    def small(size: int = 10):
+        return ("sans-serif", size, "normal")
     
     @staticmethod
-    def italic_small(size: int = 10) -> ctk.CTkFont:
-        return ctk.CTkFont(size=size, slant="italic")
+    def italic_small(size: int = 10):
+        return ("sans-serif", size, "italic")
     
     @staticmethod
-    def mono(size: int = 11) -> ctk.CTkFont:
-        return ctk.CTkFont(family="monospace", size=size)
+    def mono(size: int = 11):
+        return ("monospace", size, "normal")
     
     @staticmethod
-    def mono_bold(size: int = 11) -> ctk.CTkFont:
-        return ctk.CTkFont(family="monospace", size=size, weight="bold")
+    def mono_bold(size: int = 11):
+        return ("monospace", size, "bold")

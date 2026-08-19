@@ -11,7 +11,7 @@ from netools.adapters import platform_dns as sys_dns
 from netools.adapters import ninerouter as nr_adapt
 from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE, COLOR_ACCENT_GREEN, COLOR_ACCENT_PURPLE, COLOR_ACCENT_YELLOW
 
-class DashboardView(ctk.CTkScrollableFrame):
+class DashboardView(ctk.CTkFrame):
     def __init__(self, parent, main_app):
         super().__init__(parent, fg_color="#181825", corner_radius=0)
         self.main_app = main_app
