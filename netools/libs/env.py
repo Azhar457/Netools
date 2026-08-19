@@ -32,18 +32,14 @@ def check_binary(name: str) -> Dict[str, Any]:
     version_str = "Not installed"
 
     if found:
-        for flag in ["--version", "-V", "version", "-v"]:
-            try:
-                res = subprocess.run([path, flag], capture_output=True, text=True, timeout=2)
-                out = (res.stdout.strip() or res.stderr.strip()).splitlines()
-                if res.returncode == 0 and out and "%" not in out[0]:
-                    version_str = out[0][:50]
-                    break
-                elif out and "unknown flag" not in out[0].lower() and "error" not in out[0].lower() and "%" not in out[0]:
-                    version_str = out[0][:50]
-                    break
-            except Exception:
-                pass
+        try:
+            flag = "-v" if name == "sing-box" else "--version"
+            res = subprocess.run([path, flag], capture_output=True, text=True, timeout=0.4)
+            out = (res.stdout.strip() or res.stderr.strip()).splitlines()
+            if out:
+                version_str = out[0][:45]
+        except Exception:
+            version_str = "Installed"
         if version_str == "Not installed":
             version_str = "Installed"
 

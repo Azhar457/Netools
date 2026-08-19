@@ -239,20 +239,25 @@ class PreferencesView(ctk.CTkScrollableFrame):
         self.refresh_diagnostics()
 
     def refresh_diagnostics(self):
-        diag = get_system_diagnostics()
-        core = diag["core_tools"]
-        fwd = diag["dns_forwarders"]
+        def _bg():
+            diag = get_system_diagnostics()
+            core = diag["core_tools"]
+            fwd = diag["dns_forwarders"]
 
-        lines = [
-            f"• Operating System   : {diag['os_name']}",
-            f"• Python Runtime     : Python {diag['python_version']}",
-            f"• DNS Controller     : {diag['dns_controller']}",
-            f"• Pure Python DoH    : 🟢 Built-in RFC 8484 Wireformat Engine (Zero-Dependency)",
-            f"• Sing-box Proxy Core: {'🟢 ' + core['sing-box']['version'] if core['sing-box']['found'] else '⚠️ Not found on PATH (Proxy rotation disabled)'}",
-            f"• Curl Subsystem     : {'🟢 ' + core['curl']['version'] if core['curl']['found'] else '⚠️ Not found (Internal HTTP fallback active)'}",
-            f"• Optional Forwarders: DNSCrypt-Proxy: {'🟢 Found' if fwd['dnscrypt-proxy']['found'] else '⚪ None'} | Cloudflared: {'🟢 Found' if fwd['cloudflared']['found'] else '⚪ None'}"
-        ]
-        self.lbl_env_summary.configure(text="\n".join(lines))
+            lines = [
+                f"• Operating System   : {diag['os_name']}",
+                f"• Python Runtime     : Python {diag['python_version']}",
+                f"• DNS Controller     : {diag['dns_controller']}",
+                f"• Pure Python DoH    : 🟢 Built-in RFC 8484 Wireformat Engine (Zero-Dependency)",
+                f"• Sing-box Proxy Core: {'🟢 ' + core['sing-box']['version'] if core['sing-box']['found'] else '⚠️ Not found on PATH (Proxy rotation disabled)'}",
+                f"• Curl Subsystem     : {'🟢 ' + core['curl']['version'] if core['curl']['found'] else '⚠️ Not found (Internal HTTP fallback active)'}",
+                f"• Optional Forwarders: DNSCrypt-Proxy: {'🟢 Found' if fwd['dnscrypt-proxy']['found'] else '⚪ None'} | Cloudflared: {'🟢 Found' if fwd['cloudflared']['found'] else '⚪ None'}"
+            ]
+            try:
+                self.after(0, lambda: self.lbl_env_summary.configure(text="\n".join(lines)))
+            except Exception:
+                pass
+        threading.Thread(target=_bg, daemon=True).start()
 
     def on_scale_changed(self, choice: str):
         try:

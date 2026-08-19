@@ -15,8 +15,9 @@ from netools.gui.view_preferences import PreferencesView
 from netools.gui.toast import ToastManager
 
 
+import tkinter as tk
+
 def center_window(window: ctk.CTk, width: int = 900, height: int = 720):
-    window.update_idletasks()
     s_w = window.winfo_screenwidth()
     s_h = window.winfo_screenheight()
     x = max(20, (s_w - width) // 2)
@@ -33,16 +34,16 @@ class NetoolsApp(ctk.CTk):
         self.title("Netools Suite")
         self.minsize(800, 650)
 
-        # Set Linux WM Icon
+        center_window(self, width=900, height=720)
+
+        # Set Linux WM Icon safely
         icon_path = Path(__file__).resolve().parent.parent.parent / "assets" / "icon-64.png"
         if icon_path.exists():
             try:
-                self.icon_photo = ctk.CTkImage(file=str(icon_path))
+                self.icon_photo = tk.PhotoImage(file=str(icon_path))
                 self.iconphoto(True, self.icon_photo)
             except Exception:
                 pass
-
-        center_window(self, width=900, height=720)
 
         self.child_windows: List[ctk.CTkToplevel] = []
         self.protocol("WM_DELETE_WINDOW", self.on_root_close)
@@ -106,40 +107,74 @@ class NetoolsApp(ctk.CTk):
         )
         self.lbl_header_status.pack()
 
-        # Tab View (replaces Notebook)
-        self.tabview = ctk.CTkTabview(self, fg_color="#1e1e2e", segmented_button_fg_color="#1e1e2e",
-                                       segmented_button_selected_color="#313244",
-                                       segmented_button_selected_hover_color="#45475a",
-                                       segmented_button_unselected_color="#181825",
-                                       segmented_button_unselected_hover_color="#313244",
-                                       text_color="#a6adc8", text_color_disabled="#6c7086",
-                                       corner_radius=8)
+        # Tab View
+        self.tabview = ctk.CTkTabview(
+            self,
+            fg_color="#1e1e2e",
+            segmented_button_fg_color="#1e1e2e",
+            segmented_button_selected_color="#313244",
+            segmented_button_selected_hover_color="#45475a",
+            segmented_button_unselected_color="#181825",
+            segmented_button_unselected_hover_color="#313244",
+            text_color="#a6adc8",
+            text_color_disabled="#6c7086",
+            corner_radius=8,
+            command=self._on_tab_switched
+        )
         self.tabview.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
-        # Tab 1: Dashboard
+        # Tab 1: Dashboard (Mounted immediately for 0 ms startup)
         self.tab_dashboard = self.tabview.add("📊 Dashboard")
         self.dashboard_view = DashboardView(self.tab_dashboard, self)
         self.dashboard_view.pack(fill="both", expand=True)
 
-        # Tab 2: DNS Suite
+        # Tabs 2-5: Skeletons created, views populated on idle / click
         self.tab_dns = self.tabview.add("⚡ DNS Suite")
-        self.dns_view = DNSView(self.tab_dns, self)
-        self.dns_view.pack(fill="both", expand=True)
-
-        # Tab 3: Proxy Rotator
         self.tab_proxy = self.tabview.add("🌐 Proxy Rotator")
-        self.proxy_view = ProxyView(self.tab_proxy, self)
-        self.proxy_view.pack(fill="both", expand=True)
-
-        # Tab 4: 9Router & AI Gateway
         self.tab_settings = self.tabview.add("🔌 9Router & AI Sync")
-        self.settings_view = SettingsView(self.tab_settings, self)
-        self.settings_view.pack(fill="both", expand=True)
-
-        # Tab 5: Settings & About
         self.tab_preferences = self.tabview.add("⚙️ Settings & About")
-        self.preferences_view = PreferencesView(self.tab_preferences, self)
-        self.preferences_view.pack(fill="both", expand=True)
+
+        self.dns_view = None
+        self.proxy_view = None
+        self.settings_view = None
+        self.preferences_view = None
+
+        # Preload tabs smoothly in idle cycles so startup is instantaneous
+        self.after(60, self._ensure_dns_view)
+        self.after(120, self._ensure_proxy_view)
+        self.after(180, self._ensure_settings_view)
+        self.after(240, self._ensure_preferences_view)
+
+    def _ensure_dns_view(self):
+        if self.dns_view is None:
+            self.dns_view = DNSView(self.tab_dns, self)
+            self.dns_view.pack(fill="both", expand=True)
+
+    def _ensure_proxy_view(self):
+        if self.proxy_view is None:
+            self.proxy_view = ProxyView(self.tab_proxy, self)
+            self.proxy_view.pack(fill="both", expand=True)
+
+    def _ensure_settings_view(self):
+        if self.settings_view is None:
+            self.settings_view = SettingsView(self.tab_settings, self)
+            self.settings_view.pack(fill="both", expand=True)
+
+    def _ensure_preferences_view(self):
+        if self.preferences_view is None:
+            self.preferences_view = PreferencesView(self.tab_preferences, self)
+            self.preferences_view.pack(fill="both", expand=True)
+
+    def _on_tab_switched(self):
+        cur = self.tabview.get()
+        if "DNS" in cur:
+            self._ensure_dns_view()
+        elif "Proxy" in cur:
+            self._ensure_proxy_view()
+        elif "9Router" in cur:
+            self._ensure_settings_view()
+        elif "Settings" in cur:
+            self._ensure_preferences_view()
 
     def on_root_close(self):
         for child in list(self.child_windows):
