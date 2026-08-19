@@ -62,11 +62,6 @@ class NetoolsApp(ctk.CTk):
         # Set appearance mode and color theme
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
-        # Ensure comfortable widget scaling across Linux high-DPI and fractional scaling displays
-        try:
-            ctk.set_widget_scaling(1.15)
-        except Exception:
-            pass
 
         # Custom color overrides for Catppuccin-like theme
         self._fg_color = "#181825"

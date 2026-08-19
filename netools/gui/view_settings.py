@@ -1,16 +1,18 @@
 """
 Tab 4: 9Router AI Gateway & OmniRoute Connection Matrix View (CustomTkinter).
+Uses native ttk.Treeview for high-performance, flicker-free, and leak-free table rendering.
 """
 
 import threading
 import tkinter as tk
+from tkinter import ttk
 import customtkinter as ctk
 from netools.adapters import ninerouter as nr_adapt
 from netools.adapters import omniroute as omni_adapt
 from netools.config import NINEROUTER_URL, NINEROUTER_CLI_TOKEN, OMNIROUTE_URL
 from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE, COLOR_ACCENT_GREEN, COLOR_ACCENT_PURPLE, COLOR_ACCENT_YELLOW
 
-class SettingsView(ctk.CTkScrollableFrame):
+class SettingsView(ctk.CTkFrame):
     def __init__(self, parent, main_app):
         super().__init__(parent, fg_color="#181825", corner_radius=0)
         self.main_app = main_app
@@ -87,35 +89,57 @@ class SettingsView(ctk.CTkScrollableFrame):
         ).pack(side="left", padx=6)
 
         # Connection Matrix Card
-        self.card_conns = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
-        self.card_conns.pack(fill="both", expand=True, padx=16, pady=6)
+        card_conns = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+        card_conns.pack(fill="both", expand=True, padx=16, pady=6)
 
         ctk.CTkLabel(
-            self.card_conns,
+            card_conns,
             text="📋 Registered Provider Connections & Proxy Pools",
             font=Fonts.subtitle(12),
             text_color=COLOR_TEXT_PRIMARY
         ).pack(anchor="w", padx=14, pady=(12, 6))
 
-        # Matrix Headers
-        hdr_m = ctk.CTkFrame(self.card_conns, fg_color="#1e1e2e")
-        hdr_m.pack(fill="x", padx=14, pady=(0, 4))
+        # Treeview Matrix Table (High Performance, No Widget Destruction Errors)
+        tbl_frame = ctk.CTkFrame(card_conns, fg_color=COLOR_CARD)
+        tbl_frame.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
-        cols = [("Provider / Name", 200), ("Type", 110), ("Assigned Pool", 160), ("Status", 110)]
-        for h, w in cols:
-            ctk.CTkLabel(
-                hdr_m,
-                text=h,
-                font=Fonts.bold(10),
-                text_color="#a6adc8",
-                fg_color="#313244",
-                corner_radius=4,
-                width=w,
-                anchor="center"
-            ).pack(side="left", padx=2)
+        cols = ("name", "type", "pool", "status")
+        self.tree = ttk.Treeview(tbl_frame, columns=cols, show="headings", selectmode="browse")
 
-        self.conns_container = ctk.CTkFrame(self.card_conns, fg_color=COLOR_CARD)
-        self.conns_container.pack(fill="both", expand=True, padx=14, pady=(0, 12))
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure(
+            "Treeview",
+            background="#1e1e2e",
+            foreground="#cdd6f4",
+            fieldbackground="#1e1e2e",
+            rowheight=28,
+            font=("sans-serif", 10)
+        )
+        style.configure(
+            "Treeview.Heading",
+            background="#313244",
+            foreground="#cdd6f4",
+            font=("sans-serif", 10, "bold")
+        )
+        style.map("Treeview", background=[("selected", "#45475a")])
+
+        cols_config = [
+            ("name", "Provider Connection Name", 260, "center"),
+            ("type", "Provider Type", 140, "center"),
+            ("pool", "Assigned Proxy Pool", 200, "center"),
+            ("status", "Routing Status", 140, "center"),
+        ]
+
+        for col_id, title, w, align in cols_config:
+            self.tree.heading(col_id, text=title, anchor=align)
+            self.tree.column(col_id, width=w, minwidth=100, anchor=align, stretch=True)
+
+        vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=vsb.set)
+
+        self.tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=4)
+        vsb.pack(side="right", fill="y", padx=(0, 8), pady=4)
 
     def refresh(self):
         def _bg():
@@ -123,34 +147,22 @@ class SettingsView(ctk.CTkScrollableFrame):
             healthy = isinstance(conns, list) and len(conns) > 0
 
             def _update():
-                for widget in self.conns_container.winfo_children():
-                    widget.destroy()
+                for item in self.tree.get_children():
+                    self.tree.delete(item)
 
                 if not healthy:
                     self.lbl_gw_stat.configure(text="⚪ 9Router Offline / Standalone", text_color="#6c7086")
-                    ctk.CTkLabel(
-                        self.conns_container,
-                        text="No active connections found (Backend is either offline or in standalone mode).",
-                        font=Fonts.italic_small(11),
-                        text_color="#6c7086"
-                    ).pack(pady=20)
                     return
 
                 self.lbl_gw_stat.configure(text=f"🟢 {len(conns)} Providers Online", text_color=COLOR_ACCENT_GREEN)
 
                 for c in conns:
-                    row = ctk.CTkFrame(self.conns_container, fg_color="#181825", corner_radius=6)
-                    row.pack(fill="x", pady=2)
-
                     name = c.get("name", "Unknown")
                     c_type = c.get("provider", "openai")
                     pool_id = c.get("proxy_pool_id") or "—"
                     status = "🟢 Linked" if pool_id != "—" else "⚪ Direct"
 
-                    ctk.CTkLabel(row, text=name, width=200, anchor="w", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=8)
-                    ctk.CTkLabel(row, text=c_type, width=110, anchor="center", font=Fonts.regular(10), text_color=COLOR_ACCENT_BLUE).pack(side="left", padx=2)
-                    ctk.CTkLabel(row, text=str(pool_id), width=160, anchor="center", font=Fonts.mono(10), text_color=COLOR_ACCENT_GREEN if pool_id != "—" else "#6c7086").pack(side="left", padx=2)
-                    ctk.CTkLabel(row, text=status, width=110, anchor="center", font=Fonts.bold(10), text_color=COLOR_ACCENT_GREEN if status == "🟢 Linked" else "#bac2de").pack(side="left", padx=2)
+                    self.tree.insert("", "end", values=(name, c_type, str(pool_id), status))
 
             try:
                 self.after(0, _update)
