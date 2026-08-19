@@ -62,3 +62,46 @@ def ping_dns_udp(ip: str, domain: str = "google.com", timeout: float = 2.0) -> O
         return None
     finally:
         sock.close()
+
+
+def ping_ip(ip: str, count: int = 1, timeout: float = 1.5) -> Optional[float]:
+    """
+    Measure ping latency (ms) to an IP address.
+    Tries standard ICMP ping first, and falls back to UDP DNS port 53 probe if ICMP is filtered.
+    """
+    import time
+    from netools.libs.env import get_os_type
+    os_t = get_os_type()
+
+    if not ip or ip.strip() == "":
+        return None
+
+    ip = ip.strip()
+    try:
+        if os_t == "windows":
+            cmd = ["ping", "-n", str(count), "-w", str(int(timeout * 1000)), ip]
+        elif os_t == "darwin":
+            cmd = ["ping", "-c", str(count), "-W", str(int(timeout * 1000)), ip]
+        else:
+            cmd = ["ping", "-c", str(count), "-W", str(max(1, int(timeout))), ip]
+
+        t0 = time.perf_counter()
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 1.0)
+        if res.returncode == 0:
+            for line in res.stdout.splitlines():
+                if "time=" in line:
+                    parts = line.split("time=")
+                    if len(parts) > 1:
+                        ms_str = parts[1].split()[0].replace("ms", "").strip()
+                        return float(ms_str)
+                elif "Average =" in line or "avg" in line:
+                    import re
+                    m = re.search(r"(\d+(\.\d+)?)ms", line)
+                    if m:
+                        return float(m.group(1))
+            return (time.perf_counter() - t0) * 1000.0
+    except Exception:
+        pass
+
+    # Fallback to UDP port 53 probe
+    return ping_dns_udp(ip, timeout=timeout)

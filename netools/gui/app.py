@@ -1,9 +1,12 @@
 """
 Netools Suite v2.0 - Modern Desktop GUI All-In-One Container (CustomTkinter).
+Featuring 1-100% Preloader Splash Screen and Native System Tray Integration.
 """
 
 import sys
+import tkinter as tk
 import customtkinter as ctk
+from pathlib import Path
 from typing import List
 
 from netools.gui.view_dashboard import DashboardView
@@ -11,13 +14,12 @@ from netools.gui.view_dns import DNSView
 from netools.gui.view_proxy import ProxyView
 from netools.gui.view_settings import SettingsView
 from netools.gui.view_preferences import PreferencesView
-
 from netools.gui.toast import ToastManager
+from netools.gui.tray import TrayManager
+from netools.gui.splash import SplashScreen
 
 
-import tkinter as tk
-
-def center_window(window: ctk.CTk, width: int = 900, height: int = 720):
+def center_window(window: ctk.CTk, width: int = 920, height: int = 720):
     s_w = window.winfo_screenwidth()
     s_h = window.winfo_screenheight()
     x = max(20, (s_w - width) // 2)
@@ -25,16 +27,13 @@ def center_window(window: ctk.CTk, width: int = 900, height: int = 720):
     window.geometry(f"{width}x{height}+{x}+{y}")
 
 
-from pathlib import Path
-
-
 class NetoolsApp(ctk.CTk):
     def __init__(self):
         super().__init__(className="netools")
         self.title("Netools Suite")
-        self.minsize(800, 650)
+        self.minsize(850, 650)
 
-        center_window(self, width=900, height=720)
+        center_window(self, width=920, height=720)
 
         # Set Linux WM Icon safely
         icon_path = Path(__file__).resolve().parent.parent.parent / "assets" / "icon-64.png"
@@ -46,9 +45,15 @@ class NetoolsApp(ctk.CTk):
                 pass
 
         self.child_windows: List[ctk.CTkToplevel] = []
+        self.minimize_to_tray_enabled = True
+
         self.protocol("WM_DELETE_WINDOW", self.on_root_close)
 
         self.toast = ToastManager(self)
+        self.tray = TrayManager(self)
+        if self.tray.is_available():
+            self.tray.start()
+
         self._apply_theme()
         self._build_ui()
 
@@ -60,11 +65,8 @@ class NetoolsApp(ctk.CTk):
             self.lbl_header_status.configure(text=f"● {clean_msg}", text_color=fg_map.get(level, "#89b4fa"))
 
     def _apply_theme(self):
-        # Set appearance mode and color theme
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
-
-        # Custom color overrides for Catppuccin-like theme
         self._fg_color = "#181825"
         self.configure(fg_color=self._fg_color)
 
@@ -118,65 +120,53 @@ class NetoolsApp(ctk.CTk):
             segmented_button_unselected_hover_color="#313244",
             text_color="#a6adc8",
             text_color_disabled="#6c7086",
-            corner_radius=8,
-            command=self._on_tab_switched
+            corner_radius=8
         )
         self.tabview.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
-        # Tab 1: Dashboard (Mounted immediately for 0 ms startup)
+        # Tab 1: Dashboard
         self.tab_dashboard = self.tabview.add("📊 Dashboard")
         self.dashboard_view = DashboardView(self.tab_dashboard, self)
         self.dashboard_view.pack(fill="both", expand=True)
 
-        # Tabs 2-5: Skeletons created, views populated on idle / click
+        # Tab 2: DNS Suite
         self.tab_dns = self.tabview.add("⚡ DNS Suite")
+        self.dns_view = DNSView(self.tab_dns, self)
+        self.dns_view.pack(fill="both", expand=True)
+
+        # Tab 3: Proxy Rotator
         self.tab_proxy = self.tabview.add("🌐 Proxy Rotator")
+        self.proxy_view = ProxyView(self.tab_proxy, self)
+        self.proxy_view.pack(fill="both", expand=True)
+
+        # Tab 4: 9Router & AI Gateway
         self.tab_settings = self.tabview.add("🔌 9Router & AI Sync")
+        self.settings_view = SettingsView(self.tab_settings, self)
+        self.settings_view.pack(fill="both", expand=True)
+
+        # Tab 5: Settings & About
         self.tab_preferences = self.tabview.add("⚙️ Settings & About")
+        self.preferences_view = PreferencesView(self.tab_preferences, self)
+        self.preferences_view.pack(fill="both", expand=True)
 
-        self.dns_view = None
-        self.proxy_view = None
-        self.settings_view = None
-        self.preferences_view = None
-
-        # Preload tabs smoothly in idle cycles so startup is instantaneous
-        self.after(60, self._ensure_dns_view)
-        self.after(120, self._ensure_proxy_view)
-        self.after(180, self._ensure_settings_view)
-        self.after(240, self._ensure_preferences_view)
-
-    def _ensure_dns_view(self):
-        if self.dns_view is None:
-            self.dns_view = DNSView(self.tab_dns, self)
-            self.dns_view.pack(fill="both", expand=True)
-
-    def _ensure_proxy_view(self):
-        if self.proxy_view is None:
-            self.proxy_view = ProxyView(self.tab_proxy, self)
-            self.proxy_view.pack(fill="both", expand=True)
-
-    def _ensure_settings_view(self):
-        if self.settings_view is None:
-            self.settings_view = SettingsView(self.tab_settings, self)
-            self.settings_view.pack(fill="both", expand=True)
-
-    def _ensure_preferences_view(self):
-        if self.preferences_view is None:
-            self.preferences_view = PreferencesView(self.tab_preferences, self)
-            self.preferences_view.pack(fill="both", expand=True)
-
-    def _on_tab_switched(self):
-        cur = self.tabview.get()
-        if "DNS" in cur:
-            self._ensure_dns_view()
-        elif "Proxy" in cur:
-            self._ensure_proxy_view()
-        elif "9Router" in cur:
-            self._ensure_settings_view()
-        elif "Settings" in cur:
-            self._ensure_preferences_view()
+    def restore_from_tray(self):
+        """Restore window from System Tray."""
+        self.deiconify()
+        self.lift()
+        self.focus_force()
 
     def on_root_close(self):
+        """Handle window close event (X button)."""
+        if self.minimize_to_tray_enabled and self.tray.is_available():
+            self.withdraw()
+            self.show_toast("Netools aktif di latar belakang (System Tray).", level="info")
+        else:
+            self.force_exit()
+
+    def force_exit(self):
+        """Completely exit the application."""
+        if hasattr(self, "tray") and self.tray:
+            self.tray.stop()
         for child in list(self.child_windows):
             try:
                 child.destroy()
@@ -190,8 +180,15 @@ class NetoolsApp(ctk.CTk):
 
 
 def main():
-    app = NetoolsApp()
-    app.mainloop()
+    app = None
+
+    def on_splash_done():
+        nonlocal app
+        app = NetoolsApp()
+        app.mainloop()
+
+    splash = SplashScreen(on_complete=on_splash_done)
+    splash.mainloop()
 
 
 if __name__ == "__main__":

@@ -106,6 +106,19 @@ class PreferencesView(ctk.CTkScrollableFrame):
         )
         self.theme_cb.pack(side="left", padx=4)
 
+        # System Tray Option
+        self.tray_var = ctk.BooleanVar(value=True)
+        self.tray_chk = ctk.CTkCheckBox(
+            sec_app,
+            text="Minimize to System Tray on Close (Tetap aktif di background saat ditutup)",
+            variable=self.tray_var,
+            font=ctk.CTkFont(size=9),
+            text_color="#cdd6f4",
+            fg_color="#89b4fa",
+            command=self.on_tray_toggle
+        )
+        self.tray_chk.pack(anchor="w", padx=14, pady=(0, 12))
+
         # -------------------------------------------------------------
         # Section 3: DNS Database & Import / Export
         # -------------------------------------------------------------
@@ -270,6 +283,14 @@ class PreferencesView(ctk.CTkScrollableFrame):
     def on_theme_changed(self, choice: str):
         ctk.set_appearance_mode(choice.lower())
         self.main_app.show_toast(f"✓ Tema diubah ke {choice}", level="info")
+
+    def on_tray_toggle(self):
+        enabled = self.tray_var.get()
+        self.main_app.minimize_to_tray_enabled = enabled
+        if enabled:
+            self.main_app.show_toast("✓ Netools akan diminimalkan ke System Tray saat tombol close diklik.", level="info")
+        else:
+            self.main_app.show_toast("Netools akan langsung keluar saat tombol close diklik.", level="warning")
 
     def import_dns_list(self):
         file_path = filedialog.askopenfilename(
