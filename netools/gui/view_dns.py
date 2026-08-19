@@ -278,22 +278,32 @@ class DNSView(ctk.CTkScrollableFrame):
                 conn = i.get("connection")
                 break
 
-        success = sys_dns.apply_system_dns(
-            dev,
-            valid,
-            connection_name=conn,
-            enable_dot=self.dot_var.get(),
-            persistent=self.persist_var.get()
-        )
-        if success:
-            self.main_app.show_toast(f"✓ DNS ({', '.join(valid)}) diterapkan ke '{dev}'!", level="success")
-            self.main_app.dashboard_view.refresh()
-        else:
-            self.main_app.show_toast(f"Gagal menerapkan DNS ke interface '{dev}'.", level="error")
+        def _bg():
+            success = sys_dns.apply_system_dns(
+                dev,
+                valid,
+                connection_name=conn,
+                enable_dot=self.dot_var.get(),
+                persistent=self.persist_var.get()
+            )
+            try:
+                if success:
+                    self.after(0, lambda: self.main_app.show_toast(f"✓ DNS ({', '.join(valid)}) diterapkan ke '{dev}'!", level="success"))
+                    self.after(0, self.main_app.dashboard_view.refresh)
+                else:
+                    self.after(0, lambda: self.main_app.show_toast(f"Gagal menerapkan DNS ke interface '{dev}'.", level="error"))
+            except Exception:
+                pass
+        threading.Thread(target=_bg, daemon=True).start()
 
     def flush_dns(self):
-        sys_dns.flush_dns_cache()
-        self.main_app.show_toast("✓ DNS Cache berhasil di-flush!", level="success")
+        def _bg():
+            sys_dns.flush_dns_cache()
+            try:
+                self.after(0, lambda: self.main_app.show_toast("✓ DNS Cache berhasil di-flush!", level="success"))
+            except Exception:
+                pass
+        threading.Thread(target=_bg, daemon=True).start()
 
     def restore_dhcp(self):
         selected_label = self.iface_var.get()
@@ -305,9 +315,14 @@ class DNSView(ctk.CTkScrollableFrame):
                 conn = i.get("connection")
                 break
 
-        sys_dns.restore_default_dns(dev, connection_name=conn)
-        self.main_app.show_toast(f"✓ Interface '{dev}' dikembalikan ke DHCP default.", level="info")
-        self.main_app.dashboard_view.refresh()
+        def _bg():
+            sys_dns.restore_default_dns(dev, connection_name=conn)
+            try:
+                self.after(0, lambda: self.main_app.show_toast(f"✓ Interface '{dev}' dikembalikan ke DHCP default.", level="info"))
+                self.after(0, self.main_app.dashboard_view.refresh)
+            except Exception:
+                pass
+        threading.Thread(target=_bg, daemon=True).start()
 
     def refresh_presets(self):
         self.providers = db.load_providers()

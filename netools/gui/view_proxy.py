@@ -147,8 +147,9 @@ class ProxyView(ctk.CTkFrame):
             ("age", "Started At", 160, "center"),
         ]
 
+        self.sort_directions = {}
         for col_id, title, w, align in cols_config:
-            self.tree.heading(col_id, text=title, anchor=align)
+            self.tree.heading(col_id, text=f"{title} ↕", anchor=align, command=lambda c=col_id: self.sort_column(c))
             self.tree.column(col_id, width=w, minwidth=70, anchor=align, stretch=True)
 
         vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=self.tree.yview)
@@ -159,6 +160,25 @@ class ProxyView(ctk.CTkFrame):
 
         # Instant initial sync render (0 ms delay)
         self._populate_sync()
+
+    def sort_column(self, col: str):
+        """Sort Proxy Treeview rows by clicking column headers."""
+        reverse = self.sort_directions.get(col, False)
+        self.sort_directions[col] = not reverse
+
+        items = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
+
+        def _val_key(v):
+            clean = str(v).strip()
+            try:
+                return float(clean)
+            except ValueError:
+                return clean.lower()
+
+        items.sort(key=lambda t: _val_key(t[0]), reverse=reverse)
+
+        for index, (_, k) in enumerate(items):
+            self.tree.move(k, "", index)
 
     def _populate_sync(self):
         st = load_state()

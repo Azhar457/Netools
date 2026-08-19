@@ -1,12 +1,13 @@
 """
-Real-Time Streaming GRC 3-Tier DNS Benchmark Modal Dialog (CustomTkinter).
+GRC 3-Tier Real-Time Streaming DNS Benchmark Modal (CustomTkinter).
+Evaluates Cached, Uncached, and Regional TLD Latency across 90+ DNS/DoH resolvers.
+Features multi-column sorting, live status indicators, and 1-click system application.
 """
 
 import threading
 import tkinter as tk
 from tkinter import ttk
 import customtkinter as ctk
-
 import dns_jumper_db as db
 import dns_jumper_benchmark as bm
 from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE, COLOR_ACCENT_GREEN, COLOR_ACCENT_PURPLE, COLOR_ACCENT_YELLOW
@@ -25,6 +26,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.benchmark_running = False
         self.benchmark_cancelled = False
         self.results_map = {}
+        self.sort_directions = {}
 
         self.providers = db.load_providers()
         self.target_tlds = getattr(db, "TLD_PRESETS", getattr(db, "TARGET_TLD_DOMAINS", {}))
@@ -32,43 +34,46 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self._build_widgets()
 
     def _build_widgets(self):
-        # Header
-        hdr = ctk.CTkFrame(self, fg_color="#181825")
-        hdr.pack(fill="x", padx=16, pady=(14, 8))
+        # Header Banner
+        hdr = ctk.CTkFrame(self, fg_color="#11111b", height=50)
+        hdr.pack(fill="x", padx=0, pady=0)
+        hdr.pack_propagate(False)
 
         ctk.CTkLabel(
             hdr,
-            text="⚡ GRC 3-Tier Real-Time DNS Streaming Benchmark",
+            text="🏆 Gibson Research Corp (GRC) 3-Tier DNS Benchmark Engine",
             font=Fonts.title(15),
             text_color=COLOR_ACCENT_YELLOW
-        ).pack(side="left")
+        ).pack(side="left", padx=20, pady=10)
 
-        # Filters Card
+        # Filter & Execution Control Card
         card_filter = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
-        card_filter.pack(fill="x", padx=16, pady=4)
+        card_filter.pack(fill="x", padx=16, pady=8)
 
         r1 = ctk.CTkFrame(card_filter, fg_color=COLOR_CARD)
-        r1.pack(fill="x", padx=14, pady=(8, 4))
+        r1.pack(fill="x", padx=14, pady=(10, 4))
 
-        ctk.CTkLabel(r1, text="Mode:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(r1, text="Test Mode:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 6))
 
         self.mode_var = ctk.StringVar(value="standard")
-        ctk.CTkRadioButton(
+        self.rb_std = ctk.CTkRadioButton(
             r1, text="Standard UDP (Port 53)", variable=self.mode_var, value="standard",
-            font=Fonts.regular(11), text_color=COLOR_ACCENT_GREEN, fg_color=COLOR_ACCENT_GREEN
-        ).pack(side="left", padx=4)
+            font=Fonts.regular(11), text_color=COLOR_TEXT_PRIMARY, fg_color=COLOR_ACCENT_GREEN
+        )
+        self.rb_std.pack(side="left", padx=6)
 
-        ctk.CTkRadioButton(
-            r1, text="Encrypted DoH (HTTPS)", variable=self.mode_var, value="doh",
-            font=Fonts.regular(11), text_color=COLOR_ACCENT_BLUE, fg_color=COLOR_ACCENT_BLUE
-        ).pack(side="left", padx=10)
+        self.rb_doh = ctk.CTkRadioButton(
+            r1, text="DNS-over-HTTPS (DoH Wireformat)", variable=self.mode_var, value="doh",
+            font=Fonts.regular(11), text_color=COLOR_TEXT_PRIMARY, fg_color=COLOR_ACCENT_BLUE
+        )
+        self.rb_doh.pack(side="left", padx=6)
 
-        ctk.CTkLabel(r1, text="|  Region Filter:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(10, 6))
+        ctk.CTkLabel(r1, text="|  Region:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(14, 6))
 
-        self.region_var = ctk.StringVar(value="🌏 All Curated Resolvers (50+)")
+        self.region_var = ctk.StringVar(value="🌏 All Curated Resolvers (90+)")
         self.region_cb = ctk.CTkComboBox(
             r1, variable=self.region_var,
-            values=["🌏 All Curated Resolvers (50+)", "🇨🇳/🇸🇬/🇯🇵 Asia-Pacific", "🌍 Europe & UK", "🌎 North America", "🌐 Global Anycast"],
+            values=["🌏 All Curated Resolvers (90+)", "🇨🇳/🇸🇬/🇯🇵 Asia-Pacific", "🌍 Europe & UK", "🌎 North America", "🌐 Global Anycast"],
             width=250, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
         )
         self.region_cb.pack(side="left", padx=4)
@@ -95,29 +100,27 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.btn_start.pack(side="left", padx=(16, 4))
 
         self.btn_stop = ctk.CTkButton(
-            r2, text="🛑 Stop", font=Fonts.bold(11),
+            r2, text="🛑 Cancel", font=Fonts.bold(11),
             fg_color="#f38ba8", text_color="#11111b", hover_color="#eba0ac",
-            height=30, width=80, state="disabled", command=self.stop_benchmark
+            height=30, width=90, state="disabled", command=self.stop_benchmark
         )
         self.btn_stop.pack(side="left", padx=4)
 
         # Progress bar & Status
         prog_frame = ctk.CTkFrame(self, fg_color="#181825")
-        prog_frame.pack(fill="x", padx=16, pady=(4, 2))
+        prog_frame.pack(fill="x", padx=16, pady=(0, 4))
 
-        self.prog_bar = ctk.CTkProgressBar(prog_frame, height=8, corner_radius=4, fg_color="#313244", progress_color=COLOR_ACCENT_GREEN)
+        self.prog_bar = ctk.CTkProgressBar(prog_frame, height=6, fg_color="#313244", progress_color=COLOR_ACCENT_YELLOW)
+        self.prog_bar.pack(fill="x", pady=(2, 4))
         self.prog_bar.set(0)
-        self.prog_bar.pack(fill="x")
 
         self.lbl_status = ctk.CTkLabel(
-            prog_frame,
-            text="Ready to benchmark. Select mode and click 'Run Benchmark'.",
-            font=Fonts.italic_small(11),
-            text_color=COLOR_TEXT_SECONDARY
+            prog_frame, text="Ready. Click 'Run Benchmark' to start real-time latency evaluation (Click column headers to sort).",
+            font=Fonts.regular(11), text_color="#a6adc8"
         )
-        self.lbl_status.pack(anchor="w", pady=(2, 4))
+        self.lbl_status.pack(anchor="w")
 
-        # Real-time Streaming Table
+        # Results Table
         tbl_frame = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
         tbl_frame.pack(fill="both", expand=True, padx=16, pady=4)
 
@@ -143,18 +146,18 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         style.map("Treeview", background=[("selected", "#45475a")])
 
         cols_config = [
-            ("rank", "#", 50, "center"),
-            ("flag", "Region", 80, "center"),
-            ("name", "DNS Resolver Name", 240, "center"),
-            ("cached", "🟢 Cached", 110, "center"),
-            ("uncached", "🔵 Uncached", 110, "center"),
-            ("dotcom", "🟡 Dot-Com / TLD", 120, "center"),
-            ("score", "Composite Score", 130, "center"),
-            ("status", "Result", 100, "center"),
+            ("rank", "# ↕", 50, "center"),
+            ("flag", "Region ↕", 80, "center"),
+            ("name", "DNS Resolver Name ↕", 240, "center"),
+            ("cached", "🟢 Cached ↕", 110, "center"),
+            ("uncached", "🔵 Uncached ↕", 110, "center"),
+            ("dotcom", "🟡 Dot-Com / TLD ↕", 120, "center"),
+            ("score", "Composite Score ↕", 130, "center"),
+            ("status", "Result ↕", 100, "center"),
         ]
 
         for col_id, title, w, align in cols_config:
-            self.tree.heading(col_id, text=title, anchor=align)
+            self.tree.heading(col_id, text=title, anchor=align, command=lambda c=col_id: self.sort_column(c))
             self.tree.column(col_id, width=w, minwidth=50, anchor=align, stretch=True)
 
         vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=self.tree.yview)
@@ -206,6 +209,27 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             height=32, width=80, command=self.destroy
         ).pack(side="right")
 
+    def sort_column(self, col: str):
+        """Sort Treeview rows by clicking column headers (Numeric & String)."""
+        reverse = self.sort_directions.get(col, False)
+        self.sort_directions[col] = not reverse
+
+        items = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
+
+        def _val_key(v):
+            if not v or v in ("Timeout", "Failed", "—"):
+                return 999999.0
+            clean = str(v).replace(" ms", "").replace("#", "").strip()
+            try:
+                return float(clean)
+            except ValueError:
+                return str(v).lower()
+
+        items.sort(key=lambda t: _val_key(t[0]), reverse=reverse)
+
+        for index, (_, k) in enumerate(items):
+            self.tree.move(k, "", index)
+
     def start_benchmark(self):
         if self.benchmark_running:
             return
@@ -231,7 +255,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         elif "Global" in reg_text: region_key = "global"
 
         tld_sel = self.tld_var.get()
-        tld_key = "id_national"
+        tld_key = "indonesia"
         for k in self.target_tlds:
             if f"({k})" in tld_sel:
                 tld_key = k
@@ -241,7 +265,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         filtered = db.filter_providers(self.providers, region=region_key, only_doh=(mode == "doh"))
         total_count = len(filtered)
         self.prog_bar.set(0)
-        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time...")
+        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time...", text_color="#cdd6f4")
 
         def _worker():
             idx = 0
@@ -312,7 +336,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 c_ms, u_ms, d_ms, s_ms, stat
             ))
 
-        self.lbl_status.configure(text=f"✓ Benchmark selesai! {len(sorted_res)} resolvers diurutkan berdasarkan composite score.")
+        self.lbl_status.configure(text=f"✓ Benchmark selesai! {len(sorted_res)} resolvers diurutkan otomatis (Klik header kolom untuk menyortir).", text_color="#a6e3a1")
 
         if sorted_res:
             self.btn_apply_smart.configure(state="normal")
@@ -332,7 +356,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
     def stop_benchmark(self):
         self.benchmark_cancelled = True
-        self.lbl_status.configure(text="Benchmark dihentikan oleh pengguna.")
+        self.lbl_status.configure(text="Benchmark dihentikan oleh pengguna.", text_color="#f9e2af")
 
     def apply_smart_mix(self):
         smart = bm.calculate_smart_mix(self.results_map)
@@ -348,8 +372,19 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         if u_ips: self.dns_view.dns2_entry.insert(0, u_ips[0])
         if d_ips: self.dns_view.dns3_entry.insert(0, d_ips[0])
 
-        self.parent_app.show_toast("✓ GRC Smart Mix diterapkan ke form DNS 1-2-3!", level="success")
-        self.dns_view.apply_dns()
+        self.lbl_status.configure(text="⚡ Menerapkan GRC Smart Mix ke sistem jaringan...", text_color="#f9e2af")
+        
+        def _bg():
+            self.dns_view.apply_dns()
+            try:
+                self.after(0, lambda: self.lbl_status.configure(
+                    text="✓ Berhasil! GRC Smart Mix aktif di sistem.",
+                    text_color="#a6e3a1"
+                ))
+            except Exception:
+                pass
+
+        threading.Thread(target=_bg, daemon=True).start()
 
     def apply_fastest_single(self):
         sorted_res = sorted(
@@ -358,8 +393,11 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         )
         if not sorted_res:
             return
-        top = sorted_res[0]
-        ips = top.get("ipv4", [])
+
+        fastest = sorted_res[0]
+        ips = fastest.get("ipv4", [])
+        if not ips:
+            return
 
         self.dns_view.dns1_entry.delete(0, "end")
         self.dns_view.dns2_entry.delete(0, "end")
@@ -367,7 +405,17 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         if len(ips) > 0: self.dns_view.dns1_entry.insert(0, ips[0])
         if len(ips) > 1: self.dns_view.dns2_entry.insert(0, ips[1])
-        if len(ips) > 2: self.dns_view.dns3_entry.insert(0, ips[2])
 
-        self.parent_app.show_toast(f"✓ DNS #1 Tercepat ({top.get('name')}) diterapkan!", level="success")
-        self.dns_view.apply_dns()
+        self.lbl_status.configure(text=f"⚡ Menerapkan #{fastest['name']} ke sistem jaringan...", text_color="#f9e2af")
+
+        def _bg():
+            self.dns_view.apply_dns()
+            try:
+                self.after(0, lambda: self.lbl_status.configure(
+                    text=f"✓ Berhasil! DNS '{fastest['name']}' aktif di sistem.",
+                    text_color="#a6e3a1"
+                ))
+            except Exception:
+                pass
+
+        threading.Thread(target=_bg, daemon=True).start()

@@ -158,3 +158,33 @@ def benchmark_provider_full(
         "score": score,
         "is_doh": is_doh,
     }
+
+
+def calculate_smart_mix(results_map: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Determine the optimal 3-DNS Smart Mix:
+    - Primary (DNS 1): Lowest Cached Latency (Max throughput for frequent domains)
+    - Secondary (DNS 2): Lowest Uncached Latency (Fast cold lookups)
+    - Tertiary (DNS 3): Lowest Regional TLD / Dot-Com Latency (Best peering)
+    """
+    valid = [r for r in results_map.values() if r.get("score", 9999) < 9000]
+    if not valid:
+        return {"cached": {}, "uncached": {}, "dotcom": {}}
+
+    # 1. Best Cached
+    best_cached = min(valid, key=lambda x: x.get("cached_ms") or 9999)
+
+    # 2. Best Uncached (prefer distinct provider)
+    uncached_cands = [r for r in valid if r.get("key") != best_cached.get("key")]
+    best_uncached = min(uncached_cands, key=lambda x: x.get("uncached_ms") or 9999) if uncached_cands else best_cached
+
+    # 3. Best TLD (prefer distinct provider)
+    chosen_keys = {best_cached.get("key"), best_uncached.get("key")}
+    tld_cands = [r for r in valid if r.get("key") not in chosen_keys]
+    best_tld = min(tld_cands, key=lambda x: x.get("dotcom_ms") or 9999) if tld_cands else best_uncached
+
+    return {
+        "cached": best_cached,
+        "uncached": best_uncached,
+        "dotcom": best_tld
+    }
