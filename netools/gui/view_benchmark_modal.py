@@ -142,23 +142,20 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         )
         style.map("Treeview", background=[("selected", "#45475a")])
 
-        self.tree.heading("rank", text="#")
-        self.tree.heading("flag", text="Region")
-        self.tree.heading("name", text="DNS Resolver Name")
-        self.tree.heading("cached", text="🟢 Cached")
-        self.tree.heading("uncached", text="🔵 Uncached")
-        self.tree.heading("dotcom", text="🟡 Dot-Com / TLD")
-        self.tree.heading("score", text="Composite Score")
-        self.tree.heading("status", text="Result")
+        cols_config = [
+            ("rank", "#", 50, "center"),
+            ("flag", "Region", 80, "center"),
+            ("name", "DNS Resolver Name", 240, "center"),
+            ("cached", "🟢 Cached", 110, "center"),
+            ("uncached", "🔵 Uncached", 110, "center"),
+            ("dotcom", "🟡 Dot-Com / TLD", 120, "center"),
+            ("score", "Composite Score", 130, "center"),
+            ("status", "Result", 100, "center"),
+        ]
 
-        self.tree.column("rank", width=45, anchor="center")
-        self.tree.column("flag", width=70, anchor="center")
-        self.tree.column("name", width=230, anchor="w")
-        self.tree.column("cached", width=105, anchor="center")
-        self.tree.column("uncached", width=105, anchor="center")
-        self.tree.column("dotcom", width=115, anchor="center")
-        self.tree.column("score", width=120, anchor="center")
-        self.tree.column("status", width=90, anchor="center")
+        for col_id, title, w, align in cols_config:
+            self.tree.heading(col_id, text=title, anchor=align)
+            self.tree.column(col_id, width=w, minwidth=50, anchor=align, stretch=True)
 
         vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)

@@ -1,10 +1,12 @@
 """
 Modern In-App Snackbar / Toast Notification Component (CustomTkinter).
-Non-blocking, non-modal, auto-dismissing notification pill.
+Implements Jakob Nielsen's Usability Heuristic #1: Visibility of System Status.
+Provides clear, prominent, high-contrast visual feedback with auto-dismiss and manual close.
 """
 
 import customtkinter as ctk
 from typing import Optional
+from netools.gui.theme import Fonts
 
 
 class ToastManager:
@@ -13,62 +15,97 @@ class ToastManager:
         self.toast_frame: Optional[ctk.CTkFrame] = None
         self.dismiss_after_id = None
 
-    def show(self, message: str, level: str = "success", duration_ms: int = 3500):
+    def show(self, message: str, level: str = "success", duration_ms: int = 4000):
         self.hide()
 
+        # High-contrast color mapping with luminous glowing borders
         colors = {
-            "success": {"bg": "#181825", "border": "#a6e3a1", "fg": "#a6e3a1", "icon": "✓"},
-            "info":    {"bg": "#181825", "border": "#89b4fa", "fg": "#89b4fa", "icon": "ℹ"},
-            "warning": {"bg": "#181825", "border": "#f9e2af", "fg": "#f9e2af", "icon": "⚠️"},
-            "error":   {"bg": "#181825", "border": "#f38ba8", "fg": "#f38ba8", "icon": "❌"},
+            "success": {
+                "bg": "#11111b",
+                "border": "#a6e3a1",
+                "badge_bg": "#1e3a29",
+                "badge_fg": "#a6e3a1",
+                "badge_text": "✓ SUKSES",
+            },
+            "info": {
+                "bg": "#11111b",
+                "border": "#89b4fa",
+                "badge_bg": "#1e293b",
+                "badge_fg": "#89b4fa",
+                "badge_text": "ℹ INFO",
+            },
+            "warning": {
+                "bg": "#11111b",
+                "border": "#f9e2af",
+                "badge_bg": "#3e321e",
+                "badge_fg": "#f9e2af",
+                "badge_text": "⚠️ PERINGATAN",
+            },
+            "error": {
+                "bg": "#11111b",
+                "border": "#f38ba8",
+                "badge_bg": "#3e1e28",
+                "badge_fg": "#f38ba8",
+                "badge_text": "❌ ERROR",
+            },
         }
         cfg = colors.get(level, colors["info"])
 
+        # Create floating pill with prominent 2px glowing border
         self.toast_frame = ctk.CTkFrame(
             self.root,
             fg_color=cfg["bg"],
-            corner_radius=10,
-            border_width=1,
+            corner_radius=12,
+            border_width=2,
             border_color=cfg["border"]
         )
 
-        lbl_icon = ctk.CTkLabel(
+        # Status badge pill
+        badge = ctk.CTkLabel(
             self.toast_frame,
-            text=cfg["icon"],
-            font=ctk.CTkFont(size=10, weight="bold"),
-            text_color=cfg["fg"],
-            fg_color="transparent"
+            text=cfg["badge_text"],
+            font=Fonts.bold(10),
+            text_color=cfg["badge_fg"],
+            fg_color=cfg["badge_bg"],
+            corner_radius=6,
+            padx=8,
+            pady=3
         )
-        lbl_icon.pack(side="left", padx=(14, 8))
+        badge.pack(side="left", padx=(12, 10), pady=8)
 
+        # Notification message
         lbl_msg = ctk.CTkLabel(
             self.toast_frame,
             text=message,
-            font=ctk.CTkFont(size=9, weight="bold"),
+            font=Fonts.bold(11),
             text_color="#cdd6f4",
             fg_color="transparent",
-            wraplength=450,
+            wraplength=520,
             justify="left"
         )
-        lbl_msg.pack(side="left", padx=(0, 10))
+        lbl_msg.pack(side="left", padx=(0, 12), pady=8)
 
+        # Close button
         btn_close = ctk.CTkButton(
             self.toast_frame,
             text="✕",
-            font=ctk.CTkFont(size=9),
-            text_color="#6c7086",
-            fg_color="transparent",
+            font=Fonts.bold(11),
+            text_color="#a6adc8",
+            fg_color="#181825",
             hover_color="#313244",
-            width=20,
-            height=20,
+            width=24,
+            height=24,
+            corner_radius=12,
             command=self.hide
         )
-        btn_close.pack(side="right", padx=(4, 14))
+        btn_close.pack(side="right", padx=(4, 12), pady=8)
 
-        # Position at bottom center
-        self.toast_frame.place(relx=0.5, rely=0.93, anchor="s")
+        # Place at Top-Center (Prominent notification position)
+        self.toast_frame.place(relx=0.5, rely=0.06, anchor="n")
         self.toast_frame.lift()
+        self.toast_frame.tkraise()
 
+        # Schedule auto-dismiss
         self.dismiss_after_id = self.root.after(duration_ms, self.hide)
 
     def hide(self):

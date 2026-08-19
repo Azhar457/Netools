@@ -135,25 +135,21 @@ class ProxyView(ctk.CTkFrame):
         )
         style.map("Treeview", background=[("selected", "#45475a")])
 
-        self.tree.heading("slot", text="Slot ID")
-        self.tree.heading("protocol", text="Protocol")
-        self.tree.heading("server", text="Remote Host:Port")
-        self.tree.heading("socks", text="SOCKS5")
-        self.tree.heading("http", text="HTTP Port")
-        self.tree.heading("pool", text="Router Pool")
-        self.tree.heading("dns", text="DNS Engine")
-        self.tree.heading("age", text="Uptime Age")
-        self.tree.heading("status", text="Health Status")
+        cols_config = [
+            ("slot", "Slot ID", 80, "center"),
+            ("protocol", "Protocol", 110, "center"),
+            ("server", "Upstream Node", 200, "center"),
+            ("socks", "SOCKS5 Port", 110, "center"),
+            ("http", "HTTP Port", 110, "center"),
+            ("dns", "DNS Engine", 150, "center"),
+            ("pool", "Router Pool", 130, "center"),
+            ("status", "Status", 100, "center"),
+            ("age", "Started At", 160, "center"),
+        ]
 
-        self.tree.column("slot", width=70, anchor="center")
-        self.tree.column("protocol", width=100, anchor="center")
-        self.tree.column("server", width=180, anchor="w")
-        self.tree.column("socks", width=80, anchor="center")
-        self.tree.column("http", width=80, anchor="center")
-        self.tree.column("pool", width=110, anchor="center")
-        self.tree.column("dns", width=130, anchor="center")
-        self.tree.column("age", width=90, anchor="center")
-        self.tree.column("status", width=90, anchor="center")
+        for col_id, title, w, align in cols_config:
+            self.tree.heading(col_id, text=title, anchor=align)
+            self.tree.column(col_id, width=w, minwidth=70, anchor=align, stretch=True)
 
         vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)

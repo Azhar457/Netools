@@ -51,8 +51,12 @@ class NetoolsApp(ctk.CTk):
         self._apply_theme()
         self._build_ui()
 
-    def show_toast(self, message: str, level: str = "success", duration_ms: int = 3500) -> None:
+    def show_toast(self, message: str, level: str = "success", duration_ms: int = 4000) -> None:
         self.toast.show(message, level=level, duration_ms=duration_ms)
+        if hasattr(self, "lbl_header_status"):
+            fg_map = {"success": "#a6e3a1", "info": "#89b4fa", "warning": "#f9e2af", "error": "#f38ba8"}
+            clean_msg = message.split("\n")[0][:45]
+            self.lbl_header_status.configure(text=f"● {clean_msg}", text_color=fg_map.get(level, "#89b4fa"))
 
     def _apply_theme(self):
         # Set appearance mode and color theme
@@ -74,21 +78,38 @@ class NetoolsApp(ctk.CTk):
         header.pack(fill="x", padx=0, pady=0)
         header.pack_propagate(False)
 
+        title_box = ctk.CTkFrame(header, fg_color="#11111b")
+        title_box.pack(side="left", padx=20, pady=6)
+
         title_label = ctk.CTkLabel(
-            header,
+            title_box,
             text="⚡ Netools Suite v2.0",
             font=ctk.CTkFont(family="Sans", size=18, weight="bold"),
             text_color="#89b4fa"
         )
-        title_label.pack(anchor="w", padx=20, pady=(10, 0))
+        title_label.pack(anchor="w")
 
         subtitle_label = ctk.CTkLabel(
-            header,
+            title_box,
             text="Unified Sing-box Rotator, Real-Time GRC DNS Benchmark & AI Gateway Router",
             font=ctk.CTkFont(family="Sans", size=11),
             text_color="#6c7086"
         )
-        subtitle_label.pack(anchor="w", padx=20, pady=(2, 8))
+        subtitle_label.pack(anchor="w")
+
+        # Right-side Live Status Pill (Visibility of System Status - Nielsen #1)
+        status_box = ctk.CTkFrame(header, fg_color="#181825", corner_radius=20, border_width=1, border_color="#313244")
+        status_box.pack(side="right", padx=20, pady=12)
+
+        self.lbl_header_status = ctk.CTkLabel(
+            status_box,
+            text="● System Ready",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#a6e3a1",
+            padx=12,
+            pady=4
+        )
+        self.lbl_header_status.pack()
 
         # Tab View (replaces Notebook)
         self.tabview = ctk.CTkTabview(self, fg_color="#1e1e2e", segmented_button_fg_color="#1e1e2e",
