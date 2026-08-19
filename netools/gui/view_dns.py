@@ -4,7 +4,7 @@ Tab 2: DNS Jumper & Real-Time GRC 3-Tier Latency Benchmark View (CustomTkinter).
 
 import customtkinter as ctk
 import threading
-from netools.adapters import systemd_dns as sys_dns
+from netools.adapters import platform_dns as sys_dns
 from netools.services import dns_service
 from netools.gui.view_benchmark_modal import GRCBenchmarkModal
 import dns_jumper_db as db

@@ -1,10 +1,9 @@
 """
-Tab 5: Settings, Preferences, DNS Database Management & About View (CustomTkinter).
+Tab 5: Settings, Preferences, Cross-Platform Environment Diagnostics & About View (CustomTkinter).
 """
 
 import json
 import webbrowser
-import subprocess
 import threading
 import tkinter as tk
 from tkinter import filedialog
@@ -13,8 +12,8 @@ from typing import Dict, Any, List
 
 import customtkinter as ctk
 import dns_jumper_db as db
-from netools.config import BASE_DIR, PAC_SERVER_PORT, SOCKS5_PORT_START, PROXY_SOURCES
-from netools.state import load_state, save_state
+from netools.config import BASE_DIR, PAC_SERVER_PORT, SOCKS5_PORT_START
+from netools.libs.env import get_system_diagnostics
 
 class PreferencesView(ctk.CTkScrollableFrame):
     def __init__(self, parent, main_app):
@@ -29,13 +28,46 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             hdr,
-            text="⚙️ Settings, Preferences & About",
+            text="⚙️ Settings, Cross-Platform Diagnostics & About",
             font=ctk.CTkFont(size=14, weight="bold"),
             text_color="#89b4fa"
         ).pack(side="left")
 
         # -------------------------------------------------------------
-        # Section 1: Appearance & UI Scaling (Font Size)
+        # Section 1: Environment & Cross-Platform Capability Check
+        # -------------------------------------------------------------
+        sec_env = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
+        sec_env.pack(fill="x", padx=16, pady=6)
+
+        ctk.CTkLabel(
+            sec_env,
+            text="🔍 Cross-Platform Environment & Dependency Diagnostics",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#a6e3a1"
+        ).pack(anchor="w", padx=14, pady=(12, 6))
+
+        self.lbl_env_summary = ctk.CTkLabel(
+            sec_env,
+            text="Detecting system capabilities...",
+            font=ctk.CTkFont(family="monospace", size=9),
+            text_color="#bac2de",
+            justify="left"
+        )
+        self.lbl_env_summary.pack(anchor="w", padx=14, pady=(0, 10))
+
+        ctk.CTkButton(
+            sec_env,
+            text="🔄 Re-scan System Capabilities",
+            font=ctk.CTkFont(size=9, weight="bold"),
+            fg_color="#313244",
+            text_color="#cdd6f4",
+            hover_color="#45475a",
+            height=28,
+            command=self.refresh_diagnostics
+        ).pack(anchor="w", padx=14, pady=(0, 12))
+
+        # -------------------------------------------------------------
+        # Section 2: Appearance & UI Scaling (Font Size)
         # -------------------------------------------------------------
         sec_app = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
         sec_app.pack(fill="x", padx=16, pady=6)
@@ -75,7 +107,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
         self.theme_cb.pack(side="left", padx=4)
 
         # -------------------------------------------------------------
-        # Section 2: DNS Database & Import / Export
+        # Section 3: DNS Database & Import / Export
         # -------------------------------------------------------------
         sec_dns = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
         sec_dns.pack(fill="x", padx=16, pady=6)
@@ -135,38 +167,6 @@ class PreferencesView(ctk.CTkScrollableFrame):
         ).pack(side="right", padx=3)
 
         # -------------------------------------------------------------
-        # Section 3: Proxy Rotator & Network Ports
-        # -------------------------------------------------------------
-        sec_net = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
-        sec_net.pack(fill="x", padx=16, pady=6)
-
-        ctk.CTkLabel(
-            sec_net,
-            text="🌐 Proxy Rotator Ports & Gateway Endpoints",
-            font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#a6e3a1"
-        ).pack(anchor="w", padx=14, pady=(12, 6))
-
-        grid_net = ctk.CTkFrame(sec_net, fg_color="#1e1e2e")
-        grid_net.pack(fill="x", padx=14, pady=(0, 12))
-
-        # Port summary
-        ports_txt = (
-            f"• SOCKS5 Proxy Ports : 127.0.0.1:{SOCKS5_PORT_START} - {SOCKS5_PORT_START + 19} (20 Slots)\n"
-            f"• HTTP Proxy Ports   : 127.0.0.1:{SOCKS5_PORT_START + 10000} - {SOCKS5_PORT_START + 10019}\n"
-            f"• PAC Auto-Config URL: http://127.0.0.1:{PAC_SERVER_PORT}/proxy.pac\n"
-            f"• 9Router API Gateway: http://localhost:20128/api/providers\n"
-            f"• Primary Upstream   : https://www.gstatic.com/generate_204 (5s timeout)"
-        )
-        ctk.CTkLabel(
-            grid_net,
-            text=ports_txt,
-            font=ctk.CTkFont(family="monospace", size=9),
-            text_color="#bac2de",
-            justify="left"
-        ).pack(anchor="w")
-
-        # -------------------------------------------------------------
         # Section 4: About & Version Update Checker
         # -------------------------------------------------------------
         sec_abt = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
@@ -192,7 +192,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         lbl_desc = ctk.CTkLabel(
             abt_content,
-            text="High-performance Unified Desktop Suite for GRC-style 3-Tier DNS Benchmarking, Smart Split-DNS Switching, Turbo Sing-box Proxy Pool Rotation, PAC Auto-Configuration & AI Multi-Provider Router Routing.",
+            text="Cross-platform High-performance Desktop Suite for GRC-style 3-Tier DNS Benchmarking, Smart Split-DNS Switching, Turbo Sing-box Proxy Pool Rotation, PAC Auto-Configuration & AI Multi-Provider Router Routing on Linux, Windows & macOS.",
             font=ctk.CTkFont(size=9),
             text_color="#6c7086",
             wraplength=600,
@@ -222,19 +222,26 @@ class PreferencesView(ctk.CTkScrollableFrame):
             text_color="#cdd6f4",
             hover_color="#45475a",
             height=30,
-            command=lambda: webbrowser.open("https://github.com/decolua/singbox-rotator")
+            command=lambda: webbrowser.open("https://github.com/Azhar457/Netools")
         ).pack(side="left", padx=3)
 
-        ctk.CTkButton(
-            btn_row,
-            text="🔍 System Diagnostics",
-            font=ctk.CTkFont(size=9),
-            fg_color="#313244",
-            text_color="#cdd6f4",
-            hover_color="#45475a",
-            height=30,
-            command=self.run_diagnostics
-        ).pack(side="left", padx=3)
+        self.refresh_diagnostics()
+
+    def refresh_diagnostics(self):
+        diag = get_system_diagnostics()
+        core = diag["core_tools"]
+        fwd = diag["dns_forwarders"]
+
+        lines = [
+            f"• Operating System   : {diag['os_name']}",
+            f"• Python Runtime     : Python {diag['python_version']}",
+            f"• DNS Controller     : {diag['dns_controller']}",
+            f"• Pure Python DoH    : 🟢 Built-in RFC 8484 Wireformat Engine (Zero-Dependency)",
+            f"• Sing-box Proxy Core: {'🟢 ' + core['sing-box']['version'] if core['sing-box']['found'] else '⚠️ Not found on PATH (Proxy rotation disabled)'}",
+            f"• Curl Subsystem     : {'🟢 ' + core['curl']['version'] if core['curl']['found'] else '⚠️ Not found (Internal HTTP fallback active)'}",
+            f"• Optional Forwarders: DNSCrypt-Proxy: {'🟢 Found' if fwd['dnscrypt-proxy']['found'] else '⚪ None'} | Cloudflared: {'🟢 Found' if fwd['cloudflared']['found'] else '⚪ None'}"
+        ]
+        self.lbl_env_summary.configure(text="\n".join(lines))
 
     def on_scale_changed(self, choice: str):
         try:
@@ -267,7 +274,6 @@ class PreferencesView(ctk.CTkScrollableFrame):
                     db.save_providers(curr)
                     imported_count = len(data)
             else:
-                # Text format: name, ip1, ip2
                 lines = p.read_text(encoding="utf-8").splitlines()
                 curr = db.load_providers()
                 for line in lines:
@@ -331,7 +337,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
             import urllib.request
             try:
                 req = urllib.request.Request(
-                    "https://api.github.com/repos/decolua/singbox-rotator/releases/latest",
+                    "https://api.github.com/repos/Azhar457/Netools/releases/latest",
                     headers={"User-Agent": "Netools-Suite"}
                 )
                 with urllib.request.urlopen(req, timeout=5) as resp:
@@ -347,36 +353,4 @@ class PreferencesView(ctk.CTkScrollableFrame):
                     self.after(0, lambda: self.main_app.show_toast("✓ Netools Suite v2.0.0 aktif dan siap digunakan.", level="info"))
                 except Exception:
                     pass
-        threading.Thread(target=_bg, daemon=True).start()
-
-    def run_diagnostics(self):
-        def _bg():
-            diag_lines = ["--- Netools Diagnostics ---"]
-            # Check sing-box
-            try:
-                res = subprocess.run(["sing-box", "version"], capture_output=True, text=True, timeout=3)
-                diag_lines.append(f"Sing-box: {res.stdout.splitlines()[0] if res.stdout else 'OK'}")
-            except Exception as e:
-                diag_lines.append(f"Sing-box: Not found ({e})")
-            
-            # Check curl
-            try:
-                res = subprocess.run(["curl", "--version"], capture_output=True, text=True, timeout=3)
-                diag_lines.append(f"Curl: {res.stdout.splitlines()[0] if res.stdout else 'OK'}")
-            except Exception as e:
-                diag_lines.append(f"Curl: Not found ({e})")
-
-            # Check resolvectl
-            try:
-                res = subprocess.run(["resolvectl", "status"], capture_output=True, text=True, timeout=3)
-                diag_lines.append("Systemd-resolved: Active")
-            except Exception:
-                diag_lines.append("Systemd-resolved: Inactive / NM fallback")
-
-            summary = " | ".join(diag_lines)
-            print(summary)
-            try:
-                self.after(0, lambda: self.main_app.show_toast("✓ Diagnostik sistem: Sing-box, Curl, dan DNS controllers normal!", level="success"))
-            except Exception:
-                pass
         threading.Thread(target=_bg, daemon=True).start()

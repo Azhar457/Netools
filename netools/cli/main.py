@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from netools.config import BASE_DIR, WEB_APP_PORT, PAC_SERVER_PORT
 from netools.services import proxy_service, dns_service, pac_service, watchdog_service
-from netools.adapters import systemd_dns as sys_dns
+from netools.adapters import platform_dns as sys_dns
 
 def cmd_proxy(args):
     """Handle proxy commands."""

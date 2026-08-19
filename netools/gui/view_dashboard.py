@@ -6,7 +6,7 @@ import threading
 import customtkinter as ctk
 from netools.state import load_state
 from netools.services import proxy_service, pac_service
-from netools.adapters import systemd_dns as sys_dns
+from netools.adapters import platform_dns as sys_dns
 from netools.adapters import ninerouter as nr_adapt
 
 
