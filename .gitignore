@@ -1,0 +1,32 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
+
+# Build & Compilation outputs
+build/
+dist/
+AppDir/
+*.squashfs
+runtime-x86_64
+
+# Runtime Scratch & Logs
+runtime/
+configs/
+logs/
+pids/
+*.log
+*.pid
+state.json
+
+# Temporary & Scratch Files
+*.bak
+*.tmp
+tmp.operator/
+target_page.html
+.remember/
+
+# Android build artifacts (if separate)
+*.apk
+singbox-rotator-arm64.apk

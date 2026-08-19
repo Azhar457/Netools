@@ -1,0 +1,217 @@
+"""
+Proxy Service: High-speed parallel proxy fetching, testing, sing-box lifecycle, and backend sync.
+"""
+
+import time
+import concurrent.futures
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+
+from netools.config import (
+    PROXY_SOURCES,
+    MAX_INSTANCES,
+    SOCKS5_PORT_START,
+    HTTP_PORT_OFFSET,
+    CONFIGS_DIR,
+    LOGS_DIR,
+    PID_DIR,
+    STATE_FILE
+)
+from netools.libs.net import fetch_text, is_port_open, test_socks_upstream
+from netools.libs.parsers import extract_all_proxies
+from netools.state import load_state, save_state
+from netools.adapters import singbox as sb_drv
+from netools.adapters import ninerouter as nr_adapt
+
+def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, Any]]:
+    """Fetch raw subscriptions from GitHub sources and parse proxy list."""
+    all_proxies = []
+    seen = set()
+
+    for url in PROXY_SOURCES:
+        try:
+            raw = fetch_text(url)
+            parsed = extract_all_proxies(raw, max_count=max_count)
+            for p in parsed:
+                key = f"{p['server']}:{p['server_port']}"
+                if key not in seen:
+                    seen.add(key)
+                    all_proxies.append(p)
+                    if len(all_proxies) >= max_count:
+                        return all_proxies
+        except Exception as e:
+            print(f"[WARN] Failed fetching source {url}: {e}")
+
+    return all_proxies
+
+def start_proxy_pool(standalone: bool = False) -> Dict[str, Any]:
+    """Start full proxy pool with high-speed parallel testing and backend sync."""
+    print("[INFO] Stopping old instances...")
+    stop_proxy_pool(standalone=standalone)
+
+    print("[INFO] Downloading fresh proxy configs...")
+    proxies = fetch_and_parse_proxies(MAX_INSTANCES)
+    print(f"[INFO] Parsed {len(proxies)} unique candidate proxies")
+
+    started = []  # (name, port, proxy, proc)
+    for i, proxy in enumerate(proxies[:MAX_INSTANCES]):
+        port = SOCKS5_PORT_START + i
+        name = f"sb-{i:02d}"
+        config = sb_drv.build_singbox_config(proxy, port)
+        proc = sb_drv.start_singbox_instance(name, config)
+        if proc:
+            started.append((name, port, proxy, proc))
+
+    # Give instances 0.8s to initialize
+    time.sleep(0.8)
+
+    # Parallel Upstream Testing (All 20 instances tested concurrently)
+    alive = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as ex:
+        futures = {ex.submit(test_socks_upstream, port): (name, port, proxy, proc)
+                   for name, port, proxy, proc in started}
+        for future in concurrent.futures.as_completed(futures):
+            name, port, proxy, proc = futures[future]
+            if future.result():
+                alive.append((name, port, proxy, proc))
+            else:
+                print(f"[WARN] {name} failed upstream test, killing")
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+
+    alive.sort(key=lambda e: e[1])  # Keep sequential port order
+
+    state = {"instances": {}, "updated_at": datetime.now().isoformat()}
+    active_count = 0
+
+    for name, port, proxy, proc in alive:
+        now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+        socks_url = f"socks5://127.0.0.1:{port}"
+        http_url = f"http://127.0.0.1:{port + HTTP_PORT_OFFSET}"
+
+        pool_name = f"free-proxy-{active_count}"
+        pool_id = None
+
+        if not standalone and nr_adapt.is_healthy():
+            pool_id = nr_adapt.add_proxy_pool(pool_name, socks_url)
+
+        state["instances"][name] = {
+            "name": name,
+            "pid": proc.pid,
+            "port": port,
+            "http_port": port + HTTP_PORT_OFFSET,
+            "proxy_type": proxy["type"],
+            "server": proxy["server"],
+            "server_port": proxy.get("server_port", 0),
+            "socks_url": socks_url,
+            "http_url": http_url,
+            "pool_id": pool_id,
+            "pool_name": pool_name,
+            "started_at": now_str,
+        }
+        active_count += 1
+        pool_str = f" → pool {pool_name}" if pool_id else (" (standalone)" if standalone else "")
+        print(f"[OK] {name}: {proxy['type']} → {proxy['server']}:{proxy.get('server_port', '')} → port {port}{pool_str}")
+
+    # Assign proxy to 9Router connections
+    if not standalone and active_count > 0 and nr_adapt.is_healthy():
+        conns = nr_adapt.get_connections()
+        for idx, c in enumerate(conns):
+            p_idx = idx % active_count
+            p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
+            res = nr_adapt.assign_proxy_to_connection(c["id"], p_url)
+            if res:
+                print(f"[OK] Connection {c['id'][:12]}: proxy → {p_url}")
+
+    save_state(state)
+    mode_str = " (Standalone Mode)" if standalone else " → 9Router proxy pool"
+    print(f"\n[DONE] {active_count} proxies active{mode_str}")
+    return state
+
+def stop_proxy_pool(standalone: bool = False) -> None:
+    """Stop all instances, wipe state and scratch files, and cleanly unlink 9Router pools."""
+    sb_drv.stop_all_singbox_instances()
+
+    if not standalone and nr_adapt.is_healthy():
+        print("[INFO] Clearing proxy from all 9Router connections...")
+        nr_adapt.clear_all_connection_proxies()
+
+        pools = nr_adapt.get_existing_pools()
+        for name, pool_id in pools.items():
+            if name.startswith("free-proxy-"):
+                nr_adapt.delete_proxy_pool(pool_id)
+                print(f"Deleted pool: {name}")
+
+    # Wipe scratch files
+    for f in CONFIGS_DIR.glob("*.json"):
+        f.unlink(missing_ok=True)
+    for f in PID_DIR.glob("*.pid"):
+        f.unlink(missing_ok=True)
+    for f in LOGS_DIR.glob("*.log"):
+        f.unlink(missing_ok=True)
+
+    STATE_FILE.unlink(missing_ok=True)
+    print("[DONE] All cleaned up")
+
+def refresh_proxy_pool(standalone: bool = False) -> Dict[str, Any]:
+    """Stop and restart proxy pool."""
+    stop_proxy_pool(standalone=standalone)
+    return start_proxy_pool(standalone=standalone)
+
+def get_proxy_status() -> Dict[str, Any]:
+    """Check live status of proxy instances."""
+    state = load_state()
+    instances = state.get("instances", {})
+    results = []
+
+    for name, info in instances.items():
+        alive = is_port_open(info["port"])
+        results.append({
+            "name": name,
+            "port": info["port"],
+            "http_port": info.get("http_port", info["port"] + HTTP_PORT_OFFSET),
+            "server": info["server"],
+            "proxy_type": info["proxy_type"],
+            "dns": info.get("dns", "⚡ Remote SOCKS5h"),
+            "started_at": info.get("started_at", "?"),
+            "alive": alive
+        })
+    return {"total": len(results), "alive_count": sum(1 for r in results if r["alive"]), "instances": results}
+
+def start_single_instance(name: str, port: int, proxy: Dict[str, Any], standalone: bool = False, pool_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Start and test a single instance (used by auto-heal watchdog)."""
+    config = sb_drv.build_singbox_config(proxy, port)
+    proc = sb_drv.start_singbox_instance(name, config)
+    if not proc:
+        return None
+    time.sleep(0.6)
+    if not test_socks_upstream(port):
+        try:
+            proc.kill()
+        except Exception:
+            pass
+        return None
+
+    socks_url = f"socks5://127.0.0.1:{port}"
+    http_url = f"http://127.0.0.1:{port + HTTP_PORT_OFFSET}"
+    pool_id = None
+    if not standalone and pool_name and nr_adapt.is_healthy():
+        pool_id = nr_adapt.add_proxy_pool(pool_name, socks_url)
+
+    now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    return {
+        "name": name,
+        "pid": proc.pid,
+        "port": port,
+        "http_port": port + HTTP_PORT_OFFSET,
+        "proxy_type": proxy["type"],
+        "server": proxy["server"],
+        "server_port": proxy.get("server_port", 0),
+        "socks_url": socks_url,
+        "http_url": http_url,
+        "pool_id": pool_id,
+        "pool_name": pool_name,
+        "started_at": now_str,
+    }
