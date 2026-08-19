@@ -1,5 +1,5 @@
 """
-Tab 2: DNS Jumper & Real-Time GRC 3-Tier Latency Benchmark View (CustomTkinter).
+Tab 2: DNS Jumper, 3-Tier Switcher & Fast Benchmarker View (CustomTkinter).
 """
 
 import customtkinter as ctk
@@ -7,76 +7,83 @@ import threading
 from netools.adapters import platform_dns as sys_dns
 from netools.services import dns_service
 from netools.gui.view_benchmark_modal import GRCBenchmarkModal
+from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE, COLOR_ACCENT_GREEN, COLOR_ACCENT_PURPLE, COLOR_ACCENT_YELLOW
 import dns_jumper_db as db
 
-
-class DNSView(ctk.CTkFrame):
+class DNSView(ctk.CTkScrollableFrame):
     def __init__(self, parent, main_app):
-        super().__init__(parent, fg_color="#181825")
+        super().__init__(parent, fg_color="#181825", corner_radius=0)
         self.main_app = main_app
         self.providers = db.load_providers()
         self.interfaces = sys_dns.get_network_interfaces()
-        self.active_interface = self.interfaces[0]["device"] if self.interfaces else None
-        self.active_connection = self.interfaces[0]["connection"] if self.interfaces else None
-
-        self._init_vars()
+        self.active_interface = self.interfaces[0]["device"] if self.interfaces else "default"
         self._build_ui()
-        self.refresh()
-
-    def _init_vars(self):
-        self.selected_iface_var = ctk.StringVar()
-        if self.interfaces:
-            self.selected_iface_var.set(self.interfaces[0]["label"])
-        self.preset_var = ctk.StringVar(value="🇨🇳 CN/SG AliDNS (Alibaba Cloud)")
-        self.dns1_var = ctk.StringVar(value="223.5.5.5")
-        self.dns2_var = ctk.StringVar(value="223.6.6.6")
-        self.dns3_var = ctk.StringVar(value="1.1.1.1")
-        self.enable_dot_var = ctk.BooleanVar(value=False)
-        self.persistent_var = ctk.BooleanVar(value=True)
 
     def _build_ui(self):
-        ctk.CTkLabel(
-            self,
-            text="⚡ DNS Switcher & GRC Benchmark Suite",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#89b4fa"
-        ).pack(anchor="w", pady=(0, 10))
+        # Header
+        hdr = ctk.CTkFrame(self, fg_color="#181825")
+        hdr.pack(fill="x", padx=16, pady=(12, 10))
 
-        # Adapter Selection
-        f1 = ctk.CTkFrame(self, fg_color="#181825")
-        f1.pack(fill="x", pady=4)
+        ctk.CTkLabel(
+            hdr,
+            text="⚡ Smart DNS Switcher & Latency Profiler",
+            font=Fonts.title(15),
+            text_color=COLOR_ACCENT_YELLOW
+        ).pack(side="left")
+
+        # Network Adapter Selector Card
+        card_iface = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+        card_iface.pack(fill="x", padx=16, pady=4)
+
+        f1 = ctk.CTkFrame(card_iface, fg_color=COLOR_CARD)
+        f1.pack(fill="x", padx=14, pady=10)
+
         ctk.CTkLabel(
             f1,
-            text="Network Adapter:",
-            font=ctk.CTkFont(size=9, weight="bold"),
-            text_color="#cdd6f4",
-            width=130,
-            anchor="w"
-        ).pack(side="left", padx=(0, 6))
-        iface_labels = [i["label"] for i in self.interfaces] if self.interfaces else ["No interface"]
+            text="Network Interface:",
+            font=Fonts.bold(11),
+            text_color=COLOR_TEXT_PRIMARY
+        ).pack(side="left", padx=(0, 8))
+
+        iface_labels = [i["label"] for i in self.interfaces] if self.interfaces else ["Default"]
+        self.iface_var = ctk.StringVar(value=iface_labels[0])
         self.iface_cb = ctk.CTkComboBox(
             f1,
-            variable=self.selected_iface_var,
+            variable=self.iface_var,
             values=iface_labels,
             state="readonly",
-            font=ctk.CTkFont(size=9),
-            width=300,
-            dropdown_font=ctk.CTkFont(size=9)
+            font=Fonts.regular(11),
+            width=260,
+            dropdown_font=Fonts.regular(11)
         )
         self.iface_cb.pack(side="left", fill="x", expand=True, padx=4)
-        self.iface_cb.bind("<<ComboboxSelected>>", self.on_iface_change)
 
-        # Presets
-        f2 = ctk.CTkFrame(self, fg_color="#181825")
-        f2.pack(fill="x", pady=4)
+        ctk.CTkButton(
+            f1,
+            text="🔄 Refresh Adapters",
+            font=Fonts.bold(11),
+            fg_color="#313244",
+            text_color=COLOR_TEXT_PRIMARY,
+            hover_color="#45475a",
+            height=30,
+            command=self.refresh_adapters
+        ).pack(side="left", padx=4)
+
+        # Preset Provider Selector Card
+        card_preset = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+        card_preset.pack(fill="x", padx=16, pady=4)
+
+        f2 = ctk.CTkFrame(card_preset, fg_color=COLOR_CARD)
+        f2.pack(fill="x", padx=14, pady=10)
+
         ctk.CTkLabel(
             f2,
-            text="Preset Provider:",
-            font=ctk.CTkFont(size=9, weight="bold"),
-            text_color="#cdd6f4",
-            width=130,
-            anchor="w"
-        ).pack(side="left", padx=(0, 6))
+            text="Choose DNS Preset :",
+            font=Fonts.bold(11),
+            text_color=COLOR_ACCENT_BLUE
+        ).pack(side="left", padx=(0, 8))
+
+        self.preset_var = ctk.StringVar(value="⚙️ Custom DNS Servers")
         preset_labels = [f"{p['country']} {p['name']}" for p in self.providers.values()]
         preset_labels.insert(0, "⚙️ Custom DNS Servers")
         self.preset_cb = ctk.CTkComboBox(
@@ -84,202 +91,223 @@ class DNSView(ctk.CTkFrame):
             variable=self.preset_var,
             values=preset_labels,
             state="readonly",
-            font=ctk.CTkFont(size=9),
+            font=Fonts.regular(11),
             width=300,
-            dropdown_font=ctk.CTkFont(size=9)
+            dropdown_font=Fonts.regular(11),
+            command=self.on_preset_change
         )
         self.preset_cb.pack(side="left", fill="x", expand=True, padx=4)
-        self.preset_cb.bind("<<ComboboxSelected>>", self.on_preset_change)
 
         # 3-Slots Card
-        slots_card = ctk.CTkFrame(
-            self,
-            fg_color="#1e1e2e",
-            corner_radius=8,
-            border_width=1,
-            border_color="#313244"
-        )
-        slots_card.pack(fill="x", pady=8)
+        slots_card = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+        slots_card.pack(fill="x", padx=16, pady=6)
 
         # Slot 1
-        s1 = ctk.CTkFrame(slots_card, fg_color="#1e1e2e")
-        s1.pack(fill="x", pady=2, padx=12)
-        ctk.CTkLabel(
-            s1,
-            text="DNS 1 (Primary)   :",
-            font=ctk.CTkFont(size=9),
-            text_color="#a6adc8",
-            width=160,
-            anchor="w"
-        ).pack(side="left")
-        ctk.CTkEntry(
-            s1,
-            textvariable=self.dns1_var,
-            font=ctk.CTkFont(size=9, weight="bold"),
-            text_color="#cdd6f4",
-            fg_color="#313244",
-            border_color="#45475a",
-            height=28
-        ).pack(side="left", fill="x", expand=True, padx=4)
+        s1 = ctk.CTkFrame(slots_card, fg_color=COLOR_CARD)
+        s1.pack(fill="x", pady=4, padx=14)
+        ctk.CTkLabel(s1, text="DNS 1 (Primary)   :", font=Fonts.bold(11), width=130, anchor="w", text_color=COLOR_TEXT_PRIMARY).pack(side="left")
+        self.dns1_entry = ctk.CTkEntry(s1, width=200, height=30, font=Fonts.mono(11), fg_color="#11111b", border_color="#45475a")
+        self.dns1_entry.insert(0, "1.1.1.1")
+        self.dns1_entry.pack(side="left", padx=4)
+
+        self.btn_ping1 = ctk.CTkButton(s1, text="Ping", width=60, height=28, font=Fonts.bold(10), fg_color="#313244", hover_color="#45475a", command=lambda: self.ping_slot(1))
+        self.btn_ping1.pack(side="left", padx=4)
+        self.lbl_ping1 = ctk.CTkLabel(s1, text="", font=Fonts.bold(11), text_color=COLOR_ACCENT_GREEN)
+        self.lbl_ping1.pack(side="left", padx=6)
 
         # Slot 2
-        s2 = ctk.CTkFrame(slots_card, fg_color="#1e1e2e")
-        s2.pack(fill="x", pady=2, padx=12)
-        ctk.CTkLabel(
-            s2,
-            text="DNS 2 (Secondary) :",
-            font=ctk.CTkFont(size=9),
-            text_color="#a6adc8",
-            width=160,
-            anchor="w"
-        ).pack(side="left")
-        ctk.CTkEntry(
-            s2,
-            textvariable=self.dns2_var,
-            font=ctk.CTkFont(size=9, weight="bold"),
-            text_color="#cdd6f4",
-            fg_color="#313244",
-            border_color="#45475a",
-            height=28
-        ).pack(side="left", fill="x", expand=True, padx=4)
+        s2 = ctk.CTkFrame(slots_card, fg_color=COLOR_CARD)
+        s2.pack(fill="x", pady=4, padx=14)
+        ctk.CTkLabel(s2, text="DNS 2 (Secondary) :", font=Fonts.bold(11), width=130, anchor="w", text_color=COLOR_TEXT_PRIMARY).pack(side="left")
+        self.dns2_entry = ctk.CTkEntry(s2, width=200, height=30, font=Fonts.mono(11), fg_color="#11111b", border_color="#45475a")
+        self.dns2_entry.insert(0, "1.0.0.1")
+        self.dns2_entry.pack(side="left", padx=4)
+
+        self.btn_ping2 = ctk.CTkButton(s2, text="Ping", width=60, height=28, font=Fonts.bold(10), fg_color="#313244", hover_color="#45475a", command=lambda: self.ping_slot(2))
+        self.btn_ping2.pack(side="left", padx=4)
+        self.lbl_ping2 = ctk.CTkLabel(s2, text="", font=Fonts.bold(11), text_color=COLOR_ACCENT_GREEN)
+        self.lbl_ping2.pack(side="left", padx=6)
 
         # Slot 3
-        s3 = ctk.CTkFrame(slots_card, fg_color="#1e1e2e")
-        s3.pack(fill="x", pady=2, padx=12)
-        ctk.CTkLabel(
-            s3,
-            text="DNS 3 (Tertiary)  :",
-            font=ctk.CTkFont(size=9),
-            text_color="#a6adc8",
-            width=160,
-            anchor="w"
-        ).pack(side="left")
-        ctk.CTkEntry(
-            s3,
-            textvariable=self.dns3_var,
-            font=ctk.CTkFont(size=9, weight="bold"),
-            text_color="#cdd6f4",
-            fg_color="#313244",
-            border_color="#45475a",
-            height=28
-        ).pack(side="left", fill="x", expand=True, padx=4)
+        s3 = ctk.CTkFrame(slots_card, fg_color=COLOR_CARD)
+        s3.pack(fill="x", pady=4, padx=14)
+        ctk.CTkLabel(s3, text="DNS 3 (Tertiary)  :", font=Fonts.bold(11), width=130, anchor="w", text_color=COLOR_TEXT_PRIMARY).pack(side="left")
+        self.dns3_entry = ctk.CTkEntry(s3, width=200, height=30, font=Fonts.mono(11), fg_color="#11111b", border_color="#45475a")
+        self.dns3_entry.pack(side="left", padx=4)
 
-        # Options
-        opts_f = ctk.CTkFrame(self, fg_color="#181825")
-        opts_f.pack(fill="x", pady=4)
-        ctk.CTkCheckBox(
-            opts_f,
-            text="DNS-over-TLS (DoT systemd)",
-            variable=self.enable_dot_var,
-            font=ctk.CTkFont(size=9),
-            text_color="#a6adc8",
-            fg_color="#313244",
-            hover_color="#45475a"
-        ).pack(side="left", padx=(0, 12))
-        ctk.CTkCheckBox(
-            opts_f,
-            text="Persistent (NetworkManager)",
-            variable=self.persistent_var,
-            font=ctk.CTkFont(size=9),
-            text_color="#a6adc8",
-            fg_color="#313244",
-            hover_color="#45475a"
-        ).pack(side="left")
+        self.btn_ping3 = ctk.CTkButton(s3, text="Ping", width=60, height=28, font=Fonts.bold(10), fg_color="#313244", hover_color="#45475a", command=lambda: self.ping_slot(3))
+        self.btn_ping3.pack(side="left", padx=4)
+        self.lbl_ping3 = ctk.CTkLabel(s3, text="", font=Fonts.bold(11), text_color=COLOR_ACCENT_GREEN)
+        self.lbl_ping3.pack(side="left", padx=6)
 
-        # Buttons
-        btn_f = ctk.CTkFrame(self, fg_color="#181825")
-        btn_f.pack(fill="x", pady=(8, 4))
+        # Options Row
+        opt_card = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+        opt_card.pack(fill="x", padx=16, pady=4)
+
+        opts = ctk.CTkFrame(opt_card, fg_color=COLOR_CARD)
+        opts.pack(fill="x", padx=14, pady=8)
+
+        self.dot_var = ctk.BooleanVar(value=False)
+        self.dot_chk = ctk.CTkCheckBox(
+            opts,
+            text="Enable DNS-over-TLS (DoT / Opportunistic)",
+            variable=self.dot_var,
+            font=Fonts.regular(11),
+            text_color=COLOR_TEXT_PRIMARY,
+            fg_color=COLOR_ACCENT_BLUE
+        )
+        self.dot_chk.pack(side="left", padx=4)
+
+        self.persist_var = ctk.BooleanVar(value=True)
+        self.persist_chk = ctk.CTkCheckBox(
+            opts,
+            text="Persist across Network Reconnects",
+            variable=self.persist_var,
+            font=Fonts.regular(11),
+            text_color=COLOR_TEXT_PRIMARY,
+            fg_color=COLOR_ACCENT_BLUE
+        )
+        self.persist_chk.pack(side="left", padx=16)
+
+        # Action Buttons Row
+        actions = ctk.CTkFrame(self, fg_color="#181825")
+        actions.pack(fill="x", padx=16, pady=10)
+
         ctk.CTkButton(
-            btn_f,
-            text="🚀 Apply DNS",
-            font=ctk.CTkFont(size=10, weight="bold"),
-            fg_color="#a6e3a1",
+            actions,
+            text="⚡ Apply DNS",
+            font=Fonts.bold(11),
+            fg_color=COLOR_ACCENT_GREEN,
             text_color="#11111b",
-            hover_color="#89b4fa",
-            height=36,
+            hover_color="#94e2d5",
+            height=34,
             command=self.apply_dns
-        ).pack(side="left", fill="x", expand=True, padx=3)
+        ).pack(side="left", padx=(0, 6))
+
         ctk.CTkButton(
-            btn_f,
-            text="⚡ GRC Benchmark",
-            font=ctk.CTkFont(size=10, weight="bold"),
-            fg_color="#89b4fa",
-            text_color="#11111b",
-            hover_color="#89b4fa",
-            height=36,
-            command=self.open_benchmark
-        ).pack(side="left", fill="x", expand=True, padx=3)
-        ctk.CTkButton(
-            btn_f,
-            text="🧹 Flush DNS",
-            font=ctk.CTkFont(size=10, weight="bold"),
-            fg_color="#f9e2af",
-            text_color="#11111b",
-            hover_color="#89b4fa",
-            height=36,
+            actions,
+            text="♻️ Flush DNS",
+            font=Fonts.bold(11),
+            fg_color="#313244",
+            text_color=COLOR_TEXT_PRIMARY,
+            hover_color="#45475a",
+            height=34,
             command=self.flush_dns
-        ).pack(side="left", fill="x", expand=True, padx=3)
+        ).pack(side="left", padx=6)
+
         ctk.CTkButton(
-            btn_f,
-            text="🔄 Restore DHCP",
-            font=ctk.CTkFont(size=9, weight="bold"),
+            actions,
+            text="↩️ Restore DHCP",
+            font=Fonts.bold(11),
             fg_color="#45475a",
-            text_color="#cdd6f4",
-            hover_color="#6c7086",
-            height=36,
+            text_color="#f38ba8",
+            hover_color="#585b70",
+            height=34,
             command=self.restore_dhcp
-        ).pack(side="left", fill="x", expand=True, padx=3)
+        ).pack(side="left", padx=6)
 
-    def on_iface_change(self, event=None):
-        sel_lbl = self.selected_iface_var.get()
-        for i in self.interfaces:
-            if i["label"] == sel_lbl:
-                self.active_interface = i["device"]
-                self.active_connection = i["connection"]
-                break
-        self.refresh()
+        ctk.CTkButton(
+            actions,
+            text="🏆 Fastest DNS Benchmark (GRC Engine)",
+            font=Fonts.bold(11),
+            fg_color=COLOR_ACCENT_YELLOW,
+            text_color="#11111b",
+            hover_color="#f5e0dc",
+            height=34,
+            command=self.open_benchmark
+        ).pack(side="right", padx=(6, 0))
 
-    def on_preset_change(self, event=None):
-        sel = self.preset_var.get()
-        if sel.startswith("⚙️"):
+    def on_preset_change(self, choice: str):
+        if "Custom" in choice:
             return
+        # Find provider
         for p in self.providers.values():
-            if f"{p['country']} {p['name']}" == sel:
+            label = f"{p['country']} {p['name']}"
+            if label == choice:
                 ips = p.get("ipv4", [])
-                self.dns1_var.set(ips[0] if len(ips) > 0 else "")
-                self.dns2_var.set(ips[1] if len(ips) > 1 else "")
-                self.dns3_var.set(ips[2] if len(ips) > 2 else "")
+                self.dns1_entry.delete(0, "end")
+                self.dns2_entry.delete(0, "end")
+                self.dns3_entry.delete(0, "end")
+                if len(ips) > 0: self.dns1_entry.insert(0, ips[0])
+                if len(ips) > 1: self.dns2_entry.insert(0, ips[1])
+                if len(ips) > 2: self.dns3_entry.insert(0, ips[2])
                 break
+
+    def refresh_adapters(self):
+        self.interfaces = sys_dns.get_network_interfaces()
+        labels = [i["label"] for i in self.interfaces] if self.interfaces else ["Default"]
+        self.iface_cb.configure(values=labels)
+        if labels:
+            self.iface_var.set(labels[0])
+            self.active_interface = self.interfaces[0]["device"] if self.interfaces else "default"
+        self.main_app.show_toast(f"✓ {len(self.interfaces)} Network Adapters refreshed.", level="info")
+
+    def ping_slot(self, slot_num: int):
+        entry = [self.dns1_entry, self.dns2_entry, self.dns3_entry][slot_num - 1]
+        lbl = [self.lbl_ping1, self.lbl_ping2, self.lbl_ping3][slot_num - 1]
+        ip = entry.get().strip()
+        if not ip:
+            return
+        lbl.configure(text="Pinging...", text_color="#cdd6f4")
+        def _bg():
+            from netools.libs.net import ping_ip
+            lat = ping_ip(ip, timeout=1.5)
+            try:
+                self.after(0, lambda: lbl.configure(
+                    text=f"{lat:.1f} ms" if lat else "Timeout",
+                    text_color=COLOR_ACCENT_GREEN if lat else "#f38ba8"
+                ))
+            except Exception:
+                pass
+        threading.Thread(target=_bg, daemon=True).start()
 
     def apply_dns(self):
-        ips = [self.dns1_var.get().strip(), self.dns2_var.get().strip(), self.dns3_var.get().strip()]
-        valid = [ip for ip in ips if ip and not ip.isspace()]
+        ips = [self.dns1_entry.get().strip(), self.dns2_entry.get().strip(), self.dns3_entry.get().strip()]
+        valid = [ip for ip in ips if ip]
         if not valid:
-            self.main_app.show_toast("Masukkan minimal 1 DNS IP yang valid.", level="warning")
+            self.main_app.show_toast("Isi minimal 1 IP DNS valid!", level="warning")
             return
-        if not self.active_interface:
-            self.main_app.show_toast("Tidak ada network interface aktif.", level="error")
-            return
-        sys_dns.apply_system_dns(
-            self.active_interface,
+        
+        # Get active interface device
+        selected_label = self.iface_var.get()
+        dev = self.active_interface
+        conn = None
+        for i in self.interfaces:
+            if i["label"] == selected_label:
+                dev = i["device"]
+                conn = i.get("connection")
+                break
+
+        success = sys_dns.apply_system_dns(
+            dev,
             valid,
-            connection_name=self.active_connection,
-            enable_dot=self.enable_dot_var.get(),
-            persistent=self.persistent_var.get()
+            connection_name=conn,
+            enable_dot=self.dot_var.get(),
+            persistent=self.persist_var.get()
         )
-        self.main_app.show_toast(f"✓ DNS ({', '.join(valid)}) diterapkan ke '{self.active_interface}'!", level="success")
-        self.main_app.dashboard_view.refresh()
+        if success:
+            self.main_app.show_toast(f"✓ DNS ({', '.join(valid)}) diterapkan ke '{dev}'!", level="success")
+            self.main_app.dashboard_view.refresh()
+        else:
+            self.main_app.show_toast(f"Gagal menerapkan DNS ke interface '{dev}'.", level="error")
 
     def flush_dns(self):
         sys_dns.flush_dns_cache()
         self.main_app.show_toast("✓ DNS Cache berhasil di-flush!", level="success")
-        self.refresh()
 
     def restore_dhcp(self):
-        if self.active_interface:
-            sys_dns.restore_default_dns(self.active_interface, self.active_connection)
-            self.main_app.show_toast(f"✓ Interface '{self.active_interface}' dikembalikan ke DHCP default.", level="info")
-            self.main_app.dashboard_view.refresh()
+        selected_label = self.iface_var.get()
+        dev = self.active_interface
+        conn = None
+        for i in self.interfaces:
+            if i["label"] == selected_label:
+                dev = i["device"]
+                conn = i.get("connection")
+                break
+
+        sys_dns.restore_default_dns(dev, connection_name=conn)
+        self.main_app.show_toast(f"✓ Interface '{dev}' dikembalikan ke DHCP default.", level="info")
+        self.main_app.dashboard_view.refresh()
 
     def refresh_presets(self):
         self.providers = db.load_providers()
@@ -291,8 +319,3 @@ class DNSView(ctk.CTkFrame):
     def open_benchmark(self):
         modal = GRCBenchmarkModal(self.main_app, self)
         self.main_app.child_windows.append(modal)
-
-    def refresh(self):
-        self.interfaces = sys_dns.get_network_interfaces()
-        labels = [i["label"] for i in self.interfaces] if self.interfaces else ["No interface"]
-        self.iface_cb.configure(values=labels)
