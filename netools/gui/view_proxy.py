@@ -157,46 +157,46 @@ class ProxyView(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
         vsb.pack(side="right", fill="y", padx=(0, 8), pady=8)
 
+        # Instant initial sync render (0 ms delay)
+        self._populate_sync()
+
+    def _populate_sync(self):
+        st = load_state()
+        insts = st.get("instances", {})
+        pac_running = pac_service.is_pac_server_running()
+
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        for name, data in sorted(insts.items()):
+            port = data.get("port", 11080)
+            http_p = port + HTTP_PORT_OFFSET
+            proto = data.get("protocol", "unknown")
+            srv = f"{data.get('server', '')}:{data.get('server_port', '')}"
+            pool = data.get("pool_id", "—")
+            dns_engine = "SOCKS5h Remote"
+            age = data.get("started_at", "Just now")
+            status = "🟢 Alive"
+
+            self.tree.insert("", "end", values=(
+                name, proto, srv, port, http_p, pool, dns_engine, age, status
+            ))
+
+        cnt = len(insts)
+        self.lbl_summary.configure(
+            text=f"Instances: {cnt} active | SOCKS: {SOCKS5_PORT_START}–{SOCKS5_PORT_START + max(0, cnt-1)} | HTTP: {SOCKS5_PORT_START + HTTP_PORT_OFFSET}–{SOCKS5_PORT_START + HTTP_PORT_OFFSET + max(0, cnt-1)} | Upstream: gstatic 204"
+        )
+
+        if pac_running:
+            self.btn_pac_toggle.configure(text="🛑 Stop PAC", fg_color="#f38ba8", hover_color="#eba0ac")
+        else:
+            self.btn_pac_toggle.configure(text="🟢 Start PAC", fg_color=COLOR_ACCENT_BLUE, hover_color="#b4befe")
+
     def refresh(self):
-        def _bg():
-            st = load_state()
-            insts = st.get("instances", {})
-            pac_running = pac_service.is_pac_server_running()
-
-            def _update():
-                for item in self.tree.get_children():
-                    self.tree.delete(item)
-
-                for name, data in sorted(insts.items()):
-                    port = data.get("port", 11080)
-                    http_p = port + HTTP_PORT_OFFSET
-                    proto = data.get("protocol", "unknown")
-                    srv = f"{data.get('server', '')}:{data.get('server_port', '')}"
-                    pool = data.get("pool_id", "—")
-                    dns_engine = "SOCKS5h Remote"
-                    age = data.get("started_at", "Just now")
-                    status = "🟢 Alive"
-
-                    self.tree.insert("", "end", values=(
-                        name, proto, srv, port, http_p, pool, dns_engine, age, status
-                    ))
-
-                cnt = len(insts)
-                self.lbl_summary.configure(
-                    text=f"Instances: {cnt} active | SOCKS: {SOCKS5_PORT_START}–{SOCKS5_PORT_START + max(0, cnt-1)} | HTTP: {SOCKS5_PORT_START + HTTP_PORT_OFFSET}–{SOCKS5_PORT_START + HTTP_PORT_OFFSET + max(0, cnt-1)} | Upstream: gstatic 204"
-                )
-
-                if pac_running:
-                    self.btn_pac_toggle.configure(text="🛑 Stop PAC", fg_color="#f38ba8", hover_color="#eba0ac")
-                else:
-                    self.btn_pac_toggle.configure(text="🟢 Start PAC", fg_color=COLOR_ACCENT_BLUE, hover_color="#b4befe")
-
-            try:
-                self.after(0, _update)
-            except Exception:
-                pass
-
-        threading.Thread(target=_bg, daemon=True).start()
+        try:
+            self._populate_sync()
+        except Exception:
+            pass
 
     def on_start(self):
         self.main_app.show_toast("Mengunduh & memulai Turbo Proxy Pool...", level="info")

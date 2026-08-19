@@ -47,6 +47,14 @@ class DashboardView(ctk.CTkScrollableFrame):
         cards.pack(fill="x", padx=16, pady=4)
         cards.grid_columnconfigure((0, 1), weight=1, uniform="dash_card")
 
+        # Instant synchronous state (0 ms lag)
+        st = load_state()
+        insts = st.get("instances", {})
+        active_cnt = len(insts)
+        prox_init = f"Status: {'🟢 ' + str(active_cnt) + ' Proxies Active' if active_cnt > 0 else '⚪ Idle / Stopped'}\nPorts: 11080 - {11080 + max(0, active_cnt-1)}"
+        pac_active = pac_service.is_pac_server_running()
+        pac_init = f"Status: {'🟢 Active (Listening)' if pac_active else '⚪ Inactive (Stopped)'}\nEndpoint: http://127.0.0.1:18080/proxy.pac"
+
         # Card 1: Proxy Pool
         self.card_proxy = ctk.CTkFrame(cards, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
         self.card_proxy.grid(row=0, column=0, padx=6, pady=6, sticky="nsew")
@@ -60,7 +68,7 @@ class DashboardView(ctk.CTkScrollableFrame):
 
         self.lbl_proxy_stat = ctk.CTkLabel(
             self.card_proxy,
-            text="Checking...",
+            text=prox_init,
             font=Fonts.regular(11),
             text_color=COLOR_TEXT_SECONDARY,
             justify="left"
@@ -80,7 +88,7 @@ class DashboardView(ctk.CTkScrollableFrame):
 
         self.lbl_pac_stat = ctk.CTkLabel(
             self.card_pac,
-            text="Checking...",
+            text=pac_init,
             font=Fonts.regular(11),
             text_color=COLOR_TEXT_SECONDARY,
             justify="left"
@@ -100,7 +108,7 @@ class DashboardView(ctk.CTkScrollableFrame):
 
         self.lbl_dns_stat = ctk.CTkLabel(
             self.card_dns,
-            text="Checking...",
+            text="Interface: Auto-Detecting\nServers  : DHCP Default",
             font=Fonts.regular(11),
             text_color=COLOR_TEXT_SECONDARY,
             justify="left"
@@ -120,7 +128,7 @@ class DashboardView(ctk.CTkScrollableFrame):
 
         self.lbl_9r_stat = ctk.CTkLabel(
             self.card_9r,
-            text="Checking...",
+            text="Gateway: ⚪ Standalone / Offline\nBound Connections: 0",
             font=Fonts.regular(11),
             text_color=COLOR_TEXT_SECONDARY,
             justify="left"

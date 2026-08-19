@@ -8,7 +8,7 @@ import urllib.error
 from typing import Dict, Any, List, Optional
 from netools.config import NINEROUTER_URL, NINEROUTER_CLI_TOKEN
 
-def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, timeout: float = 4.0) -> Dict[str, Any]:
+def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, timeout: float = 0.5) -> Dict[str, Any]:
     """Send authenticated HTTP request to 9Router REST API."""
     url = f"{NINEROUTER_URL}{path}"
     data = json.dumps(body).encode("utf-8") if body is not None else None
