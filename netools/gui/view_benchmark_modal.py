@@ -253,6 +253,20 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             self.tree.delete(item)
 
         mode_key = self._get_benchmark_mode_key()
+
+        # Pre-flight check for IPv6
+        if mode_key == "ipv6":
+            from netools.libs.net import check_ipv6_connectivity
+            if not check_ipv6_connectivity():
+                self.lbl_status.configure(
+                    text="⚠️ ISP/Jaringan lokal Anda tidak memiliki koneksi IPv6 (Network Unreachable). Silakan pilih mode IPv4 atau DoH/DoT.",
+                    text_color="#f38ba8"
+                )
+                self.btn_start.configure(state="normal")
+                self.btn_stop.configure(state="disabled")
+                self.benchmark_running = False
+                return
+
         reg_text = self.region_var.get()
         region_key = "all"
         if "Asia" in reg_text: region_key = "asia"

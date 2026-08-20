@@ -14,6 +14,17 @@ def is_port_open(port: int, host: str = "127.0.0.1", timeout: float = 0.5) -> bo
         s.settimeout(timeout)
         return s.connect_ex((host, port)) == 0
 
+def check_ipv6_connectivity(timeout: float = 1.2) -> bool:
+    """Check if the local network adapter and ISP have an active, routable IPv6 connection."""
+    try:
+        sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
+        sock.settimeout(timeout)
+        sock.connect(("2606:4700:4700::1111", 53))
+        sock.close()
+        return True
+    except Exception:
+        return False
+
 def fetch_text(url: str, timeout: int = 15) -> str:
     """Fetch plain text via HTTP request."""
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})

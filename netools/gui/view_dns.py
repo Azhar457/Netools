@@ -254,6 +254,15 @@ class DNSView(ctk.CTkScrollableFrame):
                     if not ips:
                         self.main_app.show_toast(f"Provider '{p['name']}' tidak menyediakan DNS IPv6 publik.", level="warning")
                         ips = p.get("ipv4", [])
+                    else:
+                        def _check_v6():
+                            from netools.libs.net import check_ipv6_connectivity
+                            if not check_ipv6_connectivity():
+                                self.after(0, lambda: self.main_app.show_toast(
+                                    "⚠️ Perhatian: Jaringan/ISP Anda tidak memiliki rute IPv6 aktif. DNS IPv6 mungkin timeout.",
+                                    level="warning"
+                                ))
+                        threading.Thread(target=_check_v6, daemon=True).start()
                 elif "DoH" in family:
                     doh = p.get("doh_url", "")
                     ips = [doh] if doh else p.get("ipv4", [])
