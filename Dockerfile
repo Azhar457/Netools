@@ -13,7 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install latest sing-box binary
-ARG SING_BOX_VERSION=1.11.4
+# NOTE: DNS commands (resolvectl, nmcli) are unavailable in container.
+# Container mode supports proxy rotation only, not DNS switching.
+ARG SING_BOX_VERSION=1.13.7
 RUN curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/v${SING_BOX_VERSION}/sing-box-${SING_BOX_VERSION}-linux-amd64.tar.gz" \
     | tar -xz --strip-components=1 -C /usr/local/bin "sing-box-${SING_BOX_VERSION}-linux-amd64/sing-box" \
     && chmod +x /usr/local/bin/sing-box

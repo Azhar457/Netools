@@ -5,18 +5,19 @@ Featuring 1-100% Preloader Splash Screen and Native System Tray Integration.
 
 import sys
 import tkinter as tk
-import customtkinter as ctk
 from pathlib import Path
 from typing import List
 
-from netools.gui.view_dashboard import DashboardView
-from netools.gui.view_dns import DNSView
-from netools.gui.view_proxy import ProxyView
-from netools.gui.view_settings import SettingsView
-from netools.gui.view_preferences import PreferencesView
+import customtkinter as ctk
+
+from netools.gui.splash import SplashScreen
 from netools.gui.toast import ToastManager
 from netools.gui.tray import TrayManager
-from netools.gui.splash import SplashScreen
+from netools.gui.view_dashboard import DashboardView
+from netools.gui.view_dns import DNSView
+from netools.gui.view_preferences import PreferencesView
+from netools.gui.view_proxy import ProxyView
+from netools.gui.view_settings import SettingsView
 
 
 def center_window(window: ctk.CTk, width: int = 920, height: int = 720):
@@ -55,72 +56,119 @@ class NetoolsApp(ctk.CTk):
         if self.tray.is_available():
             self.tray.start()
 
-        self._apply_theme()
+        from netools.config import _user_cfg
+        from netools.gui.theme import ThemeManager
+        saved_theme = _user_cfg.get("theme", "dark")
+        ThemeManager.apply_theme(saved_theme, self)
+
         self._build_ui()
+
+
 
     def show_toast(self, message: str, level: str = "success", duration_ms: int = 4000) -> None:
         self.toast.show(message, level=level, duration_ms=duration_ms)
         if hasattr(self, "lbl_header_status"):
-            fg_map = {"success": "#a6e3a1", "info": "#89b4fa", "warning": "#f9e2af", "error": "#f38ba8"}
+            from netools.gui.theme import ThemeManager
+            fg_map = {"success": ThemeManager.success(), "info": ThemeManager.primary(), "warning": ThemeManager.warning(), "error": ThemeManager.danger()}
             clean_msg = message.split("\n")[0][:45]
-            self.lbl_header_status.configure(text=f"● {clean_msg}", text_color=fg_map.get(level, "#89b4fa"))
+            self.lbl_header_status.configure(text=f"● {clean_msg}", text_color=fg_map.get(level, ThemeManager.primary()))
 
     def _apply_theme(self):
-        ctk.set_appearance_mode("dark")
-        ctk.set_default_color_theme("blue")
-        self._fg_color = "#181825"
-        self.configure(fg_color=self._fg_color)
+        from netools.gui.theme import ThemeManager
+        ThemeManager.apply_theme(ThemeManager.get_current_theme_key(), self)
+
+
+
+    def apply_theme_in_place(self):
+        """In-place dynamic repaint without destroying or rebuilding widgets (0 ms lag, zero flicker)."""
+        from netools.gui.theme import ThemeManager
+        self.configure(fg_color=ThemeManager.bg())
+        if hasattr(self, "header"):
+            self.header.configure(fg_color=ThemeManager.surface_alt())
+        if hasattr(self, "title_box"):
+            self.title_box.configure(fg_color=ThemeManager.surface_alt())
+        if hasattr(self, "title_label"):
+            self.title_label.configure(text_color=ThemeManager.primary())
+        if hasattr(self, "subtitle_label"):
+            self.subtitle_label.configure(text_color=ThemeManager.text_muted())
+        if hasattr(self, "status_box"):
+            self.status_box.configure(fg_color=ThemeManager.bg(), border_color=ThemeManager.border())
+        if hasattr(self, "lbl_header_status"):
+            self.lbl_header_status.configure(text_color=ThemeManager.success())
+        if hasattr(self, "tabview"):
+            self.tabview.configure(
+                fg_color=ThemeManager.surface(),
+                segmented_button_fg_color=ThemeManager.surface(),
+                segmented_button_selected_color=ThemeManager.border(),
+                segmented_button_selected_hover_color=ThemeManager.border(),
+                segmented_button_unselected_color=ThemeManager.bg(),
+                segmented_button_unselected_hover_color=ThemeManager.border(),
+                text_color=ThemeManager.text(),
+                text_color_disabled=ThemeManager.text_muted()
+            )
+        if hasattr(self, "dashboard_view") and hasattr(self.dashboard_view, "apply_theme"):
+            self.dashboard_view.apply_theme()
+        if hasattr(self, "dns_view") and hasattr(self.dns_view, "apply_theme"):
+            self.dns_view.apply_theme()
+        if hasattr(self, "proxy_view") and hasattr(self.proxy_view, "apply_theme"):
+            self.proxy_view.apply_theme()
+        if hasattr(self, "settings_view") and hasattr(self.settings_view, "apply_theme"):
+            self.settings_view.apply_theme()
+        if hasattr(self, "preferences_view") and hasattr(self.preferences_view, "apply_theme"):
+            self.preferences_view.apply_theme()
 
     def _build_ui(self):
+        from netools.gui.theme import ThemeManager
         # Header banner
-        header = ctk.CTkFrame(self, fg_color="#11111b", height=60)
-        header.pack(fill="x", padx=0, pady=0)
-        header.pack_propagate(False)
+        self.header = ctk.CTkFrame(self, fg_color=ThemeManager.surface_alt(), height=60)
+        self.header.pack(fill="x", padx=0, pady=0)
+        self.header.pack_propagate(False)
 
-        title_box = ctk.CTkFrame(header, fg_color="#11111b")
-        title_box.pack(side="left", padx=20, pady=6)
+        self.title_box = ctk.CTkFrame(self.header, fg_color=ThemeManager.surface_alt())
+        self.title_box.pack(side="left", padx=20, pady=6)
 
-        title_label = ctk.CTkLabel(
-            title_box,
+        self.title_label = ctk.CTkLabel(
+            self.title_box,
             text="⚡ Netools Suite v2.0",
             font=("sans-serif", 16, "bold"),
-            text_color="#89b4fa"
+            text_color=ThemeManager.primary()
         )
-        title_label.pack(anchor="w")
+        self.title_label.pack(anchor="w")
 
-        subtitle_label = ctk.CTkLabel(
-            title_box,
+        self.subtitle_label = ctk.CTkLabel(
+            self.title_box,
             text="Unified Sing-box Rotator, Real-Time GRC DNS Benchmark & AI Gateway Router",
             font=("sans-serif", 10),
-            text_color="#6c7086"
+            text_color=ThemeManager.text_muted()
         )
-        subtitle_label.pack(anchor="w")
+        self.subtitle_label.pack(anchor="w")
 
         # Right-side Live Status Pill (Visibility of System Status - Nielsen #1)
-        status_box = ctk.CTkFrame(header, fg_color="#181825", corner_radius=20, border_width=1, border_color="#313244")
-        status_box.pack(side="right", padx=20, pady=12)
+        self.status_box = ctk.CTkFrame(self.header, fg_color=ThemeManager.bg(), corner_radius=20, border_width=1, border_color=ThemeManager.border())
+        self.status_box.pack(side="right", padx=20, pady=12)
 
         self.lbl_header_status = ctk.CTkLabel(
-            status_box,
+            self.status_box,
             text="● System Ready",
             font=("sans-serif", 10, "bold"),
-            text_color="#a6e3a1",
+            text_color=ThemeManager.success(),
             padx=12,
             pady=4
         )
         self.lbl_header_status.pack()
 
+
         # Tab View
         self.tabview = ctk.CTkTabview(
             self,
-            fg_color="#1e1e2e",
-            segmented_button_fg_color="#1e1e2e",
-            segmented_button_selected_color="#313244",
-            segmented_button_selected_hover_color="#45475a",
-            segmented_button_unselected_color="#181825",
-            segmented_button_unselected_hover_color="#313244",
-            text_color="#a6adc8",
-            text_color_disabled="#6c7086",
+            fg_color=ThemeManager.surface(),
+            segmented_button_fg_color=ThemeManager.surface(),
+            segmented_button_selected_color=ThemeManager.border(),
+            segmented_button_selected_hover_color=ThemeManager.border(),
+            segmented_button_unselected_color=ThemeManager.bg(),
+            segmented_button_unselected_hover_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            text_color_disabled=ThemeManager.text_muted(),
             corner_radius=8
         )
         self.tabview.pack(fill="both", expand=True, padx=12, pady=(0, 12))
@@ -150,6 +198,30 @@ class NetoolsApp(ctk.CTk):
         self.preferences_view = PreferencesView(self.tab_preferences, self)
         self.preferences_view.pack(fill="both", expand=True)
 
+    def reload_ui(self):
+        """Rebuild entire UI with new theme colors while preserving active tab."""
+        active_tab = "⚙️ Settings & About"
+        if hasattr(self, "tabview"):
+            try:
+                active_tab = self.tabview.get()
+            except Exception:
+                pass
+
+        for widget in list(self.winfo_children()):
+            try:
+                widget.destroy()
+            except Exception:
+                pass
+
+        self._apply_theme()
+        self._build_ui()
+        if hasattr(self, "tabview"):
+            try:
+                self.tabview.set(active_tab)
+            except Exception:
+                pass
+
+
     def restore_from_tray(self):
         """Restore window from System Tray."""
         self.deiconify()
@@ -157,15 +229,29 @@ class NetoolsApp(ctk.CTk):
         self.focus_force()
 
     def on_root_close(self):
-        """Handle window close event (X button)."""
-        if self.minimize_to_tray_enabled and self.tray.is_available():
+        """Handle window close event (X button).
+        Keep running in the System Tray so PAC/proxy/DNS services stay alive."""
+        if self.tray.is_available():
             self.withdraw()
-            self.show_toast("Netools aktif di latar belakang (System Tray).", level="info")
+            self.show_toast("Netools aktif di latar belakang (System Tray). PAC & proxy tetap berjalan.", level="info")
+        elif self.minimize_to_tray_enabled:
+            self.withdraw()
+            self.show_toast("Netools berjalan di latar belakang (tanpa System Tray).", level="info")
         else:
             self.force_exit()
 
     def force_exit(self):
-        """Completely exit the application."""
+        """Completely exit the application (stops all background services)."""
+        try:
+            from netools.adapters import singbox
+            from netools.services import doh_service, pac_service, proxy_service, watchdog_service
+            pac_service.stop_pac_server()
+            doh_service.stop_doh_forwarder()
+            proxy_service.stop_proxy_pool()
+            singbox.stop_all_singbox_instances()
+            watchdog_service.stop_watchdog()
+        except Exception:
+            pass
         if hasattr(self, "tray") and self.tray:
             self.tray.stop()
         for child in list(self.child_windows):
@@ -181,6 +267,8 @@ class NetoolsApp(ctk.CTk):
 
 
 def main():
+    from netools.config import ensure_runtime_dirs
+    ensure_runtime_dirs()
     app = NetoolsApp()
 
     def on_splash_done():
@@ -188,7 +276,7 @@ def main():
         app.lift()
         app.focus_force()
 
-    splash = SplashScreen(main_app=app, on_complete=on_splash_done)
+    SplashScreen(main_app=app, on_complete=on_splash_done)
     app.mainloop()
 
 

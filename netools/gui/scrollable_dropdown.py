@@ -4,9 +4,15 @@ Prevents dropdown menus with 50+ items from overflowing the screen.
 """
 
 import tkinter as tk
+from typing import Any, Callable, List, Optional
+
 import customtkinter as ctk
-from typing import List, Callable, Optional, Any
-from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE
+
+from netools.gui.theme import (
+    Fonts,
+    ThemeManager,
+)
+
 
 class CTkScrollableDropdown:
     def __init__(
@@ -32,16 +38,27 @@ class CTkScrollableDropdown:
         self.toplevel: Optional[ctk.CTkToplevel] = None
         self.scroll_frame: Optional[ctk.CTkScrollableFrame] = None
         self.search_entry: Optional[ctk.CTkEntry] = None
-        self.buttons: List[ctk.CTkButton] = []
+        # Safely disable default CTkComboBox / CTkOptionMenu popup
+        if hasattr(self.widget, "_open_dropdown_menu"):
+            self.widget._open_dropdown_menu = lambda: None
+        if hasattr(self.widget, "_dropdown_menu") and self.widget._dropdown_menu is not None:
+            try:
+                self.widget._dropdown_menu.is_open = lambda: False
+            except Exception:
+                pass
+        elif hasattr(self.widget, "_dropdown_menu") and self.widget._dropdown_menu is None:
+            class _DummyDropdown:
+                def is_open(self): return False
+                def close(self): pass
+                def open(self): pass
+            self.widget._dropdown_menu = _DummyDropdown()
 
-        # Disable default CTkComboBox / CTkOptionMenu popup
-        if hasattr(self.widget, "_dropdown_menu"):
-            self.widget._dropdown_menu = None
 
         # Bind click event on widget
         self.widget.bind("<Button-1>", self._toggle_dropdown, add="+")
         if hasattr(self.widget, "_entry"):
             self.widget._entry.bind("<Button-1>", self._toggle_dropdown, add="+")
+
 
     def configure(self, values: Optional[List[str]] = None, **kwargs):
         if values is not None:
@@ -65,7 +82,7 @@ class CTkScrollableDropdown:
         self.toplevel = ctk.CTkToplevel(root)
         self.toplevel.withdraw()
         self.toplevel.overrideredirect(True)
-        self.toplevel.configure(fg_color="#181825")
+        self.toplevel.configure(fg_color=ThemeManager.surface_alt())
         self.toplevel.attributes("-topmost", True)
 
         # Calculate position & dimensions
@@ -90,16 +107,16 @@ class CTkScrollableDropdown:
         # Main Card Frame
         main_card = ctk.CTkFrame(
             self.toplevel,
-            fg_color=COLOR_CARD,
+            fg_color=ThemeManager.surface(),
             corner_radius=8,
             border_width=1,
-            border_color=COLOR_BORDER
+            border_color=ThemeManager.border()
         )
         main_card.pack(fill="both", expand=True, padx=0, pady=0)
 
         # Search Bar (if searchable)
         if self.searchable and len(self.values) > 6:
-            search_box = ctk.CTkFrame(main_card, fg_color=COLOR_CARD, height=36)
+            search_box = ctk.CTkFrame(main_card, fg_color=ThemeManager.surface(), height=36)
             search_box.pack(fill="x", padx=6, pady=(6, 2))
             search_box.pack_propagate(False)
 
@@ -107,20 +124,21 @@ class CTkScrollableDropdown:
                 search_box,
                 placeholder_text=self.placeholder_text,
                 font=Fonts.regular(10),
-                fg_color="#11111b",
-                border_color=COLOR_BORDER,
+                fg_color=ThemeManager.surface_alt(),
+                border_color=ThemeManager.border(),
                 height=26
             )
             self.search_entry.pack(fill="x", padx=4, pady=2)
             self.search_entry.bind("<KeyRelease>", self._on_search)
+
 
         # Scrollable List Container
         self.scroll_frame = ctk.CTkScrollableFrame(
             main_card,
             fg_color="transparent",
             corner_radius=6,
-            scrollbar_button_color="#45475a",
-            scrollbar_button_hover_color=COLOR_ACCENT_BLUE
+            scrollbar_button_color=ThemeManager.border(),
+            scrollbar_button_hover_color=ThemeManager.primary()
         )
         self.scroll_frame.pack(fill="both", expand=True, padx=4, pady=4)
 
@@ -150,9 +168,9 @@ class CTkScrollableDropdown:
                 self.scroll_frame,
                 text=item,
                 font=Fonts.bold(10) if is_selected else Fonts.regular(10),
-                text_color=COLOR_ACCENT_BLUE if is_selected else COLOR_TEXT_PRIMARY,
-                fg_color="#313244" if is_selected else "transparent",
-                hover_color="#45475a",
+                text_color=ThemeManager.primary() if is_selected else ThemeManager.text(),
+                fg_color=ThemeManager.border() if is_selected else "transparent",
+                hover_color=ThemeManager.surface_alt(),
                 anchor="w",
                 height=26,
                 corner_radius=4,

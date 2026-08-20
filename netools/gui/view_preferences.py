@@ -3,118 +3,138 @@ Tab 5: Settings, Preferences, Cross-Platform Environment Diagnostics & About Vie
 """
 
 import json
-import webbrowser
 import threading
-import tkinter as tk
-from tkinter import filedialog
+import webbrowser
 from pathlib import Path
-from typing import Dict, Any, List
+from tkinter import filedialog
 
 import customtkinter as ctk
+
+from netools.config import USER_CONFIG_DIR, USER_CONFIG_FILE
+from netools.gui.theme import ThemeManager
 from netools.libs import dns_db as db
-from netools.config import BASE_DIR, PAC_SERVER_PORT, SOCKS5_PORT_START
 from netools.libs.env import get_system_diagnostics
+
 
 class PreferencesView(ctk.CTkScrollableFrame):
     def __init__(self, parent, main_app):
-        super().__init__(parent, fg_color="#181825", corner_radius=0)
+        super().__init__(parent, fg_color=ThemeManager.bg(), corner_radius=0)
         self.main_app = main_app
         self._build_ui()
 
+    def apply_theme(self):
+        self.configure(fg_color=ThemeManager.bg())
+        if hasattr(self, "hdr"): self.hdr.configure(fg_color=ThemeManager.bg())
+        if hasattr(self, "lbl_title"): self.lbl_title.configure(text_color=ThemeManager.primary())
+        if hasattr(self, "sec_env"): self.sec_env.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+        if hasattr(self, "sec_app"): self.sec_app.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+        if hasattr(self, "r_app"): self.r_app.configure(fg_color=ThemeManager.surface())
+        if hasattr(self, "sec_dns"): self.sec_dns.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+        if hasattr(self, "r_dns"): self.r_dns.configure(fg_color=ThemeManager.surface())
+        if hasattr(self, "sec_about"): self.sec_about.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+        if hasattr(self, "r_about"): self.r_about.configure(fg_color=ThemeManager.surface())
+        if hasattr(self, "lbl_env_summary"): self.lbl_env_summary.configure(text_color=ThemeManager.text())
+        if hasattr(self, "theme_var"): self.theme_var.set(ThemeManager.get_current_theme_key().capitalize())
+
     def _build_ui(self):
         # Header
-        hdr = ctk.CTkFrame(self, fg_color="#181825")
-        hdr.pack(fill="x", padx=16, pady=(12, 10))
+        self.hdr = ctk.CTkFrame(self, fg_color=ThemeManager.bg())
+        self.hdr.pack(fill="x", padx=16, pady=(12, 10))
 
-        ctk.CTkLabel(
-            hdr,
+        self.lbl_title = ctk.CTkLabel(
+            self.hdr,
             text="⚙️ Settings, Cross-Platform Diagnostics & About",
             font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#89b4fa"
-        ).pack(side="left")
+            text_color=ThemeManager.primary()
+        )
+        self.lbl_title.pack(side="left")
 
         # -------------------------------------------------------------
         # Section 1: Environment & Cross-Platform Capability Check
         # -------------------------------------------------------------
-        sec_env = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
-        sec_env.pack(fill="x", padx=16, pady=6)
+        self.sec_env = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.sec_env.pack(fill="x", padx=16, pady=6)
+
 
         ctk.CTkLabel(
-            sec_env,
+            self.sec_env,
             text="🔍 Cross-Platform Environment & Dependency Diagnostics",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#a6e3a1"
+            text_color=ThemeManager.success()
         ).pack(anchor="w", padx=14, pady=(12, 6))
 
         self.lbl_env_summary = ctk.CTkLabel(
-            sec_env,
+            self.sec_env,
             text="Detecting system capabilities...",
             font=ctk.CTkFont(family="monospace", size=9),
-            text_color="#bac2de",
+            text_color=ThemeManager.text(),
             justify="left"
         )
         self.lbl_env_summary.pack(anchor="w", padx=14, pady=(0, 10))
 
         ctk.CTkButton(
-            sec_env,
+            self.sec_env,
             text="🔄 Re-scan System Capabilities",
             font=ctk.CTkFont(size=9, weight="bold"),
-            fg_color="#313244",
-            text_color="#cdd6f4",
-            hover_color="#45475a",
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
             height=28,
             command=self.refresh_diagnostics
         ).pack(anchor="w", padx=14, pady=(0, 12))
 
+
         # -------------------------------------------------------------
         # Section 2: Appearance & UI Scaling (Font Size)
         # -------------------------------------------------------------
-        sec_app = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
-        sec_app.pack(fill="x", padx=16, pady=6)
+        self.sec_app = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.sec_app.pack(fill="x", padx=16, pady=6)
 
         ctk.CTkLabel(
-            sec_app,
+            self.sec_app,
             text="🎨 Appearance & UI Font Scaling",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#f9e2af"
+            text_color=ThemeManager.warning()
         ).pack(anchor="w", padx=14, pady=(12, 6))
 
-        r_app = ctk.CTkFrame(sec_app, fg_color="#1e1e2e")
-        r_app.pack(fill="x", padx=14, pady=(0, 12))
+        self.r_app = ctk.CTkFrame(self.sec_app, fg_color=ThemeManager.surface())
+        self.r_app.pack(fill="x", padx=14, pady=(0, 12))
 
-        ctk.CTkLabel(r_app, text="UI Scale / Font Size:", font=ctk.CTkFont(size=9), text_color="#cdd6f4").pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.r_app, text="UI Scale / Font Size:", font=ctk.CTkFont(size=9), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
         
         self.scale_var = ctk.StringVar(value="100%")
         self.scale_cb = ctk.CTkComboBox(
-            r_app,
+            self.r_app,
             values=["80%", "90%", "100%", "110%", "120%", "130%", "140%"],
             variable=self.scale_var,
             width=100,
             command=self.on_scale_changed
         )
         self.scale_cb.pack(side="left", padx=4)
-
-        ctk.CTkLabel(r_app, text="|  Theme Mode:", font=ctk.CTkFont(size=9), text_color="#cdd6f4").pack(side="left", padx=(16, 6))
         
-        self.theme_var = ctk.StringVar(value="Dark")
+        ctk.CTkLabel(self.r_app, text="|  Theme Palette:", font=ctk.CTkFont(size=9), text_color=ThemeManager.text()).pack(side="left", padx=(16, 6))
+        
+        current_theme_title = ThemeManager.get_current_theme_key().capitalize()
+        self.theme_var = ctk.StringVar(value=current_theme_title)
         self.theme_cb = ctk.CTkComboBox(
-            r_app,
-            values=["Dark", "Light", "System"],
+            self.r_app,
+            values=ThemeManager.get_available_themes(),
             variable=self.theme_var,
-            width=100,
+            width=110,
             command=self.on_theme_changed
         )
         self.theme_cb.pack(side="left", padx=4)
 
+
         # System Tray Option
         self.tray_var = ctk.BooleanVar(value=True)
         self.tray_chk = ctk.CTkCheckBox(
-            sec_app,
+            self.sec_app,
             text="Minimize to System Tray on Close (Tetap aktif di background saat ditutup)",
             variable=self.tray_var,
             font=ctk.CTkFont(size=9),
-            text_color="#cdd6f4",
-            fg_color="#89b4fa",
+            text_color=ThemeManager.text(),
+            fg_color=ThemeManager.primary(),
             command=self.on_tray_toggle
         )
         self.tray_chk.pack(anchor="w", padx=14, pady=(0, 12))
@@ -122,70 +142,70 @@ class PreferencesView(ctk.CTkScrollableFrame):
         # -------------------------------------------------------------
         # Section 3: DNS Database & Import / Export
         # -------------------------------------------------------------
-        sec_dns = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
-        sec_dns.pack(fill="x", padx=16, pady=6)
+        self.sec_dns = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.sec_dns.pack(fill="x", padx=16, pady=6)
 
         ctk.CTkLabel(
-            sec_dns,
+            self.sec_dns,
             text="🗄️ DNS Database & Resolver Management",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#89b4fa"
+            text_color=ThemeManager.primary()
         ).pack(anchor="w", padx=14, pady=(12, 6))
 
-        r_dns = ctk.CTkFrame(sec_dns, fg_color="#1e1e2e")
-        r_dns.pack(fill="x", padx=14, pady=(0, 12))
+        self.r_dns = ctk.CTkFrame(self.sec_dns, fg_color=ThemeManager.surface())
+        self.r_dns.pack(fill="x", padx=14, pady=(0, 12))
 
         ctk.CTkButton(
-            r_dns,
+            self.r_dns,
             text="📥 Import DNS (.json / .txt)",
             font=ctk.CTkFont(size=9, weight="bold"),
-            fg_color="#89b4fa",
-            text_color="#11111b",
-            hover_color="#b4befe",
+            fg_color=ThemeManager.primary(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
             height=30,
             command=self.import_dns_list
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
-            r_dns,
+            self.r_dns,
             text="📋 Import DnsJumper (.ini)",
             font=ctk.CTkFont(size=9, weight="bold"),
-            fg_color="#fab387",
-            text_color="#11111b",
-            hover_color="#f9e2af",
+            fg_color=ThemeManager.warning(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
             height=30,
             command=self.import_dnsjumper_ini
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
-            r_dns,
+            self.r_dns,
             text="📤 Export DNS (.json)",
             font=ctk.CTkFont(size=9, weight="bold"),
-            fg_color="#313244",
-            text_color="#cdd6f4",
-            hover_color="#45475a",
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
             height=30,
             command=self.export_dns_list
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
-            r_dns,
+            self.r_dns,
             text="🔄 Cloud Sync DB",
             font=ctk.CTkFont(size=9, weight="bold"),
-            fg_color="#a6e3a1",
-            text_color="#11111b",
-            hover_color="#94e2d5",
+            fg_color=ThemeManager.success(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
             height=30,
             command=self.sync_cloud_db
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
-            r_dns,
+            self.r_dns,
             text="♻️ Reset DB Defaults",
             font=ctk.CTkFont(size=9),
-            fg_color="#45475a",
-            text_color="#f38ba8",
-            hover_color="#585b70",
+            fg_color=ThemeManager.surface_alt(),
+            text_color=ThemeManager.danger(),
+            hover_color=ThemeManager.border(),
             height=30,
             command=self.reset_dns_db
         ).pack(side="right", padx=3)
@@ -193,47 +213,49 @@ class PreferencesView(ctk.CTkScrollableFrame):
         # -------------------------------------------------------------
         # Section 4: About & Version Update Checker
         # -------------------------------------------------------------
-        sec_abt = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=8, border_width=1, border_color="#313244")
-        sec_abt.pack(fill="x", padx=16, pady=6)
+        self.sec_about = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.sec_about.pack(fill="x", padx=16, pady=6)
 
         ctk.CTkLabel(
-            sec_abt,
+            self.sec_about,
             text="ℹ️ About Netools Suite",
             font=ctk.CTkFont(size=11, weight="bold"),
-            text_color="#cba6f7"
+            text_color=ThemeManager.secondary()
         ).pack(anchor="w", padx=14, pady=(12, 6))
 
-        abt_content = ctk.CTkFrame(sec_abt, fg_color="#1e1e2e")
-        abt_content.pack(fill="x", padx=14, pady=(0, 12))
+        self.r_about = ctk.CTkFrame(self.sec_about, fg_color=ThemeManager.surface())
+        self.r_about.pack(fill="x", padx=14, pady=(0, 12))
+
 
         lbl_ver = ctk.CTkLabel(
-            abt_content,
+            self.r_about,
             text="⚡ Netools Suite v2.0.0 (Clean Architecture Edition)",
             font=ctk.CTkFont(size=10, weight="bold"),
-            text_color="#cdd6f4"
+            text_color=ThemeManager.text()
         )
         lbl_ver.pack(anchor="w")
 
         lbl_desc = ctk.CTkLabel(
-            abt_content,
+            self.r_about,
             text="Cross-platform High-performance Desktop Suite for GRC-style 3-Tier DNS Benchmarking, Smart Split-DNS Switching, Turbo Sing-box Proxy Pool Rotation, PAC Auto-Configuration & AI Multi-Provider Router Routing on Linux, Windows & macOS.",
             font=ctk.CTkFont(size=9),
-            text_color="#6c7086",
+            text_color=ThemeManager.text_muted(),
             wraplength=600,
             justify="left"
         )
         lbl_desc.pack(anchor="w", pady=(2, 8))
 
-        btn_row = ctk.CTkFrame(abt_content, fg_color="#1e1e2e")
+        btn_row = ctk.CTkFrame(self.r_about, fg_color=ThemeManager.surface())
         btn_row.pack(fill="x")
+
 
         ctk.CTkButton(
             btn_row,
             text="🚀 Check for Updates",
             font=ctk.CTkFont(size=9, weight="bold"),
-            fg_color="#cba6f7",
-            text_color="#11111b",
-            hover_color="#f5c2e7",
+            fg_color=ThemeManager.secondary(),
+            text_color=ThemeManager.get("on_secondary"),
+            hover_color=ThemeManager.accent(),
             height=30,
             command=self.check_for_updates
         ).pack(side="left", padx=3)
@@ -242,9 +264,9 @@ class PreferencesView(ctk.CTkScrollableFrame):
             btn_row,
             text="📖 GitHub Repository",
             font=ctk.CTkFont(size=9),
-            fg_color="#313244",
-            text_color="#cdd6f4",
-            hover_color="#45475a",
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
             height=30,
             command=lambda: webbrowser.open("https://github.com/Azhar457/Netools")
         ).pack(side="left", padx=3)
@@ -261,7 +283,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
                 f"• Operating System   : {diag['os_name']}",
                 f"• Python Runtime     : Python {diag['python_version']}",
                 f"• DNS Controller     : {diag['dns_controller']}",
-                f"• Pure Python DoH    : 🟢 Built-in RFC 8484 Wireformat Engine (Zero-Dependency)",
+                "• Pure Python DoH    : 🟢 Built-in RFC 8484 Wireformat Engine (Zero-Dependency)",
                 f"• Sing-box Proxy Core: {'🟢 ' + core['sing-box']['version'] if core['sing-box']['found'] else '⚠️ Not found on PATH (Proxy rotation disabled)'}",
                 f"• Curl Subsystem     : {'🟢 ' + core['curl']['version'] if core['curl']['found'] else '⚠️ Not found (Internal HTTP fallback active)'}",
                 f"• Optional Forwarders: DNSCrypt-Proxy: {'🟢 Found' if fwd['dnscrypt-proxy']['found'] else '⚪ None'} | Cloudflared: {'🟢 Found' if fwd['cloudflared']['found'] else '⚪ None'}"
@@ -281,8 +303,24 @@ class PreferencesView(ctk.CTkScrollableFrame):
             self.main_app.show_toast(f"Skala {choice} disimpan (efek penuh saat restart).", level="info")
 
     def on_theme_changed(self, choice: str):
-        ctk.set_appearance_mode(choice.lower())
-        self.main_app.show_toast(f"✓ Tema diubah ke {choice}", level="info")
+        ThemeManager.apply_theme(choice, self.main_app)
+        try:
+            USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            cfg = {}
+            if USER_CONFIG_FILE.exists():
+                cfg = json.loads(USER_CONFIG_FILE.read_text(encoding="utf-8"))
+            cfg["theme"] = choice.lower()
+            USER_CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        if hasattr(self.main_app, "reload_ui"):
+            # Full UI rebuild: every widget is re-created with current ThemeManager
+            # variables, guaranteeing 100% theme consistency (no stale colors).
+            self.main_app.reload_ui()
+        self.main_app.show_toast(f"✓ Tema berhasil diubah ke {choice}", level="info")
+
+
+
 
     def on_tray_toggle(self):
         enabled = self.tray_var.get()

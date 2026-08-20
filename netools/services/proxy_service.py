@@ -1,57 +1,94 @@
+from netools.libs.logger import get_logger
+
+log = get_logger(__name__)
+
 """
 Proxy Service: High-speed parallel proxy fetching, testing, sing-box lifecycle, and backend sync.
 """
 
-import time
 import concurrent.futures
+import time
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
+from netools.adapters import ninerouter as nr_adapt
+from netools.adapters import singbox as sb_drv
 from netools.config import (
-    PROXY_SOURCES,
-    MAX_INSTANCES,
-    SOCKS5_PORT_START,
-    HTTP_PORT_OFFSET,
     CONFIGS_DIR,
+    HTTP_PORT_OFFSET,
     LOGS_DIR,
+    MAX_INSTANCES,
     PID_DIR,
-    STATE_FILE
+    PROXY_SOURCES,
+    RUNTIME_DIR,
+    SOCKS5_PORT_START,
+    STATE_FILE,
 )
-from netools.libs.net import fetch_text, is_port_open, test_socks_upstream
+from netools.libs.net import fetch_text, is_port_open, test_socks_upstream, wait_for_port
 from netools.libs.parsers import extract_all_proxies
 from netools.state import load_state, save_state
-from netools.adapters import singbox as sb_drv
-from netools.adapters import ninerouter as nr_adapt
+
 
 def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, Any]]:
-    """Fetch raw subscriptions from GitHub sources and parse proxy list."""
+    """Fetch raw subscriptions from sources with retry and local cache fallback."""
+    import json
     all_proxies = []
     seen = set()
+    failed_sources = 0
+    cache_file = RUNTIME_DIR / "last_known_proxies.json"
 
     for url in PROXY_SOURCES:
+        source_success = False
+        for attempt in range(2):
+            try:
+                raw = fetch_text(url)
+                parsed = extract_all_proxies(raw, max_count=max_count)
+                for p in parsed:
+                    key = f"{p['server']}:{p['server_port']}"
+                    if key not in seen:
+                        seen.add(key)
+                        all_proxies.append(p)
+                        if len(all_proxies) >= max_count:
+                            break
+                source_success = True
+                break  # Success on this source
+            except Exception as e:
+                if attempt == 1:
+                    log.warning(f"Failed fetching source {url}: {e}")
+                time.sleep(0.5)
+        if not source_success:
+            failed_sources += 1
+
+    if all_proxies:
+        # Cache last-known-good proxies
         try:
-            raw = fetch_text(url)
-            parsed = extract_all_proxies(raw, max_count=max_count)
-            for p in parsed:
-                key = f"{p['server']}:{p['server_port']}"
-                if key not in seen:
-                    seen.add(key)
-                    all_proxies.append(p)
-                    if len(all_proxies) >= max_count:
-                        return all_proxies
-        except Exception as e:
-            print(f"[WARN] Failed fetching source {url}: {e}")
+            cache_file.write_text(json.dumps(all_proxies, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        return all_proxies
+
+    # Offline/Fallback recovery from cache if ALL network sources failed
+    if failed_sources == len(PROXY_SOURCES) and cache_file.exists():
+        try:
+            log.warning("All remote proxy sources failed; falling back to local proxy cache")
+            cached = json.loads(cache_file.read_text(encoding="utf-8"))
+            if isinstance(cached, list):
+                return cached[:max_count]
+        except Exception:
+            pass
 
     return all_proxies
 
+
+
 def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
     """Start full proxy pool with high-speed parallel testing and backend sync."""
-    print("[INFO] Stopping old instances...")
+    log.info("Stopping old instances...")
     stop_proxy_pool(standalone=standalone)
 
-    print("[INFO] Downloading fresh proxy configs...")
+    log.info("Downloading fresh proxy configs...")
     proxies = fetch_and_parse_proxies(max_instances)
-    print(f"[INFO] Parsed {len(proxies)} unique candidate proxies")
+    log.info(f"Parsed {len(proxies)} unique candidate proxies")
 
     started = []  # (name, port, proxy, proc)
     for i, proxy in enumerate(proxies[:max_instances]):
@@ -62,8 +99,9 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
         if proc:
             started.append((name, port, proxy, proc))
 
-    # Give instances 0.8s to initialize
-    time.sleep(0.8)
+    # Wait for instances to start listening (poll-based, max 3s)
+    for name, port, proxy, proc in started:
+        wait_for_port(port, timeout=3.0)
 
     # Parallel Upstream Testing (All 20 instances tested concurrently)
     alive = []
@@ -75,7 +113,7 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
             if future.result():
                 alive.append((name, port, proxy, proc))
             else:
-                print(f"[WARN] {name} failed upstream test, killing")
+                log.warning(f"{name} failed upstream test, killing")
                 try:
                     proc.kill()
                 except Exception:
@@ -113,7 +151,7 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
         }
         active_count += 1
         pool_str = f" → pool {pool_name}" if pool_id else (" (standalone)" if standalone else "")
-        print(f"[OK] {name}: {proxy['type']} → {proxy['server']}:{proxy.get('server_port', '')} → port {port}{pool_str}")
+        log.info(f"{name}: {proxy['type']} → {proxy['server']}:{proxy.get('server_port', '')} → port {port}{pool_str}")
 
     # Assign proxy to 9Router connections
     if not standalone and active_count > 0 and nr_adapt.is_healthy():
@@ -123,11 +161,11 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
             p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
             res = nr_adapt.assign_proxy_to_connection(c["id"], p_url)
             if res:
-                print(f"[OK] Connection {c['id'][:12]}: proxy → {p_url}")
+                log.info(f"Connection {c['id'][:12]}: proxy → {p_url}")
 
     save_state(state)
     mode_str = " (Standalone Mode)" if standalone else " → 9Router proxy pool"
-    print(f"\n[DONE] {active_count} proxies active{mode_str}")
+    log.info(f"{active_count} proxies active{mode_str}")
     return state
 
 def stop_proxy_pool(standalone: bool = False) -> None:
@@ -135,7 +173,7 @@ def stop_proxy_pool(standalone: bool = False) -> None:
     sb_drv.stop_all_singbox_instances()
 
     if not standalone and nr_adapt.is_healthy():
-        print("[INFO] Clearing proxy from all 9Router connections...")
+        log.info("Clearing proxy from all 9Router connections...")
         nr_adapt.clear_all_connection_proxies()
 
         pools = nr_adapt.get_existing_pools()
@@ -153,7 +191,7 @@ def stop_proxy_pool(standalone: bool = False) -> None:
         f.unlink(missing_ok=True)
 
     STATE_FILE.unlink(missing_ok=True)
-    print("[DONE] All cleaned up")
+    log.info("All cleaned up")
 
 def refresh_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
     """Stop and restart proxy pool."""
@@ -186,7 +224,7 @@ def start_single_instance(name: str, port: int, proxy: Dict[str, Any], standalon
     proc = sb_drv.start_singbox_instance(name, config)
     if not proc:
         return None
-    time.sleep(0.6)
+    wait_for_port(port, timeout=3.0)
     if not test_socks_upstream(port):
         try:
             proc.kill()

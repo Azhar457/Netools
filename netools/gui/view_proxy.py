@@ -3,66 +3,88 @@ Tab 3: Turbo Sing-box Proxy Pool Rotator & Watchdog View (CustomTkinter).
 """
 
 import threading
-import tkinter as tk
 from tkinter import ttk
+
 import customtkinter as ctk
 
+from netools.config import HTTP_PORT_OFFSET, SOCKS5_PORT_START
+from netools.gui.theme import (
+    Fonts,
+    ThemeManager,
+)
+from netools.services import pac_service, proxy_service, watchdog_service
 from netools.state import load_state
-from netools.services import proxy_service, pac_service, watchdog_service
-from netools.config import SOCKS5_PORT_START, HTTP_PORT_OFFSET
-from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE, COLOR_ACCENT_GREEN, COLOR_ACCENT_PURPLE, COLOR_ACCENT_YELLOW
+
 
 class ProxyView(ctk.CTkFrame):
     def __init__(self, parent, main_app):
-        super().__init__(parent, fg_color="#181825", corner_radius=0)
+        super().__init__(parent, fg_color=ThemeManager.bg(), corner_radius=0)
         self.main_app = main_app
         self._build_ui()
         self.refresh()
 
+    def apply_theme(self):
+        self.configure(fg_color=ThemeManager.bg())
+        if hasattr(self, "hdr"): self.hdr.configure(fg_color=ThemeManager.bg())
+        if hasattr(self, "lbl_title"): self.lbl_title.configure(text_color=ThemeManager.success())
+        if hasattr(self, "btn_refresh"): self.btn_refresh.configure(fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt())
+        if hasattr(self, "summary_card"): self.summary_card.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+        if hasattr(self, "lbl_summary"): self.lbl_summary.configure(text_color=ThemeManager.text_muted())
+        if hasattr(self, "tbl_frame"): self.tbl_frame.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+        
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Treeview", background=ThemeManager.surface(), foreground=ThemeManager.text(), fieldbackground=ThemeManager.surface())
+        style.configure("Treeview.Heading", background=ThemeManager.surface_alt(), foreground=ThemeManager.text())
+        style.map("Treeview", background=[("selected", ThemeManager.border())])
+
     def _build_ui(self):
         # Header Controls
-        hdr = ctk.CTkFrame(self, fg_color="#181825")
-        hdr.pack(fill="x", padx=16, pady=(12, 8))
+        self.hdr = ctk.CTkFrame(self, fg_color=ThemeManager.bg())
+        self.hdr.pack(fill="x", padx=16, pady=(12, 8))
 
-        ctk.CTkLabel(
-            hdr,
+        self.lbl_title = ctk.CTkLabel(
+            self.hdr,
             text="🌐 Turbo Sing-box Proxy Rotator",
             font=Fonts.title(15),
-            text_color=COLOR_ACCENT_GREEN
-        ).pack(side="left")
+            text_color=ThemeManager.success()
+        )
+        self.lbl_title.pack(side="left")
+
+
 
         # Action Buttons
         self.btn_start = ctk.CTkButton(
-            hdr,
+            self.hdr,
             text="🚀 Start Pool",
             font=Fonts.bold(11),
-            fg_color=COLOR_ACCENT_GREEN,
-            text_color="#11111b",
-            hover_color="#94e2d5",
+            fg_color=ThemeManager.success(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
             height=30,
             command=self.on_start
         )
         self.btn_start.pack(side="left", padx=(16, 4))
 
         self.btn_stop = ctk.CTkButton(
-            hdr,
+            self.hdr,
             text="🛑 Stop Pool",
             font=Fonts.bold(11),
-            fg_color="#f38ba8",
-            text_color="#11111b",
-            hover_color="#eba0ac",
+            fg_color=ThemeManager.danger(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.warning(),
             height=30,
             command=self.on_stop
         )
         self.btn_stop.pack(side="left", padx=4)
 
         self.btn_refresh = ctk.CTkButton(
-            hdr,
+            self.hdr,
             text="🔄 Refresh",
             font=Fonts.bold(11),
-            fg_color="#313244",
-            text_color=COLOR_TEXT_PRIMARY,
-            hover_color="#45475a",
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
             height=30,
             command=self.on_refresh
         )
@@ -70,70 +92,73 @@ class ProxyView(ctk.CTkFrame):
 
         self.watchdog_var = ctk.BooleanVar(value=False)
         self.chk_watchdog = ctk.CTkCheckBox(
-            hdr,
+            self.hdr,
             text="Auto-Heal Watchdog",
             variable=self.watchdog_var,
             font=Fonts.bold(11),
-            text_color=COLOR_TEXT_PRIMARY,
-            fg_color=COLOR_ACCENT_GREEN,
+            text_color=ThemeManager.text(),
+            fg_color=ThemeManager.success(),
             command=self.toggle_watchdog
         )
         self.chk_watchdog.pack(side="left", padx=14)
 
         # PAC Toggle Button
         self.btn_pac_toggle = ctk.CTkButton(
-            hdr,
+            self.hdr,
             text="🟢 Start PAC",
             font=Fonts.bold(11),
-            fg_color=COLOR_ACCENT_BLUE,
-            text_color="#11111b",
-            hover_color="#b4befe",
+            fg_color=ThemeManager.primary(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
             height=30,
             command=self.toggle_pac
         )
         self.btn_pac_toggle.pack(side="right", padx=(4, 0))
 
+
         # Status Summary Bar
-        summary_card = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
-        summary_card.pack(fill="x", padx=16, pady=4)
+        self.summary_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.summary_card.pack(fill="x", padx=16, pady=4)
 
         self.lbl_summary = ctk.CTkLabel(
-            summary_card,
+            self.summary_card,
             text="Instances: 0 active | SOCKS: 11080–11099 | HTTP: 21080–21099 | Upstream: gstatic 204",
             font=Fonts.mono(11),
-            text_color=COLOR_TEXT_SECONDARY
+            text_color=ThemeManager.text_muted()
         )
         self.lbl_summary.pack(padx=14, pady=8, anchor="w")
 
         # Treeview Table for Proxies
-        tbl_frame = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
-        tbl_frame.pack(fill="both", expand=True, padx=16, pady=6)
+        self.tbl_frame = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.tbl_frame.pack(fill="both", expand=True, padx=16, pady=6)
 
         columns = ("slot", "protocol", "server", "socks", "http", "pool", "dns", "status", "age")
         self.tree = ttk.Treeview(
-            tbl_frame,
+            self.tbl_frame,
             columns=columns,
             show="headings",
             selectmode="browse"
         )
 
+
         style = ttk.Style()
         style.theme_use("clam")
         style.configure(
             "Treeview",
-            background="#1e1e2e",
-            foreground="#cdd6f4",
-            fieldbackground="#1e1e2e",
+            background=ThemeManager.surface(),
+            foreground=ThemeManager.text(),
+            fieldbackground=ThemeManager.surface(),
             rowheight=26,
             font=("sans-serif", 10)
         )
         style.configure(
             "Treeview.Heading",
-            background="#313244",
-            foreground="#cdd6f4",
+            background=ThemeManager.surface_alt(),
+            foreground=ThemeManager.text(),
             font=("sans-serif", 10, "bold")
         )
-        style.map("Treeview", background=[("selected", "#45475a")])
+        style.map("Treeview", background=[("selected", ThemeManager.border())])
+
 
         cols_config = [
             ("slot", "Slot ID", 80, "center"),
@@ -152,8 +177,9 @@ class ProxyView(ctk.CTkFrame):
             self.tree.heading(col_id, text=f"{title} ↕", anchor=align, command=lambda c=col_id: self.sort_column(c))
             self.tree.column(col_id, width=w, minwidth=70, anchor=align, stretch=True)
 
-        vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=self.tree.yview)
+        vsb = ttk.Scrollbar(self.tbl_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
+
 
         self.tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
         vsb.pack(side="right", fill="y", padx=(0, 8), pady=8)
@@ -208,9 +234,9 @@ class ProxyView(ctk.CTkFrame):
         )
 
         if pac_running:
-            self.btn_pac_toggle.configure(text="🛑 Stop PAC", fg_color="#f38ba8", hover_color="#eba0ac")
+            self.btn_pac_toggle.configure(text="🛑 Stop PAC", fg_color=ThemeManager.danger(), hover_color=ThemeManager.warning())
         else:
-            self.btn_pac_toggle.configure(text="🟢 Start PAC", fg_color=COLOR_ACCENT_BLUE, hover_color="#b4befe")
+            self.btn_pac_toggle.configure(text="🟢 Start PAC", fg_color=ThemeManager.primary(), hover_color=ThemeManager.accent())
 
     def refresh(self):
         try:

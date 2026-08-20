@@ -1,16 +1,22 @@
+from netools.libs.logger import get_logger
+
+log = get_logger(__name__)
+
 """
 Watchdog Service: Periodic health checks & auto-heal loop for proxy instances.
 """
 
-import time
 import threading
-from typing import Callable, Optional
-from netools.config import MONITOR_DEFAULT_INTERVAL, SOCKS5_PORT_START
-from netools.libs.net import test_socks_upstream, is_port_open
-from netools.state import load_state, update_instance, remove_instance
-from netools.adapters import singbox as sb_drv
+import time
+from typing import Optional
+
 from netools.adapters import ninerouter as nr_adapt
+from netools.adapters import singbox as sb_drv
+from netools.config import MONITOR_DEFAULT_INTERVAL, SOCKS5_PORT_START
+from netools.libs.net import is_port_open, test_socks_upstream
 from netools.services.proxy_service import fetch_and_parse_proxies, start_single_instance
+from netools.state import load_state, remove_instance, update_instance
+
 
 def run_monitor_cycle(standalone: bool = False) -> int:
     """Single monitor pass: test all active instances, replace dead ones."""
@@ -28,7 +34,7 @@ def run_monitor_cycle(standalone: bool = False) -> int:
     if not dead_instances:
         return 0
 
-    print(f"[WATCHDOG] Found {len(dead_instances)} dead instances: {[name for name, _ in dead_instances]}")
+    log.info(f"Found {len(dead_instances)} dead instances: {[name for name, _ in dead_instances]}")
 
     fresh_proxies = fetch_and_parse_proxies(max_count=len(dead_instances) * 2)
     p_idx = 0
@@ -49,7 +55,7 @@ def run_monitor_cycle(standalone: bool = False) -> int:
             if info:
                 update_instance(name, info)
                 healed = True
-                print(f"[WATCHDOG] Auto-healed slot {name} (port {port})")
+                log.info(f"Auto-healed slot {name} (port {port})")
                 break
 
         if not healed:
@@ -59,10 +65,42 @@ def run_monitor_cycle(standalone: bool = False) -> int:
 
 def run_watchdog_loop(interval: int = MONITOR_DEFAULT_INTERVAL, standalone: bool = False, stop_event: Optional[threading.Event] = None) -> None:
     """Continuous watchdog loop."""
-    print(f"[WATCHDOG] Starting auto-heal watchdog every {interval}s (Standalone={standalone})...")
+    log.info(f"Starting auto-heal watchdog every {interval}s (Standalone={standalone})...")
     while stop_event is None or not stop_event.is_set():
         try:
             run_monitor_cycle(standalone=standalone)
         except Exception as e:
-            print(f"[WATCHDOG] Monitor error: {e}")
+            log.info(f"Monitor error: {e}")
         time.sleep(interval)
+
+_watchdog_thread: Optional[threading.Thread] = None
+_watchdog_stop_event: Optional[threading.Event] = None
+
+def start_watchdog_thread(interval: int = MONITOR_DEFAULT_INTERVAL, standalone: bool = False) -> None:
+    """Start the auto-heal watchdog as a daemon background thread."""
+    global _watchdog_thread, _watchdog_stop_event
+    if _watchdog_thread and _watchdog_thread.is_alive():
+        log.info("Watchdog already running")
+        return
+    _watchdog_stop_event = threading.Event()
+    _watchdog_thread = threading.Thread(
+        target=run_watchdog_loop,
+        args=(interval, standalone, _watchdog_stop_event),
+        daemon=True,
+        name="proxy-watchdog",
+    )
+    _watchdog_thread.start()
+
+def stop_watchdog() -> None:
+    """Signal the watchdog thread to stop and wait for it to exit."""
+    global _watchdog_thread, _watchdog_stop_event
+    if _watchdog_stop_event:
+        _watchdog_stop_event.set()
+    if _watchdog_thread and _watchdog_thread.is_alive():
+        try:
+            _watchdog_thread.join(timeout=MONITOR_DEFAULT_INTERVAL + 5)
+        except Exception:
+            pass
+    _watchdog_thread = None
+    _watchdog_stop_event = None
+    log.info("Watchdog stopped")

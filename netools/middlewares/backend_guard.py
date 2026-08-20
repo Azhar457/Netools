@@ -3,7 +3,11 @@ Backend Guard Middleware: Suppresses errors and falls back to standalone mode if
 """
 
 from functools import wraps
-from typing import Callable, Any
+from typing import Any, Callable
+
+from netools.libs.logger import get_logger
+
+log = get_logger(__name__)
 
 def safe_backend_call(fallback_return: Any = None):
     """Decorator to protect backend operations from crashing core proxy workflows."""
@@ -13,7 +17,7 @@ def safe_backend_call(fallback_return: Any = None):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                print(f"[WARN] Backend operation '{func.__name__}' skipped: {e}")
+                log.warning(f"Backend operation '{func.__name__}' skipped: {e}")
                 return fallback_return
         return wrapper
     return decorator

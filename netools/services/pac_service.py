@@ -6,9 +6,13 @@ import http.server
 import socketserver
 import threading
 from typing import Optional
-from netools.config import PAC_SERVER_PORT, STATIC_PAC_FILE
+
+from netools.config import PAC_SERVER_PORT
+from netools.libs.logger import get_logger
 from netools.libs.net import is_port_open
 from netools.state import load_state, save_state
+
+log = get_logger(__name__)
 
 class PACHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -20,17 +24,39 @@ class PACHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
             self.wfile.write(content)
-        elif self.path == "/status":
+        elif self.path in ("/status", "/health", "/healthz", "/api/health"):
+            import json
             state = load_state()
-            active = len(state.get("instances", {}))
-            msg = f"PAC Server OK - {active} proxies active\n".encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "text/plain")
-            self.end_headers()
-            self.wfile.write(msg)
+            instances = state.get("instances", {})
+            alive_count = sum(1 for p in instances.values() if is_port_open(p.get("port", 0)))
+            total_count = len(instances)
+            
+            if self.path == "/status":
+                msg = f"PAC Server OK - {alive_count}/{total_count} proxies active\n".encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(msg)))
+                self.end_headers()
+                self.wfile.write(msg)
+            else:
+                data = {
+                    "status": "healthy" if (alive_count > 0 or total_count == 0) else "degraded",
+                    "pac_server": "running",
+                    "pac_url": get_pac_url(PAC_SERVER_PORT),
+                    "proxies_alive": alive_count,
+                    "proxies_total": total_count,
+                    "updated_at": state.get("updated_at", ""),
+                }
+                body = json.dumps(data, indent=2).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
         else:
             self.send_response(404)
             self.end_headers()
+
 
     def generate_pac_content(self) -> str:
         state = load_state()
@@ -90,10 +116,10 @@ def start_pac_server(port: int = PAC_SERVER_PORT) -> bool:
             state["pac_status"] = "active"
             state["pac_url"] = get_pac_url(port)
             save_state(state)
-            print(f"[PAC] Server started on {get_pac_url(port)}")
+            log.info(f"Server started on {get_pac_url(port)}")
             return True
         except Exception as e:
-            print(f"[PAC] Error starting server: {e}")
+            log.error(f"Error starting server: {e}")
             return False
 
 def stop_pac_server() -> bool:
@@ -111,7 +137,7 @@ def stop_pac_server() -> bool:
         state = load_state()
         state["pac_status"] = "inactive"
         save_state(state)
-        print("[PAC] Server stopped.")
+        log.info("Server stopped")
         return True
 
 def start_pac_server_blocking(port: int = PAC_SERVER_PORT) -> None:
@@ -119,7 +145,7 @@ def start_pac_server_blocking(port: int = PAC_SERVER_PORT) -> None:
     global _pac_httpd
     try:
         _pac_httpd = ReusableTCPServer(("127.0.0.1", port), PACHandler)
-        print(f"[PAC] Serving dynamic PAC on {get_pac_url(port)}")
+        log.info(f"Serving dynamic PAC on {get_pac_url(port)}")
         _pac_httpd.serve_forever()
     except KeyboardInterrupt:
         stop_pac_server()

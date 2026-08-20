@@ -5,6 +5,7 @@ RFC 8484 DNS Packet Builder & Base64URL Converter.
 import base64
 import struct
 
+
 def uint8_to_base64url(data: bytes) -> str:
     """Convert bytes to URL-safe Base64 without padding."""
     return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")

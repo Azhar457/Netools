@@ -6,14 +6,11 @@ Ensures zero skeleton delay and instant 60+ FPS tab switching once the main wind
 
 import time
 import tkinter as tk
-import customtkinter as ctk
 from pathlib import Path
-from typing import Callable, Any
+from typing import Any, Callable
 
-from netools.gui.theme import (
-    COLOR_BG_DARK, COLOR_CARD, COLOR_BORDER, COLOR_ACCENT_BLUE,
-    COLOR_ACCENT_GREEN, COLOR_ACCENT_YELLOW, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY
-)
+import customtkinter as ctk
+
 
 class SplashScreen(ctk.CTkToplevel):
     def __init__(self, main_app: Any, on_complete: Callable):
@@ -78,7 +75,7 @@ class SplashScreen(ctk.CTkToplevel):
             row,
             text="Memulai sistem...",
             font=("sans-serif", 11),
-            text_color=COLOR_TEXT_PRIMARY,
+            text_color="#cdd6f4",
             anchor="w"
         )
         self.lbl_status.pack(side="left")
@@ -87,7 +84,7 @@ class SplashScreen(ctk.CTkToplevel):
             row,
             text="0%",
             font=("sans-serif", 12, "bold"),
-            text_color=COLOR_ACCENT_GREEN
+            text_color="#a6e3a1"
         )
         self.lbl_pct.pack(side="right")
 
@@ -97,7 +94,7 @@ class SplashScreen(ctk.CTkToplevel):
             height=8,
             corner_radius=4,
             fg_color="#313244",
-            progress_color=COLOR_ACCENT_BLUE
+            progress_color="#89b4fa"
         )
         self.prog_bar.pack(fill="x", padx=24, pady=(4, 14))
         self.prog_bar.set(0.0)

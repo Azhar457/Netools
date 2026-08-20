@@ -3,13 +3,27 @@ Unified Cross-Platform System DNS Controller for Linux, Windows, and macOS.
 Automatically delegates to the native OS networking subsystem.
 """
 
-import sys
-import shutil
+import ipaddress
 import subprocess
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
-from netools.libs.env import get_os_type
 from netools.adapters import systemd_dns as linux_dns
+from netools.libs.env import get_os_type
+
+
+def _validate_ips(ips: list) -> list:
+    """Validate and filter IP addresses to prevent injection attacks."""
+    validated = []
+    for ip in ips:
+        ip = ip.strip()
+        if not ip:
+            continue
+        try:
+            ipaddress.ip_address(ip)
+            validated.append(ip)
+        except ValueError:
+            pass
+    return validated
 
 def get_network_interfaces() -> List[Dict[str, Any]]:
     """Detect active network interfaces on Linux, Windows, or macOS."""
@@ -82,7 +96,7 @@ def get_interface_dns(device: str) -> List[str]:
         try:
             ps_cmd = f"(Get-DnsClientServerAddress -InterfaceAlias '{device}' -AddressFamily IPv4).ServerAddresses"
             out = subprocess.check_output(["powershell", "-NoProfile", "-Command", ps_cmd], text=True)
-            servers = [s.strip() for s in out.splitlines() if s.strip()]
+            servers = _validate_ips(out.splitlines())
             if servers:
                 return servers
         except Exception:
@@ -102,7 +116,7 @@ def get_interface_dns(device: str) -> List[str]:
 
 def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str] = None, enable_dot: bool = False, persistent: bool = True) -> bool:
     """Apply DNS settings across Linux, Windows, or macOS."""
-    valid_ips = [ip.strip() for ip in ips if ip and not ip.isspace()]
+    valid_ips = _validate_ips(ips)
     if not valid_ips:
         return False
 

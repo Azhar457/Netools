@@ -1,11 +1,17 @@
 """
 OmniRoute AI Gateway REST API Adapter.
+
+STATUS: STUB — only api_request() and is_healthy() are implemented.
+Full CRUD operations (add_proxy_pool, assign_proxy, etc.) are NOT yet available.
+Use the ninerouter adapter for full backend integration.
 """
 
 import json
 import urllib.request
-from typing import Dict, Any, List, Optional
-from netools.config import OMNIROUTE_URL, OMNIROUTE_TOKEN
+from typing import Any, Dict, Optional
+
+from netools.config import OMNIROUTE_TOKEN, OMNIROUTE_URL
+
 
 def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, timeout: float = 0.5) -> Dict[str, Any]:
     """Send authenticated HTTP request to OmniRoute REST API."""

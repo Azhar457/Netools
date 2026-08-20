@@ -12,10 +12,8 @@ pyinstaller --name netools ^
   --onefile ^
   --windowed ^
   --collect-all netools ^
-  --add-data "dns_jumper_db.py;." ^
-  --add-data "dns_jumper_benchmark.py;." ^
   --clean ^
-  netools.py
+  netools/__main__.py
 
 echo [3/3] Build complete!
 echo Output executable located at: dist\netools.exe

@@ -5,12 +5,17 @@ Features multi-column sorting, protocol indicators, live status, and 1-click sys
 """
 
 import threading
-import tkinter as tk
 from tkinter import ttk
+
 import customtkinter as ctk
-from netools.libs import dns_db as db
+
+from netools.gui.theme import (
+    Fonts,
+    ThemeManager,
+)
 from netools.libs import dns_benchmark as bm
-from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE, COLOR_ACCENT_GREEN, COLOR_ACCENT_PURPLE, COLOR_ACCENT_YELLOW
+from netools.libs import dns_db as db
+
 
 class GRCBenchmarkModal(ctk.CTkToplevel):
     def __init__(self, parent_app, dns_view):
@@ -21,7 +26,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.title("⚡ Netools — GRC 3-Tier Real-Time DNS Benchmark (IPv4 / IPv6 / DoH / DoT)")
         self.geometry("1020x660")
         self.minsize(880, 540)
-        self.configure(fg_color="#181825")
+        self.configure(fg_color=ThemeManager.bg())
 
         self.benchmark_running = False
         self.benchmark_cancelled = False
@@ -48,7 +53,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
     def _build_widgets(self):
         # Header Banner
-        hdr = ctk.CTkFrame(self, fg_color="#11111b", height=50)
+        hdr = ctk.CTkFrame(self, fg_color=ThemeManager.surface_alt(), height=50)
         hdr.pack(fill="x", padx=0, pady=0)
         hdr.pack_propagate(False)
 
@@ -56,17 +61,17 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             hdr,
             text="🏆 Gibson Research Corp (GRC) 3-Tier DNS Benchmark Engine",
             font=Fonts.title(15),
-            text_color=COLOR_ACCENT_YELLOW
+            text_color=ThemeManager.warning()
         ).pack(side="left", padx=20, pady=10)
 
         # Filter & Execution Control Card
-        card_filter = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+        card_filter = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
         card_filter.pack(fill="x", padx=16, pady=8)
 
-        r1 = ctk.CTkFrame(card_filter, fg_color=COLOR_CARD)
+        r1 = ctk.CTkFrame(card_filter, fg_color=ThemeManager.surface())
         r1.pack(fill="x", padx=14, pady=(10, 4))
 
-        ctk.CTkLabel(r1, text="Test Protocol / IP:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(r1, text="Test Protocol / IP:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
 
         self.mode_var = ctk.StringVar(value="IPv4 Standard (UDP 53)")
         self.mode_cb = ctk.CTkComboBox(
@@ -79,7 +84,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         )
         self.mode_cb.pack(side="left", padx=4)
 
-        ctk.CTkLabel(r1, text="|  Region:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(14, 6))
+        ctk.CTkLabel(r1, text="|  Region:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left", padx=(14, 6))
 
         self.region_var = ctk.StringVar(value="🌏 All Curated Resolvers (90+)")
         self.region_cb = ctk.CTkComboBox(
@@ -89,17 +94,21 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         )
         self.region_cb.pack(side="left", padx=4)
 
-        r2 = ctk.CTkFrame(card_filter, fg_color=COLOR_CARD)
+        r2 = ctk.CTkFrame(card_filter, fg_color=ThemeManager.surface())
         r2.pack(fill="x", padx=14, pady=(4, 10))
 
-        ctk.CTkLabel(r2, text="TLD Target:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(r2, text="TLD Target:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
+
 
         tld_choices = [f"{v['name']} ({k})" for k, v in self.target_tlds.items()]
+        self.tld_var = ctk.StringVar(value=tld_choices[0] if tld_choices else "Indonesia (.id)")
         self.tld_cb = ctk.CTkComboBox(
             r2, variable=self.tld_var, values=tld_choices,
             width=240, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
         )
         self.tld_cb.pack(side="left", padx=4)
+
+
 
         # Turbo Mode Switch (Max Latency Cutoff)
         self.turbo_var = ctk.BooleanVar(value=True)
@@ -108,42 +117,42 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             text="⚡ Turbo (<200ms)",
             variable=self.turbo_var,
             font=Fonts.bold(10),
-            text_color=COLOR_ACCENT_YELLOW,
-            progress_color=COLOR_ACCENT_YELLOW
+            text_color=ThemeManager.warning(),
+            progress_color=ThemeManager.warning()
         )
         self.turbo_switch.pack(side="left", padx=(10, 4))
 
         # Action Buttons
         self.btn_start = ctk.CTkButton(
             r2, text="🚀 Run Benchmark", font=Fonts.bold(11),
-            fg_color=COLOR_ACCENT_YELLOW, text_color="#11111b", hover_color="#f5e0dc",
+            fg_color=ThemeManager.warning(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.border(),
             height=30, width=130, command=self.start_benchmark
         )
         self.btn_start.pack(side="left", padx=(10, 4))
 
         self.btn_stop = ctk.CTkButton(
             r2, text="🛑 Cancel", font=Fonts.bold(11),
-            fg_color="#f38ba8", text_color="#11111b", hover_color="#eba0ac",
+            fg_color=ThemeManager.danger(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.warning(),
             height=30, width=90, state="disabled", command=self.stop_benchmark
         )
         self.btn_stop.pack(side="left", padx=4)
 
-        # Progress bar & Status
-        prog_frame = ctk.CTkFrame(self, fg_color="#181825")
-        prog_frame.pack(fill="x", padx=16, pady=(0, 4))
+        # Progress / Status Frame
+        prog_frame = ctk.CTkFrame(self, fg_color=ThemeManager.bg())
+        prog_frame.pack(fill="x", padx=16, pady=2)
 
-        self.prog_bar = ctk.CTkProgressBar(prog_frame, height=6, fg_color="#313244", progress_color=COLOR_ACCENT_YELLOW)
+        self.prog_bar = ctk.CTkProgressBar(prog_frame, height=8, progress_color=ThemeManager.primary())
         self.prog_bar.pack(fill="x", pady=(2, 4))
         self.prog_bar.set(0)
 
         self.lbl_status = ctk.CTkLabel(
             prog_frame, text="Ready. Click 'Run Benchmark' to start real-time latency evaluation (Click column headers to sort).",
-            font=Fonts.regular(11), text_color="#a6adc8"
+            font=Fonts.regular(11), text_color=ThemeManager.text_muted()
         )
         self.lbl_status.pack(anchor="w")
 
         # Results Table
-        tbl_frame = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+        tbl_frame = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
         tbl_frame.pack(fill="both", expand=True, padx=16, pady=4)
 
         cols = ("rank", "flag", "name", "proto", "cached", "uncached", "dotcom", "score", "status")
@@ -153,19 +162,19 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         style.theme_use("clam")
         style.configure(
             "Treeview",
-            background="#1e1e2e",
-            foreground="#cdd6f4",
-            fieldbackground="#1e1e2e",
+            background=ThemeManager.surface(),
+            foreground=ThemeManager.text(),
+            fieldbackground=ThemeManager.surface(),
             rowheight=26,
             font=("sans-serif", 10)
         )
         style.configure(
             "Treeview.Heading",
-            background="#313244",
-            foreground="#cdd6f4",
+            background=ThemeManager.surface_alt(),
+            foreground=ThemeManager.text(),
             font=("sans-serif", 10, "bold")
         )
-        style.map("Treeview", background=[("selected", "#45475a")])
+        style.map("Treeview", background=[("selected", ThemeManager.border())])
 
         cols_config = [
             ("rank", "# ↕", 45, "center"),
@@ -190,45 +199,46 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         vsb.pack(side="right", fill="y", padx=(0, 8), pady=8)
 
         # Smart Mix Recommendation Card & Apply Buttons
-        smart_card = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+        smart_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
         smart_card.pack(fill="x", padx=16, pady=(4, 12))
 
         ctk.CTkLabel(
             smart_card,
             text="🏆 Smart Mix Recommendation (GRC Optimum Triad)",
             font=Fonts.subtitle(12),
-            text_color=COLOR_ACCENT_GREEN
+            text_color=ThemeManager.success()
         ).pack(anchor="w", padx=14, pady=(10, 4))
 
         self.lbl_smart_rec = ctk.CTkLabel(
             smart_card,
             text="• Run benchmark to generate composite latency recommendations for Slot 1, 2, and 3.",
             font=Fonts.mono(10),
-            text_color=COLOR_TEXT_SECONDARY,
+            text_color=ThemeManager.text_muted(),
             justify="left"
         )
         self.lbl_smart_rec.pack(anchor="w", padx=14, pady=(0, 8))
 
-        btn_row = ctk.CTkFrame(smart_card, fg_color=COLOR_CARD)
+        btn_row = ctk.CTkFrame(smart_card, fg_color=ThemeManager.surface())
         btn_row.pack(fill="x", padx=14, pady=(0, 10))
+
 
         self.btn_apply_smart = ctk.CTkButton(
             btn_row, text="⚡ Apply GRC Smart Mix (Slots 1-3)", font=Fonts.bold(11),
-            fg_color=COLOR_ACCENT_GREEN, text_color="#11111b", hover_color="#a6e3a1",
+            fg_color=ThemeManager.success(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.success(),
             height=32, state="disabled", command=self.apply_smart_mix
         )
         self.btn_apply_smart.pack(side="left", padx=(0, 6))
 
         self.btn_apply_fastest = ctk.CTkButton(
             btn_row, text="🥇 Apply #1 Fastest Only", font=Fonts.bold(11),
-            fg_color=COLOR_ACCENT_BLUE, text_color="#11111b", hover_color="#b4befe",
+            fg_color=ThemeManager.primary(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.accent(),
             height=32, state="disabled", command=self.apply_fastest_single
         )
         self.btn_apply_fastest.pack(side="left", padx=6)
 
         ctk.CTkButton(
             btn_row, text="Close", font=Fonts.regular(11),
-            fg_color="#313244", text_color=COLOR_TEXT_PRIMARY, hover_color="#45475a",
+            fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(),
             height=32, width=80, command=self.destroy
         )
 
@@ -284,7 +294,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             if not check_ipv6_connectivity():
                 self.lbl_status.configure(
                     text="⚠️ ISP/Jaringan lokal Anda tidak memiliki koneksi IPv6 (Network Unreachable). Silakan pilih mode IPv4 atau DoH/DoT.",
-                    text_color="#f38ba8"
+                    text_color=ThemeManager.danger()
                 )
                 self.btn_start.configure(state="normal")
                 self.btn_stop.configure(state="disabled")
@@ -311,7 +321,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         is_turbo = self.turbo_var.get()
         self.prog_bar.set(0)
         mode_desc = f"{mode_key.upper()} (⚡ Turbo <200ms)" if is_turbo else mode_key.upper()
-        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time ({mode_desc})...", text_color="#cdd6f4")
+        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time ({mode_desc})...", text_color=ThemeManager.text())
 
         def _worker():
             idx = 0
@@ -421,7 +431,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 c_ms, u_ms, d_ms, s_ms, stat
             ))
 
-        self.lbl_status.configure(text=f"✓ Benchmark selesai! {len(sorted_res)} resolvers diurutkan (Klik header kolom untuk menyortir).", text_color="#a6e3a1")
+        self.lbl_status.configure(text=f"✓ Benchmark selesai! {len(sorted_res)} resolvers diurutkan (Klik header kolom untuk menyortir).", text_color=ThemeManager.success())
 
         if sorted_res:
             self.btn_apply_smart.configure(state="normal")
@@ -441,7 +451,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
     def stop_benchmark(self):
         self.benchmark_cancelled = True
-        self.lbl_status.configure(text="Benchmark dihentikan oleh pengguna.", text_color="#f9e2af")
+        self.lbl_status.configure(text="Benchmark dihentikan oleh pengguna.", text_color=ThemeManager.warning())
 
     def apply_smart_mix(self):
         smart = bm.calculate_smart_mix(self.results_map)
@@ -464,14 +474,14 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         if u_ips: self.dns_view.dns2_entry.insert(0, u_ips[0])
         if d_ips: self.dns_view.dns3_entry.insert(0, d_ips[0])
 
-        self.lbl_status.configure(text="⚡ Menerapkan GRC Smart Mix ke sistem jaringan...", text_color="#f9e2af")
+        self.lbl_status.configure(text="⚡ Menerapkan GRC Smart Mix ke sistem jaringan...", text_color=ThemeManager.warning())
 
         def _bg():
             self.dns_view.apply_dns()
             try:
                 self.after(0, lambda: self.lbl_status.configure(
                     text="✓ Berhasil! GRC Smart Mix aktif di sistem.",
-                    text_color="#a6e3a1"
+                    text_color=ThemeManager.success()
                 ))
             except Exception:
                 pass
@@ -499,14 +509,14 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         if len(ips) > 0: self.dns_view.dns1_entry.insert(0, ips[0])
         if len(ips) > 1: self.dns_view.dns2_entry.insert(0, ips[1])
 
-        self.lbl_status.configure(text=f"⚡ Menerapkan #{fastest['name']} ke sistem jaringan...", text_color="#f9e2af")
+        self.lbl_status.configure(text=f"⚡ Menerapkan #{fastest['name']} ke sistem jaringan...", text_color=ThemeManager.warning())
 
         def _bg():
             self.dns_view.apply_dns()
             try:
                 self.after(0, lambda: self.lbl_status.configure(
                     text=f"✓ Berhasil! DNS '{fastest['name']}' aktif di sistem.",
-                    text_color="#a6e3a1"
+                    text_color=ThemeManager.success()
                 ))
             except Exception:
                 pass

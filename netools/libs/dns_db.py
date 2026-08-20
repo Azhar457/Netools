@@ -5,10 +5,10 @@ Curated Global & Regional DNS/DoH Providers with Cloud Sync & Regional TLD Datas
 """
 
 import json
-import urllib.request
 import re
+import urllib.request
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, Optional, Tuple
 
 APP_DIR = Path.home() / ".local" / "share" / "dns-jumper"
 APP_DIR.mkdir(parents=True, exist_ok=True)
@@ -381,7 +381,7 @@ def load_providers() -> Dict[str, Dict[str, Any]]:
     """Load providers from local cache JSON or fallback to built-in presets."""
     if CACHE_FILE.exists():
         try:
-            with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            with open(CACHE_FILE, encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict) and len(data) > 0:
                     merged = {k: dict(v) for k, v in BUILTIN_PROVIDERS.items()}
@@ -480,10 +480,10 @@ def import_from_dnsjumper_ini(filepath: str) -> Tuple[int, str]:
     """Parse and import DNS resolvers from a standard Windows DnsJumper.ini file."""
     try:
         try:
-            with open(filepath, "r", encoding="utf-16le", errors="ignore") as f:
+            with open(filepath, encoding="utf-16le", errors="ignore") as f:
                 text = f.read()
         except Exception:
-            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+            with open(filepath, encoding="utf-8", errors="ignore") as f:
                 text = f.read()
 
         imported = 0

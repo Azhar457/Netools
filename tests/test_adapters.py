@@ -3,7 +3,9 @@ Unit tests for Sing-box config builder & Supervisor adapter.
 """
 
 import unittest
+
 from netools.adapters import singbox
+
 
 class TestSingboxAdapter(unittest.TestCase):
     def test_build_shadowsocks_config(self):

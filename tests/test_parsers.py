@@ -2,10 +2,12 @@
 Unit tests for Proxy URI Parsers (Shadowsocks, Trojan, VMess, VLESS).
 """
 
-import unittest
 import base64
 import json
+import unittest
+
 from netools.libs import parsers
+
 
 class TestProxyParsers(unittest.TestCase):
     def test_parse_shadowsocks(self):

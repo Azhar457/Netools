@@ -4,8 +4,9 @@ Universal Proxy URI parser: Shadowsocks, Trojan, VMess, VLESS.
 
 import base64
 import json
-from urllib.parse import unquote, urlparse, parse_qs
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
+from urllib.parse import parse_qs, unquote
+
 
 def decode_base64_if_needed(text: str) -> str:
     """If entire text looks like base64, decode it."""

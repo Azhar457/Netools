@@ -2,8 +2,24 @@
 Linux System DNS Adapter: resolvectl, systemd-resolved, and NetworkManager (nmcli).
 """
 
+import ipaddress
 import subprocess
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
+
+def _validate_ips(ips: list) -> list:
+    """Validate and filter IP addresses to prevent injection attacks."""
+    validated = []
+    for ip in ips:
+        ip = ip.strip()
+        if not ip:
+            continue
+        try:
+            ipaddress.ip_address(ip)
+            validated.append(ip)
+        except ValueError:
+            pass
+    return validated
 
 def get_network_interfaces() -> List[Dict[str, Any]]:
     """Detect active network interfaces and their connection details."""
@@ -76,7 +92,7 @@ def get_interface_dns(device: str) -> List[str]:
 
     if not dns_servers:
         try:
-            with open("/etc/resolv.conf", "r") as f:
+            with open("/etc/resolv.conf") as f:
                 for line in f:
                     if line.startswith("nameserver") and not line.split()[1].startswith("127.0.0.53"):
                         dns_servers.append(line.split()[1])
@@ -86,7 +102,7 @@ def get_interface_dns(device: str) -> List[str]:
 
 def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str] = None, enable_dot: bool = False, persistent: bool = True) -> bool:
     """Set DNS on interface via resolvectl and NetworkManager."""
-    valid_ips = [ip.strip() for ip in ips if ip and not ip.isspace()]
+    valid_ips = _validate_ips(ips)
     if not valid_ips or not device:
         return False
 

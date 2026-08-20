@@ -2,23 +2,11 @@
 DNS Service: Database, GRC 3-Tier Latency Benchmark, Smart Mix Calculator, and System DNS Setter.
 """
 
-import time
-import asyncio
-import concurrent.futures
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass
+from typing import Any, Dict, Tuple
 
-from netools.libs import dns_db as db
 from netools.libs import dns_benchmark as bm
-from netools.adapters import systemd_dns as sys_dns
+from netools.libs import dns_db as db
 
-@dataclass
-class GRCBenchmarkSummary:
-    results: List[bm.GRCBenchmarkResult]
-    fastest: Optional[bm.GRCBenchmarkResult]
-    best_cached: Optional[bm.GRCBenchmarkResult]
-    best_uncached: Optional[bm.GRCBenchmarkResult]
-    best_tld: Optional[bm.GRCBenchmarkResult]
 
 def get_providers(region: str = "all", category: str = "all") -> Dict[str, Any]:
     """Retrieve filtered DNS providers from database."""

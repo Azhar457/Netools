@@ -62,7 +62,7 @@ class TestNetoolsCore(unittest.TestCase):
             self.assertIn("is_default", iface)
 
     def test_05_socket_and_protocol_queries(self):
-        from netools.libs.dns_benchmark import query_udp_dns, query_dot_dns, query_doh_dns
+        from netools.libs.dns_benchmark import query_doh_dns, query_udp_dns
 
         # Live UDP DNS query test to Cloudflare 1.1.1.1
         lat_udp, ips_udp, rrsig_udp, edns_udp = query_udp_dns("1.1.1.1", "google.com", timeout=3.0)
@@ -79,9 +79,14 @@ class TestNetoolsCore(unittest.TestCase):
 
     def test_06_gui_imports_and_components(self):
         """Smoke test all GUI modules to verify no missing imports, syntax errors, or circular references."""
-        from netools.gui import theme, toast, splash, tray
-        from netools.gui import view_dashboard, view_dns, view_proxy, view_settings, view_preferences, view_benchmark_modal
-        from netools.gui import app
+        from netools.gui import (
+            theme,
+            view_benchmark_modal,
+            view_dashboard,
+            view_dns,
+            view_proxy,
+            view_settings,
+        )
 
         self.assertIsNotNone(theme.Fonts)
         self.assertIsNotNone(view_dashboard.DashboardView)

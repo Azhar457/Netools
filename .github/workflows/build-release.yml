@@ -69,11 +69,9 @@ jobs:
             --icon "assets/icon.ico" `
             --collect-all netools `
             --collect-all customtkinter `
-            --add-data "dns_jumper_db.py;." `
-            --add-data "dns_jumper_benchmark.py;." `
             --add-data "assets;assets" `
             --clean `
-            netools.py
+            netools/__main__.py
 
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4

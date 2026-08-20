@@ -7,10 +7,10 @@ Allows Netools to minimize to tray when closed and provides quick 1-click action
 - Clean Exit
 """
 
-import threading
 import sys
+import threading
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any, Optional
 
 try:
     import pystray

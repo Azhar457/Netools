@@ -4,12 +4,12 @@ Detects OS platform (Linux, Windows, macOS), required binaries (sing-box, curl),
 system DNS engines, and optional local DoH forwarders (dnscrypt-proxy, cloudflared).
 """
 
-import sys
-import os
-import shutil
 import platform
+import shutil
 import subprocess
-from typing import Dict, Any, List
+import sys
+from typing import Any, Dict
+
 
 def get_os_type() -> str:
     """Return 'linux', 'windows', 'darwin' (macOS), or 'unknown'."""

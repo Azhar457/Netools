@@ -19,12 +19,12 @@ echo -e "${BLUE}   ⚡ Netools Suite — Deterministic Verification Gate  ${NC}"
 echo -e "${BLUE}======================================================${NC}"
 
 # 1. Bytecode Compilation Check
-echo -e "\n${YELLOW}▶ [1/4] Checking Python Bytecode & Syntax Compilation...${NC}"
-python3 -m compileall -q netools tests netools.py dns_jumper.py dns_jumper_benchmark.py dns_jumper_db.py
+echo -e "\n${YELLOW}▶ [1/5] Checking Python Bytecode & Syntax Compilation...${NC}"
+python3 -m compileall -q netools tests netools/__main__.py
 echo -e "${GREEN}✓ Bytecode & syntax compilation passed cleanly.${NC}"
 
 # 2. Code Quality & Anti-Hardcoding Audit
-echo -e "\n${YELLOW}▶ [2/4] Running Code Hygiene & Anti-Hardcoding Audit...${NC}"
+echo -e "\n${YELLOW}▶ [2/5] Running Code Hygiene & Anti-Hardcoding Audit...${NC}"
 # Check for forbidden mockup patterns
 FORBIDDEN_HITS=$(grep -rEi "FIXME|TODO_CRITICAL|dummy_token|sample_proxy" netools/ tests/ || true)
 if [ -n "$FORBIDDEN_HITS" ]; then
@@ -34,15 +34,24 @@ if [ -n "$FORBIDDEN_HITS" ]; then
 fi
 echo -e "${GREEN}✓ Code hygiene & anti-hardcoding audit passed.${NC}"
 
-# 3. Unit, Socket & GUI Integration Test Suite
-echo -e "\n${YELLOW}▶ [3/4] Running Unit, Socket & GUI Verification Suite...${NC}"
+# 3. Ruff Lint Gate
+echo -e "\n${YELLOW}▶ [3/5] Running Ruff Lint Gate...${NC}"
+if command -v ruff >/dev/null 2>&1; then
+    ruff check netools tests
+else
+    .venv/bin/ruff check netools tests
+fi
+echo -e "${GREEN}✓ Ruff lint passed.${NC}"
+
+# 4. Unit, Socket & GUI Integration Test Suite
+echo -e "\n${YELLOW}▶ [4/5] Running Unit, Socket & GUI Verification Suite...${NC}"
 python3 tests/verify_suite.py
 echo -e "${GREEN}✓ All core, network socket, and GUI module tests passed.${NC}"
 
-# 4. CLI Smoke Test
-echo -e "\n${YELLOW}▶ [4/4] Executing CLI Smoke Commands...${NC}"
-python3 netools.py dns presets > /dev/null
-python3 netools.py pac status > /dev/null
+# 5. CLI Smoke Test
+echo -e "\n${YELLOW}▶ [5/5] Executing CLI Smoke Commands...${NC}"
+python3 -m netools dns presets > /dev/null
+python3 -m netools pac status > /dev/null
 echo -e "${GREEN}✓ CLI command smoke test passed.${NC}"
 
 # Optional AppImage Build

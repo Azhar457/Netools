@@ -4,8 +4,10 @@ Implements Jakob Nielsen's Usability Heuristic #1: Visibility of System Status.
 Provides clear, prominent, high-contrast visual feedback with auto-dismiss and manual close.
 """
 
-import customtkinter as ctk
 from typing import Optional
+
+import customtkinter as ctk
+
 from netools.gui.theme import Fonts
 
 

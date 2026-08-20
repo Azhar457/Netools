@@ -15,17 +15,17 @@ Verification Layer:
 - Zero External Dependencies (Standard Python Socket, SSL, struct & urllib)
 """
 
-import time
+import ipaddress
 import socket
 import ssl
-import struct
-import uuid
-import ipaddress
 import statistics
-import urllib.request
+import struct
+import time
 import urllib.error
-from typing import Dict, List, Optional, Tuple, Any
+import urllib.request
+import uuid
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 
 # ==============================================================================
 # DATA STRUCTURES
