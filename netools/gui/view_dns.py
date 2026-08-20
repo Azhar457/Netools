@@ -7,6 +7,7 @@ import threading
 from netools.adapters import platform_dns as sys_dns
 from netools.services import dns_service
 from netools.gui.view_benchmark_modal import GRCBenchmarkModal
+from netools.gui.scrollable_dropdown import CTkScrollableDropdown
 from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE, COLOR_ACCENT_GREEN, COLOR_ACCENT_PURPLE, COLOR_ACCENT_YELLOW
 from netools.libs import dns_db as db
 
@@ -118,6 +119,17 @@ class DNSView(ctk.CTkScrollableFrame):
             command=self.on_preset_change
         )
         self.preset_cb.pack(side="left", fill="x", expand=True, padx=4)
+
+        # Attach scrollable & searchable dropdown popup (prevents screen overflow)
+        self.preset_dropdown = CTkScrollableDropdown(
+            attach_widget=self.preset_cb,
+            values=preset_labels,
+            command=self.on_preset_change,
+            variable=self.preset_var,
+            max_height=280,
+            searchable=True,
+            placeholder_text="🔍 Search 90+ DNS presets..."
+        )
 
         ctk.CTkLabel(
             f2,
@@ -508,6 +520,8 @@ class DNSView(ctk.CTkScrollableFrame):
             elif "Global" in cat_name and (region == "global" or "anycast" in desc):
                 filtered_labels.append(f"{p['country']} {p['name']}")
 
+        if hasattr(self, "preset_dropdown") and self.preset_dropdown:
+            self.preset_dropdown.configure(values=filtered_labels)
         if hasattr(self, "preset_cb"):
             self.preset_cb.configure(values=filtered_labels)
             if self.preset_var.get() not in filtered_labels:
@@ -520,6 +534,8 @@ class DNSView(ctk.CTkScrollableFrame):
         else:
             preset_labels = [f"{p['country']} {p['name']}" for p in self.providers.values()]
             preset_labels.insert(0, "⚙️ Custom DNS Servers")
+            if hasattr(self, "preset_dropdown") and self.preset_dropdown:
+                self.preset_dropdown.configure(values=preset_labels)
             if hasattr(self, "preset_cb"):
                 self.preset_cb.configure(values=preset_labels)
 
