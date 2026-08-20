@@ -143,8 +143,14 @@ class SettingsView(ctk.CTkFrame):
 
     def refresh(self):
         def _bg():
+            url = self.entry_nr_url.get().strip()
+            tok = self.entry_nr_tok.get().strip()
+            if url or tok:
+                nr_adapt.set_credentials(url=url if url else None, token=tok if tok else None)
+
             conns = nr_adapt.get_connections()
-            healthy = isinstance(conns, list) and len(conns) > 0
+            is_healthy = nr_adapt.is_healthy()
+            healthy = isinstance(conns, list) and (len(conns) > 0 or is_healthy)
 
             def _update():
                 for item in self.tree.get_children():
@@ -159,10 +165,10 @@ class SettingsView(ctk.CTkFrame):
                 for c in conns:
                     name = c.get("name", "Unknown")
                     c_type = c.get("provider", "openai")
-                    pool_id = c.get("proxy_pool_id") or "—"
-                    status = "🟢 Linked" if pool_id != "—" else "⚪ Direct"
+                    proxy_url = c.get("connectionProxyUrl") or c.get("providerSpecificData", {}).get("connectionProxyUrl") or "—"
+                    status = "🟢 Linked" if (c.get("connectionProxyEnabled") or proxy_url != "—") else "⚪ Direct"
 
-                    self.tree.insert("", "end", values=(name, c_type, str(pool_id), status))
+                    self.tree.insert("", "end", values=(name, c_type, str(proxy_url), status))
 
             try:
                 self.after(0, _update)
@@ -177,19 +183,23 @@ class SettingsView(ctk.CTkFrame):
             from netools.state import load_state
             st = load_state()
             insts = st.get("instances", {})
-            pools = list(set([data.get("pool_id") for data in insts.values() if data.get("pool_id")]))
+            proxy_urls = [data.get("socks_url") for data in insts.values() if data.get("socks_url")]
 
-            if not pools:
+            if not proxy_urls:
                 try:
-                    self.after(0, lambda: self.main_app.show_toast("Tidak ada active pool. Mulai Proxy Pool terlebih dahulu.", level="warning"))
+                    self.after(0, lambda: self.main_app.show_toast("Tidak ada active proxy. Mulai Proxy Pool terlebih dahulu.", level="warning"))
                 except Exception:
                     pass
                 return
 
-            nr_adapt.assign_round_robin(pools)
+            assigned = nr_adapt.assign_round_robin(proxy_urls)
             try:
                 self.after(0, self.refresh)
-                self.after(0, lambda: self.main_app.show_toast(f"✓ Berhasil menghubungkan {len(pools)} pools ke 9Router!", level="success"))
+                if hasattr(self.main_app, "dashboard_view"):
+                    self.after(0, self.main_app.dashboard_view.refresh)
+                if hasattr(self.main_app, "proxy_view"):
+                    self.after(0, self.main_app.proxy_view._populate_sync)
+                self.after(0, lambda: self.main_app.show_toast(f"✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!", level="success"))
             except Exception:
                 pass
 
@@ -198,10 +208,14 @@ class SettingsView(ctk.CTkFrame):
     def clear_pools(self):
         self.main_app.show_toast("Menghapus seluruh proxy dari 9Router...", level="warning")
         def _bg():
-            nr_adapt.clear_all_proxies()
+            cleared = nr_adapt.clear_all_proxies()
             try:
                 self.after(0, self.refresh)
-                self.after(0, lambda: self.main_app.show_toast("✓ Seluruh proxy 9Router dikembalikan ke koneksi Direct.", level="info"))
+                if hasattr(self.main_app, "dashboard_view"):
+                    self.after(0, self.main_app.dashboard_view.refresh)
+                if hasattr(self.main_app, "proxy_view"):
+                    self.after(0, self.main_app.proxy_view._populate_sync)
+                self.after(0, lambda: self.main_app.show_toast(f"✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct.", level="info"))
             except Exception:
                 pass
 

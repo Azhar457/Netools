@@ -32,7 +32,7 @@ MAX_INSTANCES = 20
 
 # Backend Gateways
 NINEROUTER_URL = os.getenv("NINEROUTER_URL", "http://localhost:20128")
-NINEROUTER_CLI_TOKEN = os.getenv("NINEROUTER_CLI_TOKEN", "")
+NINEROUTER_CLI_TOKEN = os.getenv("NINEROUTER_CLI_TOKEN", "cb9bee27d95c976e")
 
 OMNIROUTE_URL = os.getenv("OMNIROUTE_URL", "http://localhost:20129")
 OMNIROUTE_TOKEN = os.getenv("OMNIROUTE_TOKEN", "")

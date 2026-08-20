@@ -109,7 +109,7 @@ class ProxyView(ctk.CTkFrame):
         tbl_frame = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
         tbl_frame.pack(fill="both", expand=True, padx=16, pady=6)
 
-        columns = ("slot", "protocol", "server", "socks", "http", "pool", "dns", "age", "status")
+        columns = ("slot", "protocol", "server", "socks", "http", "pool", "dns", "status", "age")
         self.tree = ttk.Treeview(
             tbl_frame,
             columns=columns,
@@ -141,8 +141,8 @@ class ProxyView(ctk.CTkFrame):
             ("server", "Upstream Node", 200, "center"),
             ("socks", "SOCKS5 Port", 110, "center"),
             ("http", "HTTP Port", 110, "center"),
-            ("dns", "DNS Engine", 150, "center"),
             ("pool", "Router Pool", 130, "center"),
+            ("dns", "DNS Engine", 150, "center"),
             ("status", "Status", 100, "center"),
             ("age", "Started At", 160, "center"),
         ]
@@ -191,15 +191,15 @@ class ProxyView(ctk.CTkFrame):
         for name, data in sorted(insts.items()):
             port = data.get("port", 11080)
             http_p = port + HTTP_PORT_OFFSET
-            proto = data.get("protocol", "unknown")
+            proto = data.get("proxy_type") or data.get("protocol") or "shadowsocks"
             srv = f"{data.get('server', '')}:{data.get('server_port', '')}"
-            pool = data.get("pool_id", "—")
+            pool = data.get("pool_name") or data.get("pool_id") or "—"
             dns_engine = "SOCKS5h Remote"
             age = data.get("started_at", "Just now")
             status = "🟢 Alive"
 
             self.tree.insert("", "end", values=(
-                name, proto, srv, port, http_p, pool, dns_engine, age, status
+                name, proto, srv, port, http_p, pool, dns_engine, status, age
             ))
 
         cnt = len(insts)

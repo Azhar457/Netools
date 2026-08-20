@@ -8,13 +8,24 @@ import urllib.error
 from typing import Dict, Any, List, Optional
 from netools.config import NINEROUTER_URL, NINEROUTER_CLI_TOKEN
 
-def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, timeout: float = 0.5) -> Dict[str, Any]:
+_CURRENT_URL = NINEROUTER_URL
+_CURRENT_TOKEN = NINEROUTER_CLI_TOKEN
+
+def set_credentials(url: Optional[str] = None, token: Optional[str] = None) -> None:
+    """Dynamically update 9Router API endpoint and authentication token."""
+    global _CURRENT_URL, _CURRENT_TOKEN
+    if url is not None:
+        _CURRENT_URL = url.rstrip("/")
+    if token is not None:
+        _CURRENT_TOKEN = token
+
+def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, timeout: float = 5.0) -> Dict[str, Any]:
     """Send authenticated HTTP request to 9Router REST API."""
-    url = f"{NINEROUTER_URL}{path}"
+    url = f"{_CURRENT_URL}{path}"
     data = json.dumps(body).encode("utf-8") if body is not None else None
     headers = {"Content-Type": "application/json"}
-    if NINEROUTER_CLI_TOKEN:
-        headers["x-9r-cli-token"] = NINEROUTER_CLI_TOKEN
+    if _CURRENT_TOKEN:
+        headers["x-9r-cli-token"] = _CURRENT_TOKEN
 
     req = urllib.request.Request(
         url,
@@ -80,6 +91,25 @@ def clear_all_connection_proxies() -> int:
             name = conn.get("name", conn.get("provider", "?"))
             print(f"[OK] Proxy cleared: {name} ({conn['id'][:12]})")
     return cleared
+
+clear_all_proxies = clear_all_connection_proxies
+
+def assign_round_robin(proxies_or_pools: List[str]) -> int:
+    """Distribute active proxies or pools round-robin across all 9Router connections."""
+    conns = get_connections()
+    if not conns or not proxies_or_pools:
+        return 0
+    assigned = 0
+    for idx, c in enumerate(conns):
+        target = proxies_or_pools[idx % len(proxies_or_pools)]
+        if target.startswith("socks5://") or target.startswith("http://"):
+            proxy_url = target
+        else:
+            proxy_url = f"socks5://127.0.0.1:{11080 + (idx % len(proxies_or_pools))}"
+        res = assign_proxy_to_connection(c["id"], proxy_url)
+        if res:
+            assigned += 1
+    return assigned
 
 def add_proxy_pool(name: str, proxy_url: str) -> Optional[str]:
     """Register a new proxy pool in 9Router."""
