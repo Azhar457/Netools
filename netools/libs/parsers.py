@@ -118,8 +118,75 @@ def parse_vmess_uri(uri: str) -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
+def parse_vless_uri(uri: str) -> Optional[Dict[str, Any]]:
+    """Parse vless://uuid@host:port?query#tag URI."""
+    try:
+        rest = uri.split("://", 1)[1]
+        if "@" in rest:
+            uuid_str, server_part = rest.rsplit("@", 1)
+        else:
+            return None
+
+        if "#" in server_part:
+            server_part, tag = server_part.rsplit("#", 1)
+            tag = unquote(tag)
+        else:
+            tag = f"vless-{server_part.split(':')[0]}"
+
+        host_port, *query_parts = server_part.split("?", 1)
+        host, port = host_port.rsplit(":", 1)
+
+        params: Dict[str, List[str]] = {}
+        if query_parts:
+            params = parse_qs(query_parts[0])
+
+        net_type = params.get("type", ["tcp"])[0]
+        security = params.get("security", ["none"])[0]
+        sni = params.get("sni", [host])[0]
+        flow = params.get("flow", [""])[0]
+        path = params.get("path", [""])[0]
+        host_header = params.get("host", [""])[0]
+
+        proxy_dict: Dict[str, Any] = {
+            "type": "vless",
+            "tag": tag,
+            "server": host,
+            "server_port": int(port),
+            "uuid": uuid_str,
+        }
+
+        if flow:
+            proxy_dict["flow"] = flow
+
+        if security in ("tls", "reality"):
+            proxy_dict["tls"] = {
+                "enabled": True,
+                "server_name": sni,
+                "insecure": True,
+            }
+            if security == "reality":
+                pbk = params.get("pbk", [""])[0]
+                sid = params.get("sid", [""])[0]
+                if pbk:
+                    proxy_dict["tls"]["reality"] = {
+                        "enabled": True,
+                        "public_key": pbk,
+                        "short_id": sid,
+                    }
+
+        if net_type in ("ws", "grpc"):
+            proxy_dict["transport"] = {
+                "type": net_type,
+                "path": path,
+                "headers": {"Host": host_header} if host_header else {},
+            }
+
+        return proxy_dict
+    except Exception:
+        return None
+
 def parse_proxy_uri(uri: str) -> Optional[Dict[str, Any]]:
-    """Parse any supported proxy URI (ss, trojan, vmess)."""
+    """Parse any supported proxy URI (ss, trojan, vmess, vless)."""
     uri = uri.strip()
     if uri.startswith("ss://"):
         return parse_ss_uri(uri)
@@ -127,6 +194,8 @@ def parse_proxy_uri(uri: str) -> Optional[Dict[str, Any]]:
         return parse_trojan_uri(uri)
     elif uri.startswith("vmess://"):
         return parse_vmess_uri(uri)
+    elif uri.startswith("vless://"):
+        return parse_vless_uri(uri)
     return None
 
 def extract_all_proxies(raw_text: str, max_count: int = 20) -> List[Dict[str, Any]]:
