@@ -100,7 +100,7 @@ def cmd_gui(args):
     from netools.gui.app import main as run_gui
     run_gui()
 
-def main():
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="netools",
         description="⚡ Netools Suite: Sing-box Proxy Rotator, DNS Searcher/Jumper, PAC Server & AI Gateway Sync"
@@ -131,7 +131,10 @@ def main():
 
     # gui subcommand
     subparsers.add_parser("gui", help="Launch Desktop GUI All-In-One")
+    return parser
 
+def main():
+    parser = build_parser()
     args = parser.parse_args()
 
     if args.command == "proxy":
