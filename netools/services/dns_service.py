@@ -29,7 +29,7 @@ def sync_cloud_database() -> Tuple[bool, str, int]:
     """Synchronize DNS resolvers database with cloud presets."""
     return db.sync_cloud_providers()
 
-def calculate_smart_mix(results: List[bm.GRCBenchmarkResult]) -> Dict[str, Any]:
+def calculate_smart_mix(results: List[bm.GRCBenchmarkResult], mode: str = "ipv4") -> Dict[str, Any]:
     """Compute 1 Cached + 1 Uncached + 1 TLD Smart Mix trio."""
     stable = [r for r in results if r.status == "Stable"] or results
     if not stable:
@@ -43,13 +43,22 @@ def calculate_smart_mix(results: List[bm.GRCBenchmarkResult]) -> Dict[str, Any]:
     cand_tld = [r for r in stable if r.key not in used] or stable
     best_tld = min(cand_tld, key=lambda x: x.tld_ms if x.tld_lats else 9999.0)
 
+    def _get_target(res):
+        if mode == "ipv6" and res.ipv6:
+            return res.ipv6[0]
+        elif mode == "doh" and res.doh_url:
+            return res.doh_url
+        elif mode == "dot" and res.dot_host:
+            return res.dot_host
+        return res.ipv4[0] if res.ipv4 else ""
+
     return {
         "dns1_cached": best_cached,
         "dns2_uncached": best_uncached,
         "dns3_tld": best_tld,
         "ips": [
-            best_cached.ipv4[0] if best_cached.ipv4 else "",
-            best_uncached.ipv4[0] if best_uncached.ipv4 else "",
-            best_tld.ipv4[0] if best_tld.ipv4 else ""
+            _get_target(best_cached),
+            _get_target(best_uncached),
+            _get_target(best_tld)
         ]
     }

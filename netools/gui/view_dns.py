@@ -486,43 +486,85 @@ class DNSView(ctk.CTkScrollableFrame):
 
         def _bg():
             current_dns = sys_dns.get_interface_dns(dev)
+            if not current_dns:
+                ips = [self.dns1_entry.get().strip(), self.dns2_entry.get().strip(), self.dns3_entry.get().strip()]
+                current_dns = [ip for ip in ips if ip]
+
+            # 1. Check OS-level DoT status
             dot_active = False
+            dot_mode = "Disabled"
             try:
                 import subprocess
                 out = subprocess.check_output(["resolvectl", "status", dev], text=True, stderr=subprocess.DEVNULL)
-                if "+DNSOverTLS" in out:
+                if "+DNSOverTLS" in out or "DNSOverTLS=yes" in out:
                     dot_active = True
+                    dot_mode = "Strict (+DNSOverTLS)"
+                elif "DNSOverTLS=opportunistic" in out:
+                    dot_active = True
+                    dot_mode = "Opportunistic (TLS 853)"
             except Exception:
                 pass
 
-            # Test DoH resolution
-            from dns_jumper_benchmark import query_doh_dns
-            doh_ms = query_doh_dns("https://security.cloudflare-dns.com/dns-query", "cloudflare.com", timeout=2.0)
+            # 2. Test each individual active DNS server (UDP 53 and DoT TLS 853)
+            from dns_jumper_benchmark import query_udp_dns, query_dot_dns, query_doh_dns
+            server_reports = []
+            target_doh_url = None
+
+            for ip in current_dns:
+                # Find provider name
+                prov_name = "Custom"
+                for p in self.providers.values():
+                    if (p.get("ipv4") and ip in p["ipv4"]) or (p.get("ipv6") and ip in p["ipv6"]):
+                        prov_name = p.get("name", "Unknown")
+                        if not target_doh_url and p.get("doh_url"):
+                            target_doh_url = p["doh_url"]
+                        break
+
+                udp_lat = query_udp_dns(ip, "google.com", timeout=1.5)
+                dot_lat = query_dot_dns(ip, "google.com", timeout=2.0)
+
+                udp_txt = f"{udp_lat:.1f} ms" if udp_lat else "Timeout"
+                dot_txt = f"🟢 TLS {dot_lat:.1f} ms" if dot_lat else "⚪ No TLS"
+                server_reports.append(f"• {ip} ({prov_name}): UDP {udp_txt} | {dot_txt}")
+
+            # 3. Test DoH endpoint
+            if not target_doh_url:
+                target_doh_url = "https://security.cloudflare-dns.com/dns-query"
+
+            doh_ms = query_doh_dns(target_doh_url, "google.com", timeout=2.5)
+            doh_str = f"🟢 Connected ({doh_ms:.1f} ms)" if doh_ms else "🔴 Failed / Blocked"
 
             def _show():
-                dns_str = ", ".join(current_dns) if current_dns else "DHCP / System Default"
-                dot_str = "🟢 Active (+DNSOverTLS)" if dot_active else "⚪ Disabled / Standard"
-                doh_str = f"🟢 Connected ({doh_ms:.1f} ms)" if doh_ms else "🔴 Failed / Blocked"
-
                 top = ctk.CTkToplevel(self)
-                top.title("🔍 DNS & DoH / DoT Diagnostic Inspector")
-                top.geometry("480x320")
+                top.title("🔍 Universal DNS & Encryption Inspector")
+                top.geometry("540x400")
                 top.configure(fg_color="#181825")
                 top.transient(self.main_app)
                 top.grab_set()
 
-                ctk.CTkLabel(top, text="🔍 Active DNS & Encryption Inspector", font=Fonts.title(14), text_color=COLOR_ACCENT_YELLOW).pack(pady=(16, 12))
+                ctk.CTkLabel(top, text="🔍 Universal DNS & Encryption Inspector", font=Fonts.title(14), text_color=COLOR_ACCENT_YELLOW).pack(pady=(14, 8))
 
                 card = ctk.CTkFrame(top, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
                 card.pack(fill="both", expand=True, padx=16, pady=4)
 
-                ctk.CTkLabel(card, text=f"• Interface   : {dev}", font=Fonts.mono(11), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=(10, 3))
-                ctk.CTkLabel(card, text=f"• Active DNS  : {dns_str}", font=Fonts.mono(11), text_color=COLOR_ACCENT_GREEN, anchor="w").pack(fill="x", padx=14, pady=3)
-                ctk.CTkLabel(card, text=f"• DoT (TLS)   : {dot_str}", font=Fonts.mono(11), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=3)
-                ctk.CTkLabel(card, text=f"• DoH (HTTPS) : {doh_str}", font=Fonts.mono(11), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=3)
+                ctk.CTkLabel(card, text=f"• Network Interface : {dev}", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=(8, 2))
+                ctk.CTkLabel(card, text=f"• OS Transport      : {'🟢 ' + dot_mode if dot_active else '⚪ Plain UDP 53'}", font=Fonts.bold(11), text_color=COLOR_ACCENT_GREEN if dot_active else COLOR_TEXT_SECONDARY, anchor="w").pack(fill="x", padx=14, pady=2)
+                ctk.CTkLabel(card, text=f"• DoH ({target_doh_url.split('/')[2]}) : {doh_str}", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=2)
+
+                ctk.CTkLabel(card, text="── Active Resolvers Latency & TLS Capability ──", font=Fonts.bold(10), text_color=COLOR_ACCENT_BLUE, anchor="w").pack(fill="x", padx=14, pady=(8, 4))
+                
+                if server_reports:
+                    for rep in server_reports:
+                        ctk.CTkLabel(card, text=rep, font=Fonts.mono(10), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=1)
+                else:
+                    ctk.CTkLabel(card, text="• No active DNS servers detected (DHCP Default)", font=Fonts.mono(10), text_color=COLOR_TEXT_SECONDARY, anchor="w").pack(fill="x", padx=14, pady=2)
 
                 btn_row = ctk.CTkFrame(top, fg_color="#181825")
                 btn_row.pack(fill="x", padx=16, pady=12)
+
+                def _open_leak_test():
+                    import webbrowser
+                    webbrowser.open("https://browserleaks.com/dns")
 
                 def _open_cf_help():
                     import webbrowser
@@ -530,13 +572,23 @@ class DNSView(ctk.CTkScrollableFrame):
 
                 ctk.CTkButton(
                     btn_row,
-                    text="🌐 Open 1.1.1.1/help in Browser",
+                    text="🌐 Universal Leak Test",
                     font=Fonts.bold(11),
                     fg_color=COLOR_ACCENT_BLUE,
                     text_color="#11111b",
                     hover_color="#b4befe",
+                    command=_open_leak_test
+                ).pack(side="left", padx=(0, 6))
+
+                ctk.CTkButton(
+                    btn_row,
+                    text="🌐 1.1.1.1/help",
+                    font=Fonts.regular(11),
+                    fg_color="#313244",
+                    text_color=COLOR_TEXT_PRIMARY,
+                    hover_color="#45475a",
                     command=_open_cf_help
-                ).pack(side="left")
+                ).pack(side="left", padx=4)
 
                 ctk.CTkButton(
                     btn_row,

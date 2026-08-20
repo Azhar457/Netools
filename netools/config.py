@@ -50,7 +50,7 @@ def auto_detect_9router_token() -> str:
     except Exception:
         pass
 
-    return "cb9bee27d95c976e"
+    return ""
 
 # Backend Gateways
 NINEROUTER_URL = os.getenv("NINEROUTER_URL", "http://localhost:20128")
