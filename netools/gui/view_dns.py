@@ -79,10 +79,30 @@ class DNSView(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             f2,
-            text="Choose DNS Preset :",
+            text="Category:",
             font=Fonts.bold(11),
             text_color=COLOR_ACCENT_BLUE
-        ).pack(side="left", padx=(0, 8))
+        ).pack(side="left", padx=(0, 4))
+
+        self.category_var = ctk.StringVar(value="📁 All Categories")
+        self.category_cb = ctk.CTkComboBox(
+            f2,
+            variable=self.category_var,
+            values=["📁 All Categories", "🛡️ Security & Privacy", "⚡ Gaming / Fast", "🚫 Ad-Blocking", "👨‍👩‍👧 Family Safe", "🌏 Asia-Pacific", "🌐 Global Anycast"],
+            state="readonly",
+            font=Fonts.regular(11),
+            width=150,
+            dropdown_font=Fonts.regular(11),
+            command=self.on_category_filter_change
+        )
+        self.category_cb.pack(side="left", padx=(0, 8))
+
+        ctk.CTkLabel(
+            f2,
+            text="Preset:",
+            font=Fonts.bold(11),
+            text_color=COLOR_TEXT_PRIMARY
+        ).pack(side="left", padx=(0, 4))
 
         self.preset_var = ctk.StringVar(value="⚙️ Custom DNS Servers")
         preset_labels = [f"{p['country']} {p['name']}" for p in self.providers.values()]
@@ -93,7 +113,7 @@ class DNSView(ctk.CTkScrollableFrame):
             values=preset_labels,
             state="readonly",
             font=Fonts.regular(11),
-            width=260,
+            width=220,
             dropdown_font=Fonts.regular(11),
             command=self.on_preset_change
         )
@@ -104,7 +124,7 @@ class DNSView(ctk.CTkScrollableFrame):
             text="Protocol / IP:",
             font=Fonts.bold(11),
             text_color=COLOR_TEXT_PRIMARY
-        ).pack(side="left", padx=(10, 6))
+        ).pack(side="left", padx=(8, 4))
 
         self.ip_family_var = ctk.StringVar(value="IPv4 (Standard)")
         self.ip_family_cb = ctk.CTkComboBox(
@@ -113,7 +133,7 @@ class DNSView(ctk.CTkScrollableFrame):
             values=["IPv4 (Standard)", "IPv6 (Next-Gen)", "DoH (HTTPS)", "DoT (TLS Port 853)"],
             state="readonly",
             font=Fonts.regular(11),
-            width=160,
+            width=150,
             dropdown_font=Fonts.regular(11),
             command=lambda _: self.on_preset_change(self.preset_var.get())
         )
@@ -465,12 +485,43 @@ class DNSView(ctk.CTkScrollableFrame):
                 pass
         threading.Thread(target=_bg, daemon=True).start()
 
+    def on_category_filter_change(self, cat_name: str):
+        filtered_labels = ["⚙️ Custom DNS Servers"]
+        for p in self.providers.values():
+            cat = p.get("category", "").lower()
+            region = p.get("region", "").lower()
+            name = p.get("name", "").lower()
+            desc = p.get("description", "").lower()
+
+            if "All" in cat_name:
+                filtered_labels.append(f"{p['country']} {p['name']}")
+            elif "Security" in cat_name and (cat == "security" or "security" in desc or "privacy" in desc or "no-log" in desc):
+                filtered_labels.append(f"{p['country']} {p['name']}")
+            elif "Gaming" in cat_name and (cat == "gaming" or "gaming" in desc or "game" in name or "fast" in desc or region == "asia"):
+                filtered_labels.append(f"{p['country']} {p['name']}")
+            elif "Ad-Blocking" in cat_name and (cat == "adblock" or "ad" in desc or "block" in desc):
+                filtered_labels.append(f"{p['country']} {p['name']}")
+            elif "Family" in cat_name and (cat == "family" or "family" in desc or "parental" in desc or "safe" in desc):
+                filtered_labels.append(f"{p['country']} {p['name']}")
+            elif "Asia" in cat_name and region == "asia":
+                filtered_labels.append(f"{p['country']} {p['name']}")
+            elif "Global" in cat_name and (region == "global" or "anycast" in desc):
+                filtered_labels.append(f"{p['country']} {p['name']}")
+
+        if hasattr(self, "preset_cb"):
+            self.preset_cb.configure(values=filtered_labels)
+            if self.preset_var.get() not in filtered_labels:
+                self.preset_var.set("⚙️ Custom DNS Servers")
+
     def refresh_presets(self):
         self.providers = db.load_providers()
-        preset_labels = [f"{p['country']} {p['name']}" for p in self.providers.values()]
-        preset_labels.insert(0, "⚙️ Custom DNS Servers")
-        if hasattr(self, "preset_cb"):
-            self.preset_cb.configure(values=preset_labels)
+        if hasattr(self, "category_var"):
+            self.on_category_filter_change(self.category_var.get())
+        else:
+            preset_labels = [f"{p['country']} {p['name']}" for p in self.providers.values()]
+            preset_labels.insert(0, "⚙️ Custom DNS Servers")
+            if hasattr(self, "preset_cb"):
+                self.preset_cb.configure(values=preset_labels)
 
     def open_benchmark(self):
         if hasattr(self, "benchmark_modal") and self.benchmark_modal is not None:
