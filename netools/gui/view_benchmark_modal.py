@@ -31,7 +31,20 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.providers = db.load_providers()
         self.target_tlds = getattr(db, "TLD_PRESETS", getattr(db, "TARGET_TLD_DOMAINS", {}))
 
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
         self._build_widgets()
+
+    def on_close(self):
+        self.benchmark_cancelled = True
+        self.benchmark_running = False
+        try:
+            if self in self.parent_app.child_windows:
+                self.parent_app.child_windows.remove(self)
+            if hasattr(self.dns_view, "benchmark_modal") and self.dns_view.benchmark_modal == self:
+                self.dns_view.benchmark_modal = None
+        except Exception:
+            pass
+        self.destroy()
 
     def _build_widgets(self):
         # Header Banner

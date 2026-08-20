@@ -473,10 +473,30 @@ class DNSView(ctk.CTkScrollableFrame):
             self.preset_cb.configure(values=preset_labels)
 
     def open_benchmark(self):
-        modal = GRCBenchmarkModal(self.main_app, self)
-        self.main_app.child_windows.append(modal)
+        if hasattr(self, "benchmark_modal") and self.benchmark_modal is not None:
+            try:
+                if self.benchmark_modal.winfo_exists():
+                    self.benchmark_modal.deiconify()
+                    self.benchmark_modal.lift()
+                    self.benchmark_modal.focus_force()
+                    return
+            except Exception:
+                pass
+
+        self.benchmark_modal = GRCBenchmarkModal(self.main_app, self)
+        self.main_app.child_windows.append(self.benchmark_modal)
 
     def verify_dns_status(self):
+        if hasattr(self, "verify_modal") and self.verify_modal is not None:
+            try:
+                if self.verify_modal.winfo_exists():
+                    self.verify_modal.deiconify()
+                    self.verify_modal.lift()
+                    self.verify_modal.focus_force()
+                    return
+            except Exception:
+                pass
+
         selected_label = self.iface_var.get()
         dev = self.active_interface
         for i in self.interfaces:
@@ -536,11 +556,18 @@ class DNSView(ctk.CTkScrollableFrame):
 
             def _show():
                 top = ctk.CTkToplevel(self)
+                self.verify_modal = top
                 top.title("🔍 Universal DNS & Encryption Inspector")
                 top.geometry("540x400")
                 top.configure(fg_color="#181825")
                 top.transient(self.main_app)
                 top.grab_set()
+
+                def _close_verify():
+                    self.verify_modal = None
+                    top.destroy()
+
+                top.protocol("WM_DELETE_WINDOW", _close_verify)
 
                 ctk.CTkLabel(top, text="🔍 Universal DNS & Encryption Inspector", font=Fonts.title(14), text_color=COLOR_ACCENT_YELLOW).pack(pady=(14, 8))
 
@@ -598,7 +625,7 @@ class DNSView(ctk.CTkScrollableFrame):
                     text_color=COLOR_TEXT_PRIMARY,
                     hover_color="#45475a",
                     width=70,
-                    command=top.destroy
+                    command=_close_verify
                 ).pack(side="right")
 
             try:
