@@ -228,6 +228,17 @@ class DNSView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             actions,
+            text="🔍 Verify DNS & DoH",
+            font=Fonts.bold(11),
+            fg_color="#313244",
+            text_color=COLOR_ACCENT_BLUE,
+            hover_color="#45475a",
+            height=34,
+            command=self.verify_dns_status
+        ).pack(side="left", padx=6)
+
+        ctk.CTkButton(
+            actions,
             text="🏆 Fastest DNS Benchmark (GRC Engine)",
             font=Fonts.bold(11),
             fg_color=COLOR_ACCENT_YELLOW,
@@ -378,3 +389,83 @@ class DNSView(ctk.CTkScrollableFrame):
     def open_benchmark(self):
         modal = GRCBenchmarkModal(self.main_app, self)
         self.main_app.child_windows.append(modal)
+
+    def verify_dns_status(self):
+        selected_label = self.iface_var.get()
+        dev = self.active_interface
+        for i in self.interfaces:
+            if i["label"] == selected_label:
+                dev = i["device"]
+                break
+
+        def _bg():
+            current_dns = sys_dns.get_interface_dns(dev)
+            dot_active = False
+            try:
+                import subprocess
+                out = subprocess.check_output(["resolvectl", "status", dev], text=True, stderr=subprocess.DEVNULL)
+                if "+DNSOverTLS" in out:
+                    dot_active = True
+            except Exception:
+                pass
+
+            # Test DoH resolution
+            from dns_jumper_benchmark import query_doh_dns
+            doh_ms = query_doh_dns("https://security.cloudflare-dns.com/dns-query", "cloudflare.com", timeout=2.0)
+
+            def _show():
+                dns_str = ", ".join(current_dns) if current_dns else "DHCP / System Default"
+                dot_str = "🟢 Active (+DNSOverTLS)" if dot_active else "⚪ Disabled / Standard"
+                doh_str = f"🟢 Connected ({doh_ms:.1f} ms)" if doh_ms else "🔴 Failed / Blocked"
+
+                top = ctk.CTkToplevel(self)
+                top.title("🔍 DNS & DoH / DoT Diagnostic Inspector")
+                top.geometry("480x320")
+                top.configure(fg_color="#181825")
+                top.transient(self.main_app)
+                top.grab_set()
+
+                ctk.CTkLabel(top, text="🔍 Active DNS & Encryption Inspector", font=Fonts.title(14), text_color=COLOR_ACCENT_YELLOW).pack(pady=(16, 12))
+
+                card = ctk.CTkFrame(top, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
+                card.pack(fill="both", expand=True, padx=16, pady=4)
+
+                ctk.CTkLabel(card, text=f"• Interface   : {dev}", font=Fonts.mono(11), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=(10, 3))
+                ctk.CTkLabel(card, text=f"• Active DNS  : {dns_str}", font=Fonts.mono(11), text_color=COLOR_ACCENT_GREEN, anchor="w").pack(fill="x", padx=14, pady=3)
+                ctk.CTkLabel(card, text=f"• DoT (TLS)   : {dot_str}", font=Fonts.mono(11), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=3)
+                ctk.CTkLabel(card, text=f"• DoH (HTTPS) : {doh_str}", font=Fonts.mono(11), text_color=COLOR_TEXT_PRIMARY, anchor="w").pack(fill="x", padx=14, pady=3)
+
+                btn_row = ctk.CTkFrame(top, fg_color="#181825")
+                btn_row.pack(fill="x", padx=16, pady=12)
+
+                def _open_cf_help():
+                    import webbrowser
+                    webbrowser.open("https://one.one.one.one/help")
+
+                ctk.CTkButton(
+                    btn_row,
+                    text="🌐 Open 1.1.1.1/help in Browser",
+                    font=Fonts.bold(11),
+                    fg_color=COLOR_ACCENT_BLUE,
+                    text_color="#11111b",
+                    hover_color="#b4befe",
+                    command=_open_cf_help
+                ).pack(side="left")
+
+                ctk.CTkButton(
+                    btn_row,
+                    text="Close",
+                    font=Fonts.regular(11),
+                    fg_color="#313244",
+                    text_color=COLOR_TEXT_PRIMARY,
+                    hover_color="#45475a",
+                    width=70,
+                    command=top.destroy
+                ).pack(side="right")
+
+            try:
+                self.after(0, _show)
+            except Exception:
+                pass
+
+        threading.Thread(target=_bg, daemon=True).start()
