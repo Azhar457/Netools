@@ -79,14 +79,7 @@ def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str]
     if not valid_ips or not device:
         return False
 
-    cmd = ["resolvectl", "dns", device] + valid_ips
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    if res.returncode != 0:
-        subprocess.run(["sudo", "resolvectl", "dns", device] + valid_ips, capture_output=True)
-
-    if enable_dot:
-        subprocess.run(["resolvectl", "dnsovertls", device, "opportunistic"], capture_output=True)
-
+    # 1. Update NetworkManager if persistent
     if persistent and connection_name:
         v4_ips = [ip for ip in valid_ips if ":" not in ip]
         v6_ips = [ip for ip in valid_ips if ":" in ip]
@@ -97,6 +90,20 @@ def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str]
             cmd_nm_v6 = ["nmcli", "connection", "modify", connection_name, "ipv6.dns", " ".join(v6_ips), "ipv6.ignore-auto-dns", "yes"]
             subprocess.run(cmd_nm_v6, capture_output=True)
         subprocess.run(["nmcli", "connection", "up", connection_name], capture_output=True)
+
+    # 2. Apply runtime DNS to systemd-resolved
+    cmd = ["resolvectl", "dns", device] + valid_ips
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        subprocess.run(["sudo", "resolvectl", "dns", device] + valid_ips, capture_output=True)
+
+    # 3. Configure DNS-over-TLS (DoT)
+    if enable_dot:
+        # Enable TLS and route global domains (~.) through this device
+        subprocess.run(["resolvectl", "dnsovertls", device, "yes"], capture_output=True)
+        subprocess.run(["resolvectl", "domain", device, "~."], capture_output=True)
+    else:
+        subprocess.run(["resolvectl", "dnsovertls", device, "no"], capture_output=True)
 
     flush_dns_cache()
     return True

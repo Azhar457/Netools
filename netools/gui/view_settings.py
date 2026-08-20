@@ -165,33 +165,40 @@ class SettingsView(ctk.CTkFrame):
         vsb.pack(side="right", fill="y", padx=(0, 8), pady=4)
 
     def refresh(self):
-        def _bg():
-            url = self.entry_nr_url.get().strip()
-            tok = self.entry_nr_tok.get().strip()
-            if url or tok:
-                nr_adapt.set_credentials(url=url if url else None, token=tok if tok else None)
+        try:
+            url = self.entry_nr_url.get().strip() if hasattr(self, "entry_nr_url") else ""
+            tok = self.entry_nr_tok.get().strip() if hasattr(self, "entry_nr_tok") else ""
+        except Exception:
+            url, tok = "", ""
+
+        def _bg(u=url, t=tok):
+            if u or t:
+                nr_adapt.set_credentials(url=u if u else None, token=t if t else None)
 
             conns = nr_adapt.get_connections()
             is_healthy = nr_adapt.is_healthy()
             healthy = isinstance(conns, list) and (len(conns) > 0 or is_healthy)
 
             def _update():
-                for item in self.tree.get_children():
-                    self.tree.delete(item)
+                try:
+                    for item in self.tree.get_children():
+                        self.tree.delete(item)
 
-                if not healthy:
-                    self.lbl_gw_stat.configure(text="⚪ 9Router Offline / Standalone", text_color="#6c7086")
-                    return
+                    if not healthy:
+                        self.lbl_gw_stat.configure(text="⚪ 9Router Offline / Standalone", text_color="#6c7086")
+                        return
 
-                self.lbl_gw_stat.configure(text=f"🟢 {len(conns)} Providers Online", text_color=COLOR_ACCENT_GREEN)
+                    self.lbl_gw_stat.configure(text=f"🟢 {len(conns)} Providers Online", text_color=COLOR_ACCENT_GREEN)
 
-                for c in conns:
-                    name = c.get("name", "Unknown")
-                    c_type = c.get("provider", "openai")
-                    proxy_url = c.get("connectionProxyUrl") or c.get("providerSpecificData", {}).get("connectionProxyUrl") or "—"
-                    status = "🟢 Linked" if (c.get("connectionProxyEnabled") or proxy_url != "—") else "⚪ Direct"
+                    for c in conns:
+                        name = c.get("name", "Unknown")
+                        c_type = c.get("provider", "openai")
+                        proxy_url = c.get("connectionProxyUrl") or c.get("providerSpecificData", {}).get("connectionProxyUrl") or "—"
+                        status = "🟢 Linked" if (c.get("connectionProxyEnabled") or proxy_url != "—") else "⚪ Direct"
 
-                    self.tree.insert("", "end", values=(name, c_type, str(proxy_url), status))
+                        self.tree.insert("", "end", values=(name, c_type, str(proxy_url), status))
+                except Exception:
+                    pass
 
             try:
                 self.after(0, _update)
