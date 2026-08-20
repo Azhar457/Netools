@@ -54,7 +54,8 @@ class DNSView(ctk.CTkScrollableFrame):
             state="readonly",
             font=Fonts.regular(11),
             width=260,
-            dropdown_font=Fonts.regular(11)
+            dropdown_font=Fonts.regular(11),
+            command=self.on_interface_change
         )
         self.iface_cb.pack(side="left", fill="x", expand=True, padx=4)
 
@@ -127,7 +128,6 @@ class DNSView(ctk.CTkScrollableFrame):
         s1.pack(fill="x", pady=4, padx=14)
         ctk.CTkLabel(s1, text="DNS 1 (Primary)   :", font=Fonts.bold(11), width=130, anchor="w", text_color=COLOR_TEXT_PRIMARY).pack(side="left")
         self.dns1_entry = ctk.CTkEntry(s1, width=200, height=30, font=Fonts.mono(11), fg_color="#11111b", border_color="#45475a")
-        self.dns1_entry.insert(0, "1.1.1.1")
         self.dns1_entry.pack(side="left", padx=4)
 
         self.btn_ping1 = ctk.CTkButton(s1, text="Ping", width=60, height=28, font=Fonts.bold(10), fg_color="#313244", hover_color="#45475a", command=lambda: self.ping_slot(1))
@@ -140,7 +140,6 @@ class DNSView(ctk.CTkScrollableFrame):
         s2.pack(fill="x", pady=4, padx=14)
         ctk.CTkLabel(s2, text="DNS 2 (Secondary) :", font=Fonts.bold(11), width=130, anchor="w", text_color=COLOR_TEXT_PRIMARY).pack(side="left")
         self.dns2_entry = ctk.CTkEntry(s2, width=200, height=30, font=Fonts.mono(11), fg_color="#11111b", border_color="#45475a")
-        self.dns2_entry.insert(0, "1.0.0.1")
         self.dns2_entry.pack(side="left", padx=4)
 
         self.btn_ping2 = ctk.CTkButton(s2, text="Ping", width=60, height=28, font=Fonts.bold(10), fg_color="#313244", hover_color="#45475a", command=lambda: self.ping_slot(2))
@@ -248,6 +247,88 @@ class DNSView(ctk.CTkScrollableFrame):
             command=self.open_benchmark
         ).pack(side="right", padx=(6, 0))
 
+        # Auto-load active system DNS on startup
+        self.load_active_interface_dns()
+
+    def on_interface_change(self, choice: str):
+        for i in self.interfaces:
+            if i["label"] == choice:
+                self.active_interface = i["device"]
+                break
+        self.load_active_interface_dns()
+
+    def load_active_interface_dns(self, dev: str = None):
+        if not dev:
+            selected_label = self.iface_var.get()
+            dev = self.active_interface
+            for i in self.interfaces:
+                if i["label"] == selected_label:
+                    dev = i["device"]
+                    break
+
+        self.dns1_entry.delete(0, "end")
+        self.dns2_entry.delete(0, "end")
+        self.dns3_entry.delete(0, "end")
+        self.lbl_ping1.configure(text="")
+        self.lbl_ping2.configure(text="")
+        self.lbl_ping3.configure(text="")
+
+        def _bg():
+            current_dns = sys_dns.get_interface_dns(dev)
+            
+            # Check DoT state
+            dot_active = False
+            try:
+                import subprocess
+                out = subprocess.check_output(["resolvectl", "status", dev], text=True, stderr=subprocess.DEVNULL)
+                if "+DNSOverTLS" in out or "DNSOverTLS=yes" in out or "DNSOverTLS=opportunistic" in out:
+                    dot_active = True
+            except Exception:
+                pass
+
+            def _update_ui():
+                try:
+                    if current_dns:
+                        if len(current_dns) > 0: self.dns1_entry.insert(0, current_dns[0])
+                        if len(current_dns) > 1: self.dns2_entry.insert(0, current_dns[1])
+                        if len(current_dns) > 2: self.dns3_entry.insert(0, current_dns[2])
+
+                        # Match with known presets
+                        matched = False
+                        for p in self.providers.values():
+                            p_ips = p.get("ipv4", [])
+                            p_v6 = p.get("ipv6", [])
+                            if (len(p_ips) > 0 and p_ips[0] == current_dns[0]) or (len(p_v6) > 0 and p_v6[0] == current_dns[0]):
+                                self.preset_var.set(f"{p['country']} {p['name']}")
+                                matched = True
+                                break
+                        if not matched:
+                            self.preset_var.set("⚙️ Custom DNS Servers")
+
+                        # Check IP family
+                        if any(":" in ip for ip in current_dns):
+                            self.ip_family_var.set("IPv6 (Next-Gen)")
+                        else:
+                            self.ip_family_var.set("IPv4 (Standard)")
+
+                        # Ping active slots
+                        if len(current_dns) > 0: self.ping_slot(1)
+                        if len(current_dns) > 1: self.ping_slot(2)
+                        if len(current_dns) > 2: self.ping_slot(3)
+                    else:
+                        self.preset_var.set("⚙️ Custom DNS Servers")
+
+                    self.dot_var.set(dot_active)
+                except Exception:
+                    pass
+
+            try:
+                self.after(0, _update_ui)
+            except Exception:
+                pass
+
+        threading.Thread(target=_bg, daemon=True).start()
+
     def on_preset_change(self, choice: str):
         if "Custom" in choice:
             return
@@ -270,8 +351,8 @@ class DNSView(ctk.CTkScrollableFrame):
                             from netools.libs.net import check_ipv6_connectivity
                             if not check_ipv6_connectivity():
                                 self.after(0, lambda: self.main_app.show_toast(
-                                    "⚠️ Perhatian: Jaringan/ISP Anda tidak memiliki rute IPv6 aktif. DNS IPv6 mungkin timeout.",
-                                    level="warning"
+                                     "⚠️ Perhatian: Jaringan/ISP Anda tidak memiliki rute IPv6 aktif. DNS IPv6 mungkin timeout.",
+                                     level="warning"
                                 ))
                         threading.Thread(target=_check_v6, daemon=True).start()
                 elif "DoH" in family:
@@ -295,7 +376,8 @@ class DNSView(ctk.CTkScrollableFrame):
         if labels:
             self.iface_var.set(labels[0])
             self.active_interface = self.interfaces[0]["device"] if self.interfaces else "default"
-        self.main_app.show_toast(f"✓ {len(self.interfaces)} Network Adapters refreshed.", level="info")
+        self.load_active_interface_dns()
+        self.main_app.show_toast(f"✓ {len(self.interfaces)} Network Adapters refreshed & DNS synced.", level="info")
 
     def ping_slot(self, slot_num: int):
         entry = [self.dns1_entry, self.dns2_entry, self.dns3_entry][slot_num - 1]
@@ -344,7 +426,9 @@ class DNSView(ctk.CTkScrollableFrame):
             try:
                 if success:
                     self.after(0, lambda: self.main_app.show_toast(f"✓ DNS ({', '.join(valid)}) diterapkan ke '{dev}'!", level="success"))
-                    self.after(0, self.main_app.dashboard_view.refresh)
+                    self.after(0, self.load_active_interface_dns)
+                    if hasattr(self.main_app, "dashboard_view"):
+                        self.after(0, self.main_app.dashboard_view.refresh)
                 else:
                     self.after(0, lambda: self.main_app.show_toast(f"Gagal menerapkan DNS ke interface '{dev}'.", level="error"))
             except Exception:
@@ -374,7 +458,9 @@ class DNSView(ctk.CTkScrollableFrame):
             sys_dns.restore_default_dns(dev, connection_name=conn)
             try:
                 self.after(0, lambda: self.main_app.show_toast(f"✓ Interface '{dev}' dikembalikan ke DHCP default.", level="info"))
-                self.after(0, self.main_app.dashboard_view.refresh)
+                self.after(0, self.load_active_interface_dns)
+                if hasattr(self.main_app, "dashboard_view"):
+                    self.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
         threading.Thread(target=_bg, daemon=True).start()

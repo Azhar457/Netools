@@ -56,12 +56,23 @@ def get_interface_dns(device: str) -> List[str]:
     """Retrieve active DNS IPs for a given network device."""
     dns_servers = []
     try:
-        out = subprocess.check_output(["resolvectl", "dns", device], text=True)
+        out = subprocess.check_output(["resolvectl", "dns", device], text=True, stderr=subprocess.DEVNULL)
         if ":" in out:
             servers_part = out.split(":", 1)[1].strip()
             dns_servers = servers_part.split()
     except Exception:
         pass
+
+    if not dns_servers:
+        try:
+            out = subprocess.check_output(["nmcli", "-t", "-f", "IP4.DNS,IP6.DNS", "device", "show", device], text=True, stderr=subprocess.DEVNULL)
+            for line in out.splitlines():
+                if ":" in line:
+                    val = line.split(":", 1)[1].strip()
+                    if val and val not in dns_servers:
+                        dns_servers.append(val)
+        except Exception:
+            pass
 
     if not dns_servers:
         try:
