@@ -29,36 +29,29 @@ def sync_cloud_database() -> Tuple[bool, str, int]:
     """Synchronize DNS resolvers database with cloud presets."""
     return db.sync_cloud_providers()
 
-def calculate_smart_mix(results: List[bm.GRCBenchmarkResult], mode: str = "ipv4") -> Dict[str, Any]:
-    """Compute 1 Cached + 1 Uncached + 1 TLD Smart Mix trio."""
-    stable = [r for r in results if r.status == "Stable"] or results
-    if not stable:
-        return {}
-
-    best_cached = min(stable, key=lambda x: x.cached_ms if x.cached_lats else 9999.0)
-    cand_uncached = [r for r in stable if r.key != best_cached.key] or stable
-    best_uncached = min(cand_uncached, key=lambda x: x.uncached_ms if x.uncached_lats else 9999.0)
-
-    used = {best_cached.key, best_uncached.key}
-    cand_tld = [r for r in stable if r.key not in used] or stable
-    best_tld = min(cand_tld, key=lambda x: x.tld_ms if x.tld_lats else 9999.0)
-
-    def _get_target(res):
-        if mode == "ipv6" and res.ipv6:
-            return res.ipv6[0]
-        elif mode == "doh" and res.doh_url:
-            return res.doh_url
-        elif mode == "dot" and res.dot_host:
-            return res.dot_host
-        return res.ipv4[0] if res.ipv4 else ""
-
-    return {
-        "dns1_cached": best_cached,
-        "dns2_uncached": best_uncached,
-        "dns3_tld": best_tld,
-        "ips": [
-            _get_target(best_cached),
-            _get_target(best_uncached),
-            _get_target(best_tld)
-        ]
-    }
+def calculate_smart_mix(results: Any, mode: str = "ipv4") -> Dict[str, Any]:
+    """Compute 1 Cached + 1 Uncached + 1 TLD Smart Mix trio with strict deduplication."""
+    if isinstance(results, dict):
+        return bm.calculate_smart_mix(results, mode=mode)
+    elif isinstance(results, list):
+        res_map = {}
+        for idx, r in enumerate(results):
+            k = getattr(r, "key", None) or (r.get("key") if isinstance(r, dict) else f"res_{idx}")
+            if isinstance(r, dict):
+                res_map[k] = r
+            else:
+                res_map[k] = {
+                    "key": getattr(r, "key", k),
+                    "name": getattr(r, "name", "Unknown"),
+                    "ipv4": getattr(r, "ipv4", []),
+                    "ipv6": getattr(r, "ipv6", []),
+                    "doh_url": getattr(r, "doh_url", ""),
+                    "dot_host": getattr(r, "dot_host", None),
+                    "cached_ms": getattr(r, "cached_ms", None),
+                    "uncached_ms": getattr(r, "uncached_ms", None),
+                    "dotcom_ms": getattr(r, "dotcom_ms", None),
+                    "score": getattr(r, "score", 9999.0),
+                    "status": getattr(r, "status", "Stable"),
+                }
+        return bm.calculate_smart_mix(res_map, mode=mode)
+    return {}
