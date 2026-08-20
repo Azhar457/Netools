@@ -44,13 +44,20 @@ class TrayManager:
         if not PYSTRAY_AVAILABLE or self.is_running:
             return
 
-        icon_path = Path(__file__).resolve().parent.parent.parent / "assets" / "icon-64.png"
-        if icon_path.exists():
-            try:
-                image = Image.open(str(icon_path))
-            except Exception:
-                image = create_fallback_image()
-        else:
+        candidates = [
+            Path(getattr(sys, "_MEIPASS", "")) / "assets" / "icon-64.png" if getattr(sys, "_MEIPASS", None) else None,
+            Path(__file__).resolve().parent.parent.parent / "assets" / "icon-64.png",
+            Path.cwd() / "assets" / "icon-64.png",
+        ]
+        image = None
+        for p in candidates:
+            if p and p.exists():
+                try:
+                    image = Image.open(str(p))
+                    break
+                except Exception:
+                    pass
+        if not image:
             image = create_fallback_image()
 
         dns_menu = pystray.Menu(

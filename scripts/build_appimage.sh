@@ -9,12 +9,27 @@ BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$BASE_DIR"
 
 echo "==> [1/4] Building standalone binary with PyInstaller..."
-uv run --with pyinstaller pyinstaller \
+# Ensure .venv has system-site-packages for gi/AppIndicator3
+uv venv --clear --system-site-packages .venv
+uv pip install pyinstaller customtkinter pystray pillow packaging
+
+.venv/bin/pyinstaller \
   --name netools \
   --onefile \
   --collect-all netools \
+  --collect-all pystray \
+  --collect-all PIL \
+  --hidden-import "pystray._appindicator" \
+  --hidden-import "pystray._gtk" \
+  --hidden-import "pystray._xorg" \
+  --hidden-import "gi.repository.AppIndicator3" \
+  --hidden-import "gi.repository.AyatanaAppIndicator3" \
+  --hidden-import "gi.repository.Gtk" \
+  --hidden-import "gi.repository.GLib" \
+  --hidden-import "gi.repository.GObject" \
   --add-data "dns_jumper_db.py:." \
   --add-data "dns_jumper_benchmark.py:." \
+  --add-data "assets:assets" \
   --clean \
   netools.py
 
@@ -43,7 +58,8 @@ cat << 'INNER_EOF' > build/AppDir/AppRun
 SELF=$(readlink -f "$0")
 HERE=${SELF%/*}
 export PATH="${HERE}/usr/bin:${PATH}"
-export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/lib:/usr/lib64:/usr/lib:${LD_LIBRARY_PATH}"
+export GI_TYPELIB_PATH="/usr/lib64/girepository-1.0:/usr/lib/girepository-1.0:${GI_TYPELIB_PATH}"
 if [ $# -eq 0 ]; then
     exec "${HERE}/usr/bin/netools" gui
 else
