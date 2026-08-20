@@ -99,8 +99,8 @@ def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str]
 
     # 3. Configure DNS-over-TLS (DoT)
     if enable_dot:
-        # Enable TLS and route global domains (~.) through this device
-        subprocess.run(["resolvectl", "dnsovertls", device, "yes"], capture_output=True)
+        # Enable TLS (opportunistic encryption for IP resolvers) and route global domains (~.)
+        subprocess.run(["resolvectl", "dnsovertls", device, "opportunistic"], capture_output=True)
         subprocess.run(["resolvectl", "domain", device, "~."], capture_output=True)
     else:
         subprocess.run(["resolvectl", "dnsovertls", device, "no"], capture_output=True)
