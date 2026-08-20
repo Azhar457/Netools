@@ -95,20 +95,31 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         ctk.CTkLabel(r2, text="TLD Target:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 6))
 
         tld_choices = [f"{v['name']} ({k})" for k, v in self.target_tlds.items()]
-        self.tld_var = ctk.StringVar(value=tld_choices[0] if tld_choices else "indonesia")
         self.tld_cb = ctk.CTkComboBox(
             r2, variable=self.tld_var, values=tld_choices,
-            width=300, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
+            width=240, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
         )
         self.tld_cb.pack(side="left", padx=4)
+
+        # Turbo Mode Switch (Max Latency Cutoff)
+        self.turbo_var = ctk.BooleanVar(value=True)
+        self.turbo_switch = ctk.CTkSwitch(
+            r2,
+            text="⚡ Turbo (<200ms)",
+            variable=self.turbo_var,
+            font=Fonts.bold(10),
+            text_color=COLOR_ACCENT_YELLOW,
+            progress_color=COLOR_ACCENT_YELLOW
+        )
+        self.turbo_switch.pack(side="left", padx=(10, 4))
 
         # Action Buttons
         self.btn_start = ctk.CTkButton(
             r2, text="🚀 Run Benchmark", font=Fonts.bold(11),
             fg_color=COLOR_ACCENT_YELLOW, text_color="#11111b", hover_color="#f5e0dc",
-            height=30, width=140, command=self.start_benchmark
+            height=30, width=130, command=self.start_benchmark
         )
-        self.btn_start.pack(side="left", padx=(16, 4))
+        self.btn_start.pack(side="left", padx=(10, 4))
 
         self.btn_stop = ctk.CTkButton(
             r2, text="🛑 Cancel", font=Fonts.bold(11),
@@ -297,8 +308,10 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         # Filter providers
         filtered = db.filter_providers(self.providers, region=region_key, only_doh=(mode_key == "doh"))
         total_count = len(filtered)
+        is_turbo = self.turbo_var.get()
         self.prog_bar.set(0)
-        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time ({mode_key.upper()})...", text_color="#cdd6f4")
+        mode_desc = f"{mode_key.upper()} (⚡ Turbo <200ms)" if is_turbo else mode_key.upper()
+        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time ({mode_desc})...", text_color="#cdd6f4")
 
         def _worker():
             idx = 0
@@ -308,8 +321,15 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 idx += 1
                 prog = idx / max(1, total_count)
 
-                # Test provider
-                res = bm.benchmark_provider_full(p_id, p_info, tld_category=tld_key, mode=mode_key, timeout=2.5)
+                # Test provider with GRC v2.0 & Turbo Cutoff
+                res = bm.benchmark_provider_full(
+                    p_id, p_info,
+                    tld_category=tld_key,
+                    mode=mode_key,
+                    timeout=2.5,
+                    turbo_mode=is_turbo,
+                    max_latency_threshold=200.0
+                )
                 self.results_map[p_id] = res
 
                 # Stream update to UI
@@ -330,10 +350,23 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.lbl_status.configure(text=f"Testing [{idx}/{total}]: {res.get('country', '')} {res.get('name', '')}...")
 
         c_ms = f"{res['cached_ms']:.1f} ms" if res.get('cached_ms') is not None else "Timeout"
-        u_ms = f"{res['uncached_ms']:.1f} ms" if res.get('uncached_ms') is not None else "Timeout"
-        d_ms = f"{res['dotcom_ms']:.1f} ms" if res.get('dotcom_ms') is not None else "Timeout"
-        s_ms = f"{res['score']:.1f} ms" if res.get('score') is not None and res['score'] < 9999 else "Failed"
-        stat = "🟢 Fast" if res.get('score', 9999) < 60 else ("🟡 OK" if res.get('score', 9999) < 150 else "🔴 Slow")
+        u_ms = f"{res['uncached_ms']:.1f} ms" if res.get('uncached_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
+        d_ms = f"{res['dotcom_ms']:.1f} ms" if res.get('dotcom_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
+        s_ms = f"{res['score']:.1f} ms" if res.get('score') is not None and res['score'] < 9000 else "—"
+        
+        if res.get("hijack_detected"):
+            stat = "🔴 Hijacked"
+        elif "Cutoff" in res.get("status", ""):
+            stat = "🟡 Cutoff (>200ms)"
+        elif res.get("status") == "Stable" and res.get('score', 9999) < 60:
+            stat = "🟢 Fast"
+        elif res.get("status") == "Stable" or (res.get('score', 9999) < 150 and res.get('score', 9999) > 0):
+            stat = "🟡 OK"
+        elif res.get("status") == "Partial":
+            stat = "🟡 Partial"
+        else:
+            stat = "🔴 Slow / Timeout"
+
         proto = res.get("protocol", "IPv4")
 
         self.tree.insert("", "end", values=(
@@ -352,7 +385,11 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         sorted_res = sorted(
             [r for r in self.results_map.values() if r.get("score") is not None],
-            key=lambda x: x.get("score", 9999)
+            key=lambda x: (
+                0 if x.get("status") == "Stable" else (1 if x.get("status") == "Partial" else 2),
+                x.get("score", 9999),
+                x.get("cached_ms") or 9999.0
+            )
         )
 
         for item in self.tree.get_children():
@@ -360,10 +397,23 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         for rk, res in enumerate(sorted_res, 1):
             c_ms = f"{res['cached_ms']:.1f} ms" if res.get('cached_ms') is not None else "Timeout"
-            u_ms = f"{res['uncached_ms']:.1f} ms" if res.get('uncached_ms') is not None else "Timeout"
-            d_ms = f"{res['dotcom_ms']:.1f} ms" if res.get('dotcom_ms') is not None else "Timeout"
-            s_ms = f"{res['score']:.1f} ms" if res.get('score') is not None and res['score'] < 9999 else "Failed"
-            stat = "🟢 Fast" if res.get('score', 9999) < 60 else ("🟡 OK" if res.get('score', 9999) < 150 else "🔴 Slow")
+            u_ms = f"{res['uncached_ms']:.1f} ms" if res.get('uncached_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
+            d_ms = f"{res['dotcom_ms']:.1f} ms" if res.get('dotcom_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
+            s_ms = f"{res['score']:.1f} ms" if res.get('score') is not None and res['score'] < 9000 else "—"
+            
+            if res.get("hijack_detected"):
+                stat = "🔴 Hijacked"
+            elif "Cutoff" in res.get("status", ""):
+                stat = "🟡 Cutoff (>200ms)"
+            elif res.get("status") == "Stable" and res.get('score', 9999) < 60:
+                stat = "🟢 Fast"
+            elif res.get("status") == "Stable" or (res.get('score', 9999) < 150 and res.get('score', 9999) > 0):
+                stat = "🟡 OK"
+            elif res.get("status") == "Partial":
+                stat = "🟡 Partial"
+            else:
+                stat = "🔴 Slow / Timeout"
+
             proto = res.get("protocol", "IPv4")
 
             self.tree.insert("", "end", values=(
@@ -371,7 +421,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 c_ms, u_ms, d_ms, s_ms, stat
             ))
 
-        self.lbl_status.configure(text=f"✓ Benchmark selesai! {len(sorted_res)} resolvers diurutkan otomatis (Klik header kolom untuk menyortir).", text_color="#a6e3a1")
+        self.lbl_status.configure(text=f"✓ Benchmark selesai! {len(sorted_res)} resolvers diurutkan (Klik header kolom untuk menyortir).", text_color="#a6e3a1")
 
         if sorted_res:
             self.btn_apply_smart.configure(state="normal")

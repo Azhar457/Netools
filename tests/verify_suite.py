@@ -65,16 +65,17 @@ class TestNetoolsCore(unittest.TestCase):
         from netools.libs.dns_benchmark import query_udp_dns, query_dot_dns, query_doh_dns
 
         # Live UDP DNS query test to Cloudflare 1.1.1.1
-        lat_udp = query_udp_dns("1.1.1.1", "google.com", timeout=3.0)
+        lat_udp, ips_udp, rrsig_udp, edns_udp = query_udp_dns("1.1.1.1", "google.com", timeout=3.0)
         if lat_udp is not None:
             self.assertGreater(lat_udp, 0.0)
             self.assertLess(lat_udp, 2000.0)
 
         # Live DoH query test to Cloudflare
-        lat_doh = query_doh_dns("https://security.cloudflare-dns.com/dns-query", "google.com", timeout=3.0)
+        lat_doh, ips_doh, rrsig_doh, edns_doh = query_doh_dns("https://security.cloudflare-dns.com/dns-query", "google.com", timeout=3.0)
         if lat_doh is not None:
             self.assertGreater(lat_doh, 0.0)
             self.assertLess(lat_doh, 2000.0)
+            self.assertTrue(edns_doh or len(ips_doh) > 0)
 
     def test_06_gui_imports_and_components(self):
         """Smoke test all GUI modules to verify no missing imports, syntax errors, or circular references."""

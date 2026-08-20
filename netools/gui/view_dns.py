@@ -607,8 +607,8 @@ class DNSView(ctk.CTkScrollableFrame):
                             target_doh_url = p["doh_url"]
                         break
 
-                udp_lat = query_udp_dns(ip, "google.com", timeout=1.5)
-                dot_lat = query_dot_dns(ip, "google.com", timeout=2.0)
+                udp_lat, _, _, _ = query_udp_dns(ip, "google.com", timeout=1.5)
+                dot_lat, _, _, _ = query_dot_dns(ip, "google.com", timeout=2.0)
 
                 udp_txt = f"{udp_lat:.1f} ms" if udp_lat else "Timeout"
                 dot_txt = f"🟢 TLS {dot_lat:.1f} ms" if dot_lat else "⚪ No TLS"
@@ -618,7 +618,7 @@ class DNSView(ctk.CTkScrollableFrame):
             if not target_doh_url:
                 target_doh_url = "https://security.cloudflare-dns.com/dns-query"
 
-            doh_ms = query_doh_dns(target_doh_url, "google.com", timeout=2.5)
+            doh_ms, _, _, _ = query_doh_dns(target_doh_url, "google.com", timeout=2.5)
             doh_str = f"🟢 Connected ({doh_ms:.1f} ms)" if doh_ms else "🔴 Failed / Blocked"
 
             def _show():
