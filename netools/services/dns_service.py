@@ -8,8 +8,8 @@ import concurrent.futures
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass
 
-import dns_jumper_db as db
-import dns_jumper_benchmark as bm
+from netools.libs import dns_db as db
+from netools.libs import dns_benchmark as bm
 from netools.adapters import systemd_dns as sys_dns
 
 @dataclass

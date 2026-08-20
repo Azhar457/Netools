@@ -8,7 +8,7 @@ from netools.adapters import platform_dns as sys_dns
 from netools.services import dns_service
 from netools.gui.view_benchmark_modal import GRCBenchmarkModal
 from netools.gui.theme import Fonts, COLOR_CARD, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_ACCENT_BLUE, COLOR_ACCENT_GREEN, COLOR_ACCENT_PURPLE, COLOR_ACCENT_YELLOW
-import dns_jumper_db as db
+from netools.libs import dns_db as db
 
 class DNSView(ctk.CTkScrollableFrame):
     def __init__(self, parent, main_app):
@@ -577,7 +577,7 @@ class DNSView(ctk.CTkScrollableFrame):
                 pass
 
             # 2. Test each individual active DNS server (UDP 53 and DoT TLS 853)
-            from dns_jumper_benchmark import query_udp_dns, query_dot_dns, query_doh_dns
+            from netools.libs.dns_benchmark import query_udp_dns, query_dot_dns, query_doh_dns
             server_reports = []
             target_doh_url = None
 

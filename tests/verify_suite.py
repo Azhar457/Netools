@@ -23,7 +23,7 @@ class TestNetoolsCore(unittest.TestCase):
         self.assertEqual(config.HTTP_PORT_OFFSET, 10000)
 
     def test_02_dns_database_and_providers(self):
-        import dns_jumper_db as db
+        from netools.libs import dns_db as db
         provs = db.load_providers()
         self.assertGreater(len(provs), 30, "Database should have at least 30 DNS providers")
         
@@ -35,7 +35,7 @@ class TestNetoolsCore(unittest.TestCase):
             self.assertTrue(has_endpoints, f"Provider {k} must have at least one IPv4, IPv6, or DoH endpoint")
 
     def test_03_dns_benchmark_scoring_and_smart_mix(self):
-        import dns_jumper_benchmark as bm
+        from netools.libs import dns_benchmark as bm
 
         # Test Smart Mix calculation
         res_map = {
@@ -62,7 +62,7 @@ class TestNetoolsCore(unittest.TestCase):
             self.assertIn("is_default", iface)
 
     def test_05_socket_and_protocol_queries(self):
-        from dns_jumper_benchmark import query_udp_dns, query_dot_dns, query_doh_dns
+        from netools.libs.dns_benchmark import query_udp_dns, query_dot_dns, query_doh_dns
 
         # Live UDP DNS query test to Cloudflare 1.1.1.1
         lat_udp = query_udp_dns("1.1.1.1", "google.com", timeout=3.0)

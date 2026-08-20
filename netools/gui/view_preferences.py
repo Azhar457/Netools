@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 import customtkinter as ctk
-import dns_jumper_db as db
+from netools.libs import dns_db as db
 from netools.config import BASE_DIR, PAC_SERVER_PORT, SOCKS5_PORT_START
 from netools.libs.env import get_system_diagnostics
 
