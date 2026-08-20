@@ -44,17 +44,17 @@ def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, An
 
     return all_proxies
 
-def start_proxy_pool(standalone: bool = False) -> Dict[str, Any]:
+def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
     """Start full proxy pool with high-speed parallel testing and backend sync."""
     print("[INFO] Stopping old instances...")
     stop_proxy_pool(standalone=standalone)
 
     print("[INFO] Downloading fresh proxy configs...")
-    proxies = fetch_and_parse_proxies(MAX_INSTANCES)
+    proxies = fetch_and_parse_proxies(max_instances)
     print(f"[INFO] Parsed {len(proxies)} unique candidate proxies")
 
     started = []  # (name, port, proxy, proc)
-    for i, proxy in enumerate(proxies[:MAX_INSTANCES]):
+    for i, proxy in enumerate(proxies[:max_instances]):
         port = SOCKS5_PORT_START + i
         name = f"sb-{i:02d}"
         config = sb_drv.build_singbox_config(proxy, port)
@@ -155,10 +155,10 @@ def stop_proxy_pool(standalone: bool = False) -> None:
     STATE_FILE.unlink(missing_ok=True)
     print("[DONE] All cleaned up")
 
-def refresh_proxy_pool(standalone: bool = False) -> Dict[str, Any]:
+def refresh_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
     """Stop and restart proxy pool."""
     stop_proxy_pool(standalone=standalone)
-    return start_proxy_pool(standalone=standalone)
+    return start_proxy_pool(max_instances=max_instances, standalone=standalone)
 
 def get_proxy_status() -> Dict[str, Any]:
     """Check live status of proxy instances."""
