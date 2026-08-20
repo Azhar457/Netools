@@ -55,12 +55,35 @@ class SettingsView(ctk.CTkFrame):
         self.entry_nr_url.pack(side="left", padx=4)
 
         ctk.CTkLabel(f_nr, text="CLI Token:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(12, 6))
-        self.entry_nr_tok = ctk.CTkEntry(f_nr, width=170, height=30, font=Fonts.mono(11), fg_color="#11111b", border_color="#45475a", show="•")
+        self.entry_nr_tok = ctk.CTkEntry(f_nr, width=150, height=30, font=Fonts.mono(11), fg_color="#11111b", border_color="#45475a", show="•")
         self.entry_nr_tok.insert(0, NINEROUTER_CLI_TOKEN)
         self.entry_nr_tok.pack(side="left", padx=4)
 
+        def _do_autodetect():
+            from netools.config import auto_detect_9router_token
+            tok = auto_detect_9router_token()
+            if tok:
+                self.entry_nr_tok.delete(0, "end")
+                self.entry_nr_tok.insert(0, tok)
+                self.main_app.show_toast("✓ 9Router CLI Token berhasil dideteksi otomatis!", level="success")
+                self.refresh()
+            else:
+                self.main_app.show_toast("Tidak dapat menemukan kredensial ~/.9router pada sistem ini.", level="warning")
+
+        ctk.CTkButton(
+            f_nr,
+            text="🔍 Auto-Detect",
+            font=Fonts.bold(10),
+            fg_color="#313244",
+            text_color=COLOR_TEXT_PRIMARY,
+            hover_color="#45475a",
+            width=90,
+            height=28,
+            command=_do_autodetect
+        ).pack(side="left", padx=4)
+
         self.lbl_gw_stat = ctk.CTkLabel(f_nr, text="Checking...", font=Fonts.bold(11), text_color=COLOR_TEXT_SECONDARY)
-        self.lbl_gw_stat.pack(side="left", padx=(12, 0))
+        self.lbl_gw_stat.pack(side="left", padx=(10, 0))
 
         # Action Buttons Row
         actions = ctk.CTkFrame(self, fg_color="#181825")

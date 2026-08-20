@@ -30,9 +30,31 @@ WEB_APP_PORT = 8088
 DOH_PROXY_PORT = 5353
 MAX_INSTANCES = 20
 
+def auto_detect_9router_token() -> str:
+    """Automatically derive 9Router CLI token from local machine credentials."""
+    env_token = os.getenv("NINEROUTER_CLI_TOKEN", "").strip()
+    if env_token:
+        return env_token
+
+    try:
+        home = Path.home()
+        m_id_file = home / ".9router" / "machine-id"
+        secret_file = home / ".9router" / "auth" / "cli-secret"
+
+        if m_id_file.exists() and secret_file.exists():
+            import hashlib
+            m_id = m_id_file.read_text(encoding="utf-8").strip()
+            secret = secret_file.read_text(encoding="utf-8").strip()
+            if m_id and secret:
+                return hashlib.sha256((m_id + "9r-cli-auth" + secret).encode("utf-8")).hexdigest()[:16]
+    except Exception:
+        pass
+
+    return "cb9bee27d95c976e"
+
 # Backend Gateways
 NINEROUTER_URL = os.getenv("NINEROUTER_URL", "http://localhost:20128")
-NINEROUTER_CLI_TOKEN = os.getenv("NINEROUTER_CLI_TOKEN", "cb9bee27d95c976e")
+NINEROUTER_CLI_TOKEN = auto_detect_9router_token()
 
 OMNIROUTE_URL = os.getenv("OMNIROUTE_URL", "http://localhost:20129")
 OMNIROUTE_TOKEN = os.getenv("OMNIROUTE_TOKEN", "")
