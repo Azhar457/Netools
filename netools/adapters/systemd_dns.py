@@ -88,9 +88,14 @@ def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str]
         subprocess.run(["resolvectl", "dnsovertls", device, "opportunistic"], capture_output=True)
 
     if persistent and connection_name:
-        ip_str = " ".join(valid_ips)
-        cmd_nm = ["nmcli", "connection", "modify", connection_name, "ipv4.dns", ip_str, "ipv4.ignore-auto-dns", "yes"]
-        subprocess.run(cmd_nm, capture_output=True)
+        v4_ips = [ip for ip in valid_ips if ":" not in ip]
+        v6_ips = [ip for ip in valid_ips if ":" in ip]
+        if v4_ips:
+            cmd_nm_v4 = ["nmcli", "connection", "modify", connection_name, "ipv4.dns", " ".join(v4_ips), "ipv4.ignore-auto-dns", "yes"]
+            subprocess.run(cmd_nm_v4, capture_output=True)
+        if v6_ips:
+            cmd_nm_v6 = ["nmcli", "connection", "modify", connection_name, "ipv6.dns", " ".join(v6_ips), "ipv6.ignore-auto-dns", "yes"]
+            subprocess.run(cmd_nm_v6, capture_output=True)
         subprocess.run(["nmcli", "connection", "up", connection_name], capture_output=True)
 
     flush_dns_cache()
@@ -102,7 +107,7 @@ def restore_default_dns(device: str, connection_name: Optional[str] = None) -> b
         return False
     subprocess.run(["resolvectl", "revert", device], capture_output=True)
     if connection_name:
-        subprocess.run(["nmcli", "connection", "modify", connection_name, "ipv4.ignore-auto-dns", "no", "ipv4.dns", ""], capture_output=True)
+        subprocess.run(["nmcli", "connection", "modify", connection_name, "ipv4.ignore-auto-dns", "no", "ipv4.dns", "", "ipv6.ignore-auto-dns", "no", "ipv6.dns", ""], capture_output=True)
         subprocess.run(["nmcli", "connection", "up", connection_name], capture_output=True)
     flush_dns_cache()
     return True

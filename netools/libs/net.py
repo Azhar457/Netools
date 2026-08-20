@@ -45,12 +45,13 @@ def test_socks_upstream(port: int, test_url: str = "https://www.gstatic.com/gene
         return False
 
 def ping_dns_udp(ip: str, domain: str = "google.com", timeout: float = 2.0) -> Optional[float]:
-    """Query UDP Port 53 for latency profiling (ms)."""
+    """Query UDP Port 53 for latency profiling (ms) supporting IPv4 and IPv6."""
     import time
     from netools.libs.dns_packet import build_dns_query_packet
 
     pkt = build_dns_query_packet(domain)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    family = socket.AF_INET6 if ":" in ip else socket.AF_INET
+    sock = socket.socket(family, socket.SOCK_DGRAM)
     sock.settimeout(timeout)
     t0 = time.perf_counter()
     try:

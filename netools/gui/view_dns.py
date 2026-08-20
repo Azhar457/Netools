@@ -92,11 +92,31 @@ class DNSView(ctk.CTkScrollableFrame):
             values=preset_labels,
             state="readonly",
             font=Fonts.regular(11),
-            width=300,
+            width=260,
             dropdown_font=Fonts.regular(11),
             command=self.on_preset_change
         )
         self.preset_cb.pack(side="left", fill="x", expand=True, padx=4)
+
+        ctk.CTkLabel(
+            f2,
+            text="Protocol / IP:",
+            font=Fonts.bold(11),
+            text_color=COLOR_TEXT_PRIMARY
+        ).pack(side="left", padx=(10, 6))
+
+        self.ip_family_var = ctk.StringVar(value="IPv4 (Standard)")
+        self.ip_family_cb = ctk.CTkComboBox(
+            f2,
+            variable=self.ip_family_var,
+            values=["IPv4 (Standard)", "IPv6 (Next-Gen)", "DoH (HTTPS)", "DoT (TLS Port 853)"],
+            state="readonly",
+            font=Fonts.regular(11),
+            width=160,
+            dropdown_font=Fonts.regular(11),
+            command=lambda _: self.on_preset_change(self.preset_var.get())
+        )
+        self.ip_family_cb.pack(side="left", padx=4)
 
         # 3-Slots Card
         slots_card = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
@@ -220,14 +240,29 @@ class DNSView(ctk.CTkScrollableFrame):
     def on_preset_change(self, choice: str):
         if "Custom" in choice:
             return
+        family = self.ip_family_var.get() if hasattr(self, "ip_family_var") else "IPv4 (Standard)"
         # Find provider
         for p in self.providers.values():
             label = f"{p['country']} {p['name']}"
             if label == choice:
-                ips = p.get("ipv4", [])
                 self.dns1_entry.delete(0, "end")
                 self.dns2_entry.delete(0, "end")
                 self.dns3_entry.delete(0, "end")
+
+                if "IPv6" in family:
+                    ips = p.get("ipv6", [])
+                    if not ips:
+                        self.main_app.show_toast(f"Provider '{p['name']}' tidak menyediakan DNS IPv6 publik.", level="warning")
+                        ips = p.get("ipv4", [])
+                elif "DoH" in family:
+                    doh = p.get("doh_url", "")
+                    ips = [doh] if doh else p.get("ipv4", [])
+                elif "DoT" in family:
+                    dot = p.get("dot_host") or (p.get("ipv4", [])[0] if p.get("ipv4") else "")
+                    ips = [dot] if dot else p.get("ipv4", [])
+                else:
+                    ips = p.get("ipv4", [])
+
                 if len(ips) > 0: self.dns1_entry.insert(0, ips[0])
                 if len(ips) > 1: self.dns2_entry.insert(0, ips[1])
                 if len(ips) > 2: self.dns3_entry.insert(0, ips[2])

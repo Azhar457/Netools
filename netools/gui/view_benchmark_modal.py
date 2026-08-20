@@ -1,7 +1,7 @@
 """
 GRC 3-Tier Real-Time Streaming DNS Benchmark Modal (CustomTkinter).
-Evaluates Cached, Uncached, and Regional TLD Latency across 90+ DNS/DoH resolvers.
-Features multi-column sorting, live status indicators, and 1-click system application.
+Evaluates Cached, Uncached, and Regional TLD Latency across 90+ DNS resolvers for IPv4, IPv6, DoH & DoT.
+Features multi-column sorting, protocol indicators, live status, and 1-click system application.
 """
 
 import threading
@@ -18,9 +18,9 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.parent_app = parent_app
         self.dns_view = dns_view
 
-        self.title("⚡ Netools — GRC 3-Tier Real-Time DNS Benchmark")
-        self.geometry("980x640")
-        self.minsize(850, 520)
+        self.title("⚡ Netools — GRC 3-Tier Real-Time DNS Benchmark (IPv4 / IPv6 / DoH / DoT)")
+        self.geometry("1020x660")
+        self.minsize(880, 540)
         self.configure(fg_color="#181825")
 
         self.benchmark_running = False
@@ -53,20 +53,18 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         r1 = ctk.CTkFrame(card_filter, fg_color=COLOR_CARD)
         r1.pack(fill="x", padx=14, pady=(10, 4))
 
-        ctk.CTkLabel(r1, text="Test Mode:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(r1, text="Test Protocol / IP:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(0, 6))
 
-        self.mode_var = ctk.StringVar(value="standard")
-        self.rb_std = ctk.CTkRadioButton(
-            r1, text="Standard UDP (Port 53)", variable=self.mode_var, value="standard",
-            font=Fonts.regular(11), text_color=COLOR_TEXT_PRIMARY, fg_color=COLOR_ACCENT_GREEN
+        self.mode_var = ctk.StringVar(value="IPv4 Standard (UDP 53)")
+        self.mode_cb = ctk.CTkComboBox(
+            r1,
+            variable=self.mode_var,
+            values=["IPv4 Standard (UDP 53)", "IPv6 Next-Gen (UDP 53)", "DNS-over-HTTPS (DoH)", "DNS-over-TLS (DoT 853)"],
+            width=210,
+            font=Fonts.regular(11),
+            dropdown_font=Fonts.regular(11)
         )
-        self.rb_std.pack(side="left", padx=6)
-
-        self.rb_doh = ctk.CTkRadioButton(
-            r1, text="DNS-over-HTTPS (DoH Wireformat)", variable=self.mode_var, value="doh",
-            font=Fonts.regular(11), text_color=COLOR_TEXT_PRIMARY, fg_color=COLOR_ACCENT_BLUE
-        )
-        self.rb_doh.pack(side="left", padx=6)
+        self.mode_cb.pack(side="left", padx=4)
 
         ctk.CTkLabel(r1, text="|  Region:", font=Fonts.bold(11), text_color=COLOR_TEXT_PRIMARY).pack(side="left", padx=(14, 6))
 
@@ -74,7 +72,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.region_cb = ctk.CTkComboBox(
             r1, variable=self.region_var,
             values=["🌏 All Curated Resolvers (90+)", "🇨🇳/🇸🇬/🇯🇵 Asia-Pacific", "🌍 Europe & UK", "🌎 North America", "🌐 Global Anycast"],
-            width=250, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
+            width=240, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
         )
         self.region_cb.pack(side="left", padx=4)
 
@@ -87,7 +85,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.tld_var = ctk.StringVar(value=tld_choices[0] if tld_choices else "indonesia")
         self.tld_cb = ctk.CTkComboBox(
             r2, variable=self.tld_var, values=tld_choices,
-            width=320, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
+            width=300, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
         )
         self.tld_cb.pack(side="left", padx=4)
 
@@ -124,7 +122,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         tbl_frame = ctk.CTkFrame(self, fg_color=COLOR_CARD, corner_radius=8, border_width=1, border_color=COLOR_BORDER)
         tbl_frame.pack(fill="both", expand=True, padx=16, pady=4)
 
-        cols = ("rank", "flag", "name", "cached", "uncached", "dotcom", "score", "status")
+        cols = ("rank", "flag", "name", "proto", "cached", "uncached", "dotcom", "score", "status")
         self.tree = ttk.Treeview(tbl_frame, columns=cols, show="headings", selectmode="browse")
 
         style = ttk.Style()
@@ -146,19 +144,20 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         style.map("Treeview", background=[("selected", "#45475a")])
 
         cols_config = [
-            ("rank", "# ↕", 50, "center"),
-            ("flag", "Region ↕", 80, "center"),
-            ("name", "DNS Resolver Name ↕", 240, "center"),
-            ("cached", "🟢 Cached ↕", 110, "center"),
-            ("uncached", "🔵 Uncached ↕", 110, "center"),
-            ("dotcom", "🟡 Dot-Com / TLD ↕", 120, "center"),
-            ("score", "Composite Score ↕", 130, "center"),
-            ("status", "Result ↕", 100, "center"),
+            ("rank", "# ↕", 45, "center"),
+            ("flag", "Region ↕", 75, "center"),
+            ("name", "DNS Resolver Name ↕", 220, "center"),
+            ("proto", "Type ↕", 70, "center"),
+            ("cached", "🟢 Cached ↕", 100, "center"),
+            ("uncached", "🔵 Uncached ↕", 100, "center"),
+            ("dotcom", "🟡 Dot-Com / TLD ↕", 115, "center"),
+            ("score", "Composite Score ↕", 125, "center"),
+            ("status", "Result ↕", 95, "center"),
         ]
 
         for col_id, title, w, align in cols_config:
             self.tree.heading(col_id, text=title, anchor=align, command=lambda c=col_id: self.sort_column(c))
-            self.tree.column(col_id, width=w, minwidth=50, anchor=align, stretch=True)
+            self.tree.column(col_id, width=w, minwidth=40, anchor=align, stretch=True)
 
         vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
@@ -179,9 +178,9 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         self.lbl_smart_rec = ctk.CTkLabel(
             smart_card,
-            text="Run the benchmark to generate optimal GRC Smart Mix recommendations.",
-            font=Fonts.mono(11),
-            text_color="#bac2de",
+            text="• Run benchmark to generate composite latency recommendations for Slot 1, 2, and 3.",
+            font=Fonts.mono(10),
+            text_color=COLOR_TEXT_SECONDARY,
             justify="left"
         )
         self.lbl_smart_rec.pack(anchor="w", padx=14, pady=(0, 8))
@@ -190,8 +189,8 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         btn_row.pack(fill="x", padx=14, pady=(0, 10))
 
         self.btn_apply_smart = ctk.CTkButton(
-            btn_row, text="⚡ Apply Smart Mix to DNS 1-2-3", font=Fonts.bold(11),
-            fg_color=COLOR_ACCENT_GREEN, text_color="#11111b", hover_color="#94e2d5",
+            btn_row, text="⚡ Apply GRC Smart Mix (Slots 1-3)", font=Fonts.bold(11),
+            fg_color=COLOR_ACCENT_GREEN, text_color="#11111b", hover_color="#a6e3a1",
             height=32, state="disabled", command=self.apply_smart_mix
         )
         self.btn_apply_smart.pack(side="left", padx=(0, 6))
@@ -207,7 +206,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             btn_row, text="Close", font=Fonts.regular(11),
             fg_color="#313244", text_color=COLOR_TEXT_PRIMARY, hover_color="#45475a",
             height=32, width=80, command=self.destroy
-        ).pack(side="right")
+        )
 
     def sort_column(self, col: str):
         """Sort Treeview rows by clicking column headers (Numeric & String)."""
@@ -230,6 +229,13 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         for index, (_, k) in enumerate(items):
             self.tree.move(k, "", index)
 
+    def _get_benchmark_mode_key(self) -> str:
+        m = self.mode_var.get().lower()
+        if "ipv6" in m: return "ipv6"
+        if "doh" in m: return "doh"
+        if "dot" in m: return "dot"
+        return "ipv4"
+
     def start_benchmark(self):
         if self.benchmark_running:
             return
@@ -246,7 +252,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        mode = self.mode_var.get()
+        mode_key = self._get_benchmark_mode_key()
         reg_text = self.region_var.get()
         region_key = "all"
         if "Asia" in reg_text: region_key = "asia"
@@ -262,10 +268,10 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 break
 
         # Filter providers
-        filtered = db.filter_providers(self.providers, region=region_key, only_doh=(mode == "doh"))
+        filtered = db.filter_providers(self.providers, region=region_key, only_doh=(mode_key == "doh"))
         total_count = len(filtered)
         self.prog_bar.set(0)
-        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time...", text_color="#cdd6f4")
+        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time ({mode_key.upper()})...", text_color="#cdd6f4")
 
         def _worker():
             idx = 0
@@ -276,7 +282,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 prog = idx / max(1, total_count)
 
                 # Test provider
-                res = bm.benchmark_provider_full(p_id, p_info, tld_category=tld_key, mode=mode, timeout=2.5)
+                res = bm.benchmark_provider_full(p_id, p_info, tld_category=tld_key, mode=mode_key, timeout=2.5)
                 self.results_map[p_id] = res
 
                 # Stream update to UI
@@ -301,9 +307,10 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         d_ms = f"{res['dotcom_ms']:.1f} ms" if res.get('dotcom_ms') is not None else "Timeout"
         s_ms = f"{res['score']:.1f} ms" if res.get('score') is not None and res['score'] < 9999 else "Failed"
         stat = "🟢 Fast" if res.get('score', 9999) < 60 else ("🟡 OK" if res.get('score', 9999) < 150 else "🔴 Slow")
+        proto = res.get("protocol", "IPv4")
 
         self.tree.insert("", "end", values=(
-            idx, res.get("country", "🌐"), res.get("name", "Unknown"),
+            idx, res.get("country", "🌐"), res.get("name", "Unknown"), proto,
             c_ms, u_ms, d_ms, s_ms, stat
         ))
 
@@ -330,9 +337,10 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             d_ms = f"{res['dotcom_ms']:.1f} ms" if res.get('dotcom_ms') is not None else "Timeout"
             s_ms = f"{res['score']:.1f} ms" if res.get('score') is not None and res['score'] < 9999 else "Failed"
             stat = "🟢 Fast" if res.get('score', 9999) < 60 else ("🟡 OK" if res.get('score', 9999) < 150 else "🔴 Slow")
+            proto = res.get("protocol", "IPv4")
 
             self.tree.insert("", "end", values=(
-                rk, res.get("country", "🌐"), res.get("name", "Unknown"),
+                rk, res.get("country", "🌐"), res.get("name", "Unknown"), proto,
                 c_ms, u_ms, d_ms, s_ms, stat
             ))
 
@@ -360,9 +368,16 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
     def apply_smart_mix(self):
         smart = bm.calculate_smart_mix(self.results_map)
-        c_ips = smart.get("cached", {}).get("ipv4", [])
-        u_ips = smart.get("uncached", {}).get("ipv4", [])
-        d_ips = smart.get("dotcom", {}).get("ipv4", [])
+        is_ipv6 = (self._get_benchmark_mode_key() == "ipv6")
+
+        def _get_ips(item):
+            if is_ipv6:
+                return item.get("ipv6", []) or item.get("ipv4", [])
+            return item.get("ipv4", [])
+
+        c_ips = _get_ips(smart.get("cached", {}))
+        u_ips = _get_ips(smart.get("uncached", {}))
+        d_ips = _get_ips(smart.get("dotcom", {}))
 
         self.dns_view.dns1_entry.delete(0, "end")
         self.dns_view.dns2_entry.delete(0, "end")
@@ -373,7 +388,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         if d_ips: self.dns_view.dns3_entry.insert(0, d_ips[0])
 
         self.lbl_status.configure(text="⚡ Menerapkan GRC Smart Mix ke sistem jaringan...", text_color="#f9e2af")
-        
+
         def _bg():
             self.dns_view.apply_dns()
             try:
@@ -395,7 +410,8 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             return
 
         fastest = sorted_res[0]
-        ips = fastest.get("ipv4", [])
+        is_ipv6 = (self._get_benchmark_mode_key() == "ipv6")
+        ips = fastest.get("ipv6", []) if (is_ipv6 and fastest.get("ipv6")) else fastest.get("ipv4", [])
         if not ips:
             return
 

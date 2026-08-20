@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
 DNS Jumper GRC 3-Tier Benchmark Engine
-Implements GRC-style Cached, Uncached, and Custom TLD Latency Measurement for DoH & UDP DNS.
+Implements GRC-style Cached, Uncached, and Custom TLD Latency Measurement for IPv4, IPv6, DoH & DoT.
 Zero external dependencies (pure Python standard library).
 """
 
 import time
 import socket
+import ssl
 import struct
 import uuid
 import urllib.request
@@ -71,16 +72,59 @@ def query_doh_dns(doh_url: str, domain: str, timeout: float = 2.5) -> Optional[f
     return None
 
 
+def query_dot_dns(host_or_ip: str, domain: str, timeout: float = 2.5) -> Optional[float]:
+    """Execute DNS-over-TLS (RFC 7858 on port 853) query using standard ssl."""
+    pkt = build_dns_packet(domain)
+    payload = struct.pack("!H", len(pkt)) + pkt
+
+    family = socket.AF_INET6 if ":" in host_or_ip else socket.AF_INET
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    t0 = time.perf_counter()
+    sock = None
+    ssock = None
+    try:
+        sock = socket.socket(family, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        server_name = host_or_ip if ":" not in host_or_ip else None
+        ssock = ctx.wrap_socket(sock, server_hostname=server_name)
+        ssock.connect((host_or_ip, 853))
+        ssock.sendall(payload)
+
+        len_hdr = ssock.recv(2)
+        if len(len_hdr) == 2:
+            resp_len = struct.unpack("!H", len_hdr)[0]
+            resp_data = ssock.recv(resp_len)
+            if len(resp_data) >= 12:
+                return (time.perf_counter() - t0) * 1000.0
+    except Exception:
+        pass
+    finally:
+        if ssock:
+            try:
+                ssock.close()
+            except Exception:
+                pass
+        elif sock:
+            try:
+                sock.close()
+            except Exception:
+                pass
+    return None
+
+
 def benchmark_provider_full(
     key: str,
     provider: Dict[str, Any],
     tld_category: str = "indonesia",
-    mode: str = "standard",
+    mode: str = "ipv4",
     timeout: float = 2.5
 ) -> Dict[str, Any]:
     """
     Execute 3-Tier GRC Benchmark (Cached, Uncached, Regional TLD) for a single provider.
-    Returns composite score and individual tier latencies.
+    Supports mode: 'ipv4', 'ipv6', 'doh', 'dot', 'standard'.
     """
     try:
         from dns_jumper_db import TLD_PRESETS
@@ -94,17 +138,45 @@ def benchmark_provider_full(
     uncached_targets = [f"bench-{uuid.uuid4().hex[:8]}.example.org" for _ in range(3)]
     dotcom_targets = tld_domains[:4]
 
-    is_doh = (mode == "doh") or (not provider.get("ipv4") and bool(provider.get("doh_url")))
+    mode_clean = mode.lower()
+    is_ipv6 = (mode_clean == "ipv6")
+    is_doh = (mode_clean == "doh")
+    is_dot = (mode_clean == "dot")
+
     doh_url = provider.get("doh_url", "")
-    ips = provider.get("ipv4", [])
-    primary_ip = ips[0] if ips else None
+    ipv4_list = provider.get("ipv4", [])
+    ipv6_list = provider.get("ipv6", [])
+    dot_host = provider.get("dot_host") or (ipv4_list[0] if ipv4_list else None)
+
+    # Determine target address based on mode
+    if is_ipv6:
+        if not ipv6_list:
+            return {"key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"), "region": provider.get("region", "global"), "score": 9999.0, "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "protocol": "IPv6", "ipv4": ipv4_list, "ipv6": ipv6_list, "doh_url": doh_url}
+        target_endpoint = ipv6_list[0]
+        protocol_label = "IPv6"
+    elif is_doh:
+        if not doh_url:
+            return {"key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"), "region": provider.get("region", "global"), "score": 9999.0, "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "protocol": "DoH", "ipv4": ipv4_list, "ipv6": ipv6_list, "doh_url": doh_url}
+        target_endpoint = doh_url
+        protocol_label = "DoH"
+    elif is_dot:
+        if not dot_host:
+            return {"key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"), "region": provider.get("region", "global"), "score": 9999.0, "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "protocol": "DoT", "ipv4": ipv4_list, "ipv6": ipv6_list, "doh_url": doh_url}
+        target_endpoint = dot_host
+        protocol_label = "DoT"
+    else:  # ipv4 / standard
+        if not ipv4_list:
+            return {"key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"), "region": provider.get("region", "global"), "score": 9999.0, "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "protocol": "IPv4", "ipv4": ipv4_list, "ipv6": ipv6_list, "doh_url": doh_url}
+        target_endpoint = ipv4_list[0]
+        protocol_label = "IPv4"
 
     def _measure(dom: str) -> Optional[float]:
-        if is_doh and doh_url:
-            return query_doh_dns(doh_url, dom, timeout=timeout)
-        elif primary_ip:
-            return query_udp_dns(primary_ip, dom, timeout=timeout)
-        return None
+        if is_doh:
+            return query_doh_dns(target_endpoint, dom, timeout=timeout)
+        elif is_dot:
+            return query_dot_dns(target_endpoint, dom, timeout=timeout)
+        else:
+            return query_udp_dns(target_endpoint, dom, timeout=timeout)
 
     # 1. Warmup / Prime Cache
     for dom in cached_targets:
@@ -151,12 +223,14 @@ def benchmark_provider_full(
         "country": provider.get("country", "🌐"),
         "region": provider.get("region", "global"),
         "doh_url": doh_url,
-        "ipv4": ips,
+        "ipv4": ipv4_list,
+        "ipv6": ipv6_list,
         "cached_ms": c_avg,
         "uncached_ms": u_avg,
         "dotcom_ms": d_avg,
         "score": score,
-        "is_doh": is_doh,
+        "protocol": protocol_label,
+        "target_endpoint": target_endpoint
     }
 
 
