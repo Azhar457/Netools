@@ -40,6 +40,29 @@ class TrayManager:
     def is_available(self) -> bool:
         return PYSTRAY_AVAILABLE
 
+    def update_status_icon(self, verdict: str):
+        """Swap the tray icon to reflect DNS canary verdict.
+        verdict in: clean / intercepted / indeterminate / partial / unknown.
+        """
+        if not self.is_running or not self.icon:
+            return
+        try:
+            colors = {
+                "clean": (137, 180, 250, 255),
+                "intercepted": (243, 139, 168, 255),
+                "indeterminate": (250, 227, 176, 255),
+                "partial": (250, 227, 176, 255),
+                "unknown": (166, 173, 200, 255),
+            }
+            fill = colors.get(verdict, colors["unknown"])
+            img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            draw.ellipse((4, 4, 60, 60), fill=fill, outline=(17, 17, 27, 255), width=2)
+            draw.polygon([(32, 10), (20, 36), (32, 36), (28, 54), (44, 28), (32, 28)], fill=(17, 17, 27, 255))
+            self.icon.icon = img
+        except Exception:
+            pass
+
     def start(self):
         if not PYSTRAY_AVAILABLE or self.is_running:
             return

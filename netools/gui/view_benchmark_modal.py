@@ -5,6 +5,7 @@ Features multi-column sorting, protocol indicators, live status, and 1-click sys
 """
 
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from tkinter import ttk
 
 import customtkinter as ctk
@@ -324,35 +325,49 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time ({mode_desc})...", text_color=ThemeManager.text())
 
         def _worker():
-            idx = 0
-            for p_id, p_info in filtered.items():
-                if self.benchmark_cancelled:
-                    break
-                idx += 1
-                prog = idx / max(1, total_count)
+            # Parallel benchmark: spawn N workers (capped to provider count) so
+            # latency-bound queries fan-out concurrently.  Sequential execution
+            # wasted ~3-5x wall-clock time on 90+ providers; this is the main
+            # perf win for the engine.  We still stream results in completion
+            # order so the UI remains responsive.
+            providers = list(filtered.items())
+            total_count = len(providers)
+            max_workers = min(8, total_count)
+            done_count = 0
 
-                # Test provider with GRC v2.0 & Turbo Cutoff
-                res = bm.benchmark_provider_full(
+            def _run_one(p_id, p_info):
+                if self.benchmark_cancelled:
+                    return None
+                return bm.benchmark_provider_full(
                     p_id, p_info,
                     tld_category=tld_key,
                     mode=mode_key,
                     timeout=2.5,
                     turbo_mode=is_turbo,
-                    max_latency_threshold=200.0
+                    max_latency_threshold=200.0,
                 )
-                self.results_map[p_id] = res
 
-                # Stream update to UI
-                try:
-                    self.after(0, lambda r=res, p=prog, i=idx, tot=total_count: self._stream_row(r, p, i, tot))
-                except Exception:
-                    pass
+            with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="dns-bench") as ex:
+                futures = {ex.submit(_run_one, p_id, p_info): p_id for p_id, p_info in providers}
+                for fut in as_completed(futures):
+                    if self.benchmark_cancelled:
+                        break
+                    res = fut.result()
+                    if res is None:
+                        continue
+                    p_id = futures[fut]
+                    done_count += 1
+                    self.results_map[p_id] = res
+                    prog = done_count / max(1, total_count)
+                    try:
+                        self.after(0, lambda r=res, p=prog, i=done_count, tot=total_count: self._stream_row(r, p, i, tot))
+                    except Exception:
+                        pass
 
             try:
                 self.after(0, self._finalize_benchmark)
             except Exception:
                 pass
-
         threading.Thread(target=_worker, daemon=True).start()
 
     def _stream_row(self, res: dict, progress: float, idx: int, total: int):

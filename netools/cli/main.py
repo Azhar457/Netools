@@ -153,6 +153,8 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 def main():
+    from netools.libs.dns_async import init_async_loop
+    init_async_loop()
     from netools.config import ensure_runtime_dirs
     ensure_runtime_dirs()
     parser = build_parser()

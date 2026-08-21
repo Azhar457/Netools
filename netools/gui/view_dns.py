@@ -14,6 +14,7 @@ from netools.gui.theme import (
 )
 from netools.gui.view_benchmark_modal import GRCBenchmarkModal
 from netools.libs import dns_db as db
+from netools.services import canary_service
 
 
 class DNSView(ctk.CTkScrollableFrame):
@@ -305,8 +306,75 @@ class DNSView(ctk.CTkScrollableFrame):
             command=self.open_benchmark
         ).pack(side="right", padx=(6, 0))
 
+        # ---- Canary Domain Interception Check Card ----
+        self.canary_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.canary_card.pack(fill="x", padx=16, pady=(8, 4))
+        self.canary_hdr = ctk.CTkFrame(self.canary_card, fg_color=ThemeManager.surface(), height=28)
+        self.canary_hdr.pack(fill="x", padx=10, pady=(8, 2))
+        self.canary_lbl = ctk.CTkLabel(
+            self.canary_hdr, text="🛡️ DNS Canary (Interception Check)",
+            font=Fonts.subtitle(11), text_color=ThemeManager.text()
+        )
+        self.canary_lbl.pack(side="left")
+        self.canary_badge = ctk.CTkLabel(
+            self.canary_hdr, text="● Not Checked",
+            font=Fonts.bold(9), text_color=ThemeManager.text_muted()
+        )
+        self.canary_badge.pack(side="right", padx=4)
+        self.canary_body = ctk.CTkFrame(self.canary_card, fg_color=ThemeManager.surface())
+        self.canary_body.pack(fill="x", padx=10, pady=(0, 8))
+        self.canary_stat = ctk.CTkLabel(
+            self.canary_body,
+            text="Click 'Check' to test Mozilla + Apple + Custom canary domains (system + custom resolver).",
+            font=Fonts.regular(9), text_color=ThemeManager.text_muted(), justify="left"
+        )
+        self.canary_stat.pack(anchor="w", pady=2)
+        self.canary_btn = ctk.CTkButton(
+            self.canary_body, text="🔄 Check Now",
+            font=Fonts.bold(9), fg_color=ThemeManager.accent(), text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(), height=26,
+            command=self._run_canary_check,
+        )
+        self.canary_btn.pack(anchor="e", pady=(2, 0))
+
         # Auto-load active system DNS on startup
         self.load_active_interface_dns()
+
+    def _run_canary_check(self):
+        self.canary_badge.configure(text="● Checking...", text_color=ThemeManager.warning())
+        self.canary_stat.configure(text="Running canary sweep... (please wait ~2-5s)", text_color=ThemeManager.text_muted())
+
+        def _on_done(result: canary_service.CanaryRunResult):
+            def _update():
+                verdict = result.verdict if result else "indeterminate"
+                if verdict == canary_service.VERDICT_CLEAN:
+                    badge_text, badge_color = "● Clean (No Intercept)", ThemeManager.success()
+                    stat_text = "No interception detected. DoH / Apple Relay safe to use."
+                elif verdict == canary_service.VERDICT_INTERCEPTED:
+                    badge_text, badge_color = "● INTERCEPTED!", ThemeManager.danger()
+                    stat_text = f"Interception detected on: {', '.join(result.intercepted_domains or ['unknown'])}. DoH may be blocked."
+                elif verdict == canary_service.VERDICT_INDETERMINATE:
+                    badge_text, badge_color = "● Offline / Unknown", ThemeManager.warning()
+                    stat_text = "Pre-check failed (offline / broken resolver). Cannot determine interception."
+                else:
+                    badge_text, badge_color = "● Partial", ThemeManager.warning()
+                    stat_text = f"Mixed results: clean={len(result.clean_domains)}, intercepted={len(result.intercepted_domains)}."
+                try:
+                    self.canary_badge.configure(text=badge_text, text_color=badge_color)
+                    self.canary_stat.configure(text=stat_text, text_color=ThemeManager.text())
+                except Exception:
+                    pass
+                # Side-effects: tray icon + optional auto-DoH toggle.
+                try:
+                    if hasattr(self.main_app, "_handle_canary_result"):
+                        self.main_app._handle_canary_result(result)
+                except Exception:
+                    pass
+            try:
+                self.after(0, _update)
+            except Exception:
+                pass
+        canary_service.run_canary_sweep_async(on_done=_on_done, timeout=2.0)
 
     def on_interface_change(self, choice: str):
         for i in self.interfaces:

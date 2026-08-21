@@ -6,7 +6,7 @@ Featuring 1-100% Preloader Splash Screen and Native System Tray Integration.
 import sys
 import tkinter as tk
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import customtkinter as ctk
 
@@ -48,6 +48,7 @@ class NetoolsApp(ctk.CTk):
 
         self.child_windows: List[ctk.CTkToplevel] = []
         self.minimize_to_tray_enabled = True
+        self._last_canary_verdict: Optional[str] = None
 
         self.protocol("WM_DELETE_WINDOW", self.on_root_close)
 
@@ -72,6 +73,41 @@ class NetoolsApp(ctk.CTk):
             fg_map = {"success": ThemeManager.success(), "info": ThemeManager.primary(), "warning": ThemeManager.warning(), "error": ThemeManager.danger()}
             clean_msg = message.split("\n")[0][:45]
             self.lbl_header_status.configure(text=f"● {clean_msg}", text_color=fg_map.get(level, ThemeManager.primary()))
+
+    def _handle_canary_result(self, result):
+        """Apply side-effects when DNS canary sweep completes.
+        - Update tray icon color
+        - Toast on verdict change (clean ↔ intercepted)
+        - Optional auto-DoH toggle when doh_auto_canary=True in config.json
+        """
+        from netools.config import _user_cfg
+        from netools.services import canary_service
+
+        verdict = result.verdict if result else "indeterminate"
+        # 1) Tray icon update
+        if hasattr(self, "tray") and self.tray:
+            self.tray.update_status_icon(verdict)
+
+        # 2) Toast on state change (avoid spamming every check)
+        if self._last_canary_verdict is not None and self._last_canary_verdict != verdict:
+            if verdict == canary_service.VERDICT_INTERCEPTED:
+                self.show_toast(
+                    "⚠️ DNS Interception terdeteksi! DoH mungkin diblokir.",
+                    level="warning",
+                )
+            elif verdict == canary_service.VERDICT_CLEAN:
+                self.show_toast("✅ DNS bersih (no interception).", level="success")
+        self._last_canary_verdict = verdict
+
+        # 3) Optional auto-toggle DoH forwarder
+        if _user_cfg.get("doh_auto_canary", False):
+            from netools.services import doh_service
+            if verdict == canary_service.VERDICT_CLEAN:
+                if not doh_service.is_doh_forwarder_running():
+                    doh_service.start_doh_forwarder(provider=_user_cfg.get("doh_provider", "alidns"))
+            elif verdict == canary_service.VERDICT_INTERCEPTED:
+                if doh_service.is_doh_forwarder_running():
+                    doh_service.stop_doh_forwarder()
 
     def _apply_theme(self):
         from netools.gui.theme import ThemeManager
