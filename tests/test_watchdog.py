@@ -14,7 +14,7 @@ class TestWatchdogService(unittest.TestCase):
         
     @patch("netools.services.watchdog_service.load_state")
     @patch("netools.services.watchdog_service.is_port_open")
-    @patch("netools.services.watchdog_service.test_socks_upstream")
+    @patch("netools.services.watchdog_service.probe_socks_upstream")
     def test_monitor_cycle_all_alive(self, mock_upstream, mock_port_open, mock_load_state):
         mock_load_state.return_value = {
             "instances": {
@@ -30,7 +30,7 @@ class TestWatchdogService(unittest.TestCase):
         
     @patch("netools.services.watchdog_service.load_state")
     @patch("netools.services.watchdog_service.is_port_open")
-    @patch("netools.services.watchdog_service.test_socks_upstream")
+    @patch("netools.services.watchdog_service.probe_socks_upstream")
     @patch("netools.services.watchdog_service.fetch_and_parse_proxies")
     @patch("netools.services.watchdog_service.start_single_instance")
     @patch("netools.services.watchdog_service.sb_drv")

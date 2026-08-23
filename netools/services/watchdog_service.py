@@ -13,7 +13,7 @@ from typing import Optional
 from netools.adapters import ninerouter as nr_adapt
 from netools.adapters import singbox as sb_drv
 from netools.config import MONITOR_DEFAULT_INTERVAL, SOCKS5_PORT_START
-from netools.libs.net import is_port_open, test_socks_upstream
+from netools.libs.net import is_port_open, probe_socks_upstream
 from netools.services.proxy_service import fetch_and_parse_proxies, start_single_instance
 from netools.state import load_state, remove_instance, update_instance
 
@@ -28,7 +28,7 @@ def run_monitor_cycle(standalone: bool = False) -> int:
     dead_instances = []
     for name, info in list(instances.items()):
         port = info["port"]
-        if not is_port_open(port) or not test_socks_upstream(port):
+        if not is_port_open(port) or not probe_socks_upstream(port):
             dead_instances.append((name, info))
 
     if not dead_instances:

@@ -24,7 +24,7 @@ from netools.config import (
     SOCKS5_PORT_START,
     STATE_FILE,
 )
-from netools.libs.net import fetch_text, is_port_open, test_socks_upstream, wait_for_port
+from netools.libs.net import fetch_text, is_port_open, probe_socks_upstream, wait_for_port
 from netools.libs.parsers import extract_all_proxies
 from netools.state import load_state, save_state
 
@@ -106,7 +106,7 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
     # Parallel Upstream Testing (All 20 instances tested concurrently)
     alive = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as ex:
-        futures = {ex.submit(test_socks_upstream, port): (name, port, proxy, proc)
+        futures = {ex.submit(probe_socks_upstream, port): (name, port, proxy, proc)
                    for name, port, proxy, proc in started}
         for future in concurrent.futures.as_completed(futures):
             name, port, proxy, proc = futures[future]
@@ -225,7 +225,7 @@ def start_single_instance(name: str, port: int, proxy: Dict[str, Any], standalon
     if not proc:
         return None
     wait_for_port(port, timeout=3.0)
-    if not test_socks_upstream(port):
+    if not probe_socks_upstream(port):
         try:
             proc.kill()
         except Exception:

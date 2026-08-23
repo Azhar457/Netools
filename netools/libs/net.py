@@ -44,7 +44,7 @@ def _socks5_connect(proxy_port: int, host: str, port: int, timeout: float = 5.0)
     return s
 
 
-def test_socks_upstream_python(port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0) -> bool:
+def probe_socks_upstream_python(port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0) -> bool:
     """Pure-Python SOCKS5h upstream probe (no curl): CONNECT then HTTPS GET."""
     if not is_port_open(port):
         return False
@@ -60,8 +60,6 @@ def test_socks_upstream_python(port: int, test_url: str = "https://www.gstatic.c
         s = _socks5_connect(port, host, dport, timeout)
         if parsed.scheme == "https":
             ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
             tls = ctx.wrap_socket(s, server_hostname=host)
             sock = tls
         else:
@@ -90,10 +88,10 @@ def test_socks_upstream_python(port: int, test_url: str = "https://www.gstatic.c
                 pass
 
 
-def test_socks_upstream(port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0) -> bool:
+def probe_socks_upstream(port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0) -> bool:
     """Validate that a local SOCKS5 proxy can route traffic upstream via curl socks5h (pure-Python fallback)."""
     if shutil.which("curl") is None:
-        return test_socks_upstream_python(port, test_url=test_url, timeout=timeout)
+        return probe_socks_upstream_python(port, test_url=test_url, timeout=timeout)
     if not is_port_open(port):
         return False
     try:

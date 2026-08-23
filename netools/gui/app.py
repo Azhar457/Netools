@@ -54,13 +54,22 @@ class NetoolsApp(ctk.CTk):
 
         self.toast = ToastManager(self)
         self.tray = TrayManager(self)
-        if self.tray.is_available():
+        from netools.gui.tray import PYSTRAY_AVAILABLE
+        if PYSTRAY_AVAILABLE:
+            # Start tray eagerly so close-to-tray works from the first launch.
+            # NOTE: do NOT gate this on tray.is_available(); that only becomes
+            # true AFTER the icon thread is running.
             self.tray.start()
 
         from netools.config import _user_cfg
         from netools.gui.theme import ThemeManager
         saved_theme = _user_cfg.get("theme", "dark")
         ThemeManager.apply_theme(saved_theme, self)
+
+        try:
+            ctk.set_widget_scaling(float(_user_cfg.get("ui_scale", 1.0)))
+        except Exception:
+            pass
 
         self._build_ui()
 
@@ -134,11 +143,11 @@ class NetoolsApp(ctk.CTk):
         if hasattr(self, "tabview"):
             self.tabview.configure(
                 fg_color=ThemeManager.surface(),
-                segmented_button_fg_color=ThemeManager.surface(),
-                segmented_button_selected_color=ThemeManager.border(),
-                segmented_button_selected_hover_color=ThemeManager.border(),
-                segmented_button_unselected_color=ThemeManager.bg(),
-                segmented_button_unselected_hover_color=ThemeManager.border(),
+                segmented_button_fg_color=ThemeManager.surface_alt(),
+                segmented_button_selected_color=ThemeManager.primary(),
+                segmented_button_selected_hover_color=ThemeManager.primary(),
+                segmented_button_unselected_color=ThemeManager.surface(),
+                segmented_button_unselected_hover_color=ThemeManager.surface_alt(),
                 text_color=ThemeManager.text(),
                 text_color_disabled=ThemeManager.text_muted()
             )
@@ -180,7 +189,7 @@ class NetoolsApp(ctk.CTk):
         self.subtitle_label.pack(anchor="w")
 
         # Right-side Live Status Pill (Visibility of System Status - Nielsen #1)
-        self.status_box = ctk.CTkFrame(self.header, fg_color=ThemeManager.bg(), corner_radius=20, border_width=1, border_color=ThemeManager.border())
+        self.status_box = ctk.CTkFrame(self.header, fg_color=ThemeManager.surface(), corner_radius=20, border_width=1, border_color=ThemeManager.border())
         self.status_box.pack(side="right", padx=20, pady=14)
 
         self.lbl_header_status = ctk.CTkLabel(
@@ -198,17 +207,17 @@ class NetoolsApp(ctk.CTk):
         self.tabview = ctk.CTkTabview(
             self,
             fg_color=ThemeManager.surface(),
-            segmented_button_fg_color=ThemeManager.surface(),
-            segmented_button_selected_color=ThemeManager.border(),
-            segmented_button_selected_hover_color=ThemeManager.border(),
-            segmented_button_unselected_color=ThemeManager.bg(),
-            segmented_button_unselected_hover_color=ThemeManager.border(),
+            segmented_button_fg_color=ThemeManager.surface_alt(),
+            segmented_button_selected_color=ThemeManager.primary(),
+            segmented_button_selected_hover_color=ThemeManager.primary(),
+            segmented_button_unselected_color=ThemeManager.surface(),
+            segmented_button_unselected_hover_color=ThemeManager.surface_alt(),
             segmented_button_font=Fonts.bold(12),
             text_color=ThemeManager.text(),
             text_color_disabled=ThemeManager.text_muted(),
-            corner_radius=8
+            corner_radius=10
         )
-        self.tabview.pack(fill="both", expand=True, padx=12, pady=(0, 12))
+        self.tabview.pack(fill="both", expand=True, padx=16, pady=(0, 16))
 
         # Tab 1: Dashboard
         self.tab_dashboard = self.tabview.add("📊 Dashboard")

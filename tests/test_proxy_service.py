@@ -28,7 +28,7 @@ class TestProxyService(unittest.TestCase):
         self.assertEqual(len(proxies), 1)
 
     @patch("netools.services.proxy_service.sb_drv.start_singbox_instance")
-    @patch("netools.services.proxy_service.test_socks_upstream")
+    @patch("netools.services.proxy_service.probe_socks_upstream")
     @patch("time.sleep", return_value=None)
     def test_start_single_instance_upstream_fail(self, mock_sleep, mock_test_upstream, mock_start_instance):
         mock_proc = MagicMock()

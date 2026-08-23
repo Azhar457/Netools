@@ -128,7 +128,7 @@ def cmd_tray_test(args):
     try:
         import pystray
         print("Direct import pystray succeeded:", pystray)
-    except Exception as e:
+    except Exception:
         print("Direct import pystray failed:")
         traceback.print_exc()
     from netools.gui.tray import PYSTRAY_AVAILABLE, TrayManager
@@ -143,17 +143,17 @@ def cmd_tray_test(args):
         print("gi available:", gi)
         gi.require_version('Gtk', '3.0')
         from gi.repository import Gtk
-        print("Gtk 3.0 loaded successfully")
+        print("Gtk 3.0 loaded successfully:", Gtk)
         try:
             gi.require_version('AppIndicator3', '0.1')
             from gi.repository import AppIndicator3
-            print("AppIndicator3 0.1 loaded successfully")
+            print("AppIndicator3 0.1 loaded successfully:", AppIndicator3)
         except Exception as e:
             print("AppIndicator3 load error:", e)
         try:
             gi.require_version('AyatanaAppIndicator3', '0.1')
             from gi.repository import AyatanaAppIndicator3
-            print("AyatanaAppIndicator3 loaded successfully")
+            print("AyatanaAppIndicator3 loaded successfully:", AyatanaAppIndicator3)
         except Exception as e:
             print("AyatanaAppIndicator3 load error:", e)
     except Exception as e:

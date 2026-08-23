@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from netools.libs.net import check_ipv6_connectivity, is_port_open, test_socks_upstream
+from netools.libs.net import check_ipv6_connectivity, is_port_open, probe_socks_upstream
 
 
 class TestNet(unittest.TestCase):
@@ -24,20 +24,20 @@ class TestNet(unittest.TestCase):
         
     @patch("netools.libs.net.is_port_open")
     @patch("netools.libs.net.subprocess.run")
-    def test_test_socks_upstream_success(self, mock_run, mock_is_open):
+    def test_probe_socks_upstream_success(self, mock_run, mock_is_open):
         mock_is_open.return_value = True
         mock_proc = MagicMock()
         mock_proc.stdout = "204\n"
         mock_run.return_value = mock_proc
         
-        self.assertTrue(test_socks_upstream(1080))
+        self.assertTrue(probe_socks_upstream(1080))
         
     @patch("netools.libs.net.is_port_open")
     @patch("netools.libs.net.subprocess.run")
-    def test_test_socks_upstream_port_closed(self, mock_run, mock_is_open):
+    def test_probe_socks_upstream_port_closed(self, mock_run, mock_is_open):
         mock_is_open.return_value = False
         
-        self.assertFalse(test_socks_upstream(1080))
+        self.assertFalse(probe_socks_upstream(1080))
         mock_run.assert_not_called()
         
     @patch("netools.libs.net.socket.socket")
