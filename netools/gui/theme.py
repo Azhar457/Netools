@@ -190,38 +190,60 @@ COLOR_ACCENT_RED = THEMES["dark"]["danger"]
 COLOR_ACCENT_PURPLE = THEMES["dark"]["secondary"]
 
 
+class Spacings:
+    """Standard 4px base-grid layout constants."""
+    PAD_CARD = 16
+    PAD_ELEMENT = 12
+    PAD_TIGHT = 8
+    PAD_MICRO = 4
+
+    BTN_HEIGHT_LG = 38   # Primary / Major CTA
+    BTN_HEIGHT_MD = 34   # Standard action bar
+    BTN_HEIGHT_SM = 28   # Filter chip / mini tool
+    INPUT_HEIGHT = 34    # Inputs & ComboBoxes
+
+
 class Fonts:
-    """Standardized cross-platform font tuples (guaranteed 100% persistent, never GC'd)."""
-    
+    """Standardized semantic typography hierarchy (comfortable readability across high-DPI/desktop screens)."""
+
+    @staticmethod
+    def display(size: int = 18):
+        return ("sans-serif", size, "bold")
+
     @staticmethod
     def title(size: int = 15):
         return ("sans-serif", size, "bold")
-    
+
     @staticmethod
-    def subtitle(size: int = 12):
+    def subtitle(size: int = 13):
         return ("sans-serif", size, "bold")
-    
+
     @staticmethod
-    def bold(size: int = 11):
+    def bold(size: int = 12):
         return ("sans-serif", size, "bold")
-    
+
     @staticmethod
-    def regular(size: int = 11):
+    def regular(size: int = 12):
         return ("sans-serif", size, "normal")
-    
+
     @staticmethod
-    def small(size: int = 10):
+    def small(size: int = 11):
         return ("sans-serif", size, "normal")
-    
+
+    @staticmethod
+    def badge(size: int = 10):
+        return ("sans-serif", size, "bold")
+
     @staticmethod
     def italic_small(size: int = 10):
         return ("sans-serif", size, "italic")
-    
+
     @staticmethod
-    def mono(size: int = 11):
+    def mono(size: int = 12):
         return ("monospace", size, "normal")
-    
+
     @staticmethod
-    def mono_bold(size: int = 11):
+    def mono_bold(size: int = 12):
         return ("monospace", size, "bold")
+
 

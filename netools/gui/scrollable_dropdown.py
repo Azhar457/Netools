@@ -1,8 +1,10 @@
 """
 Modern CustomTkinter Scrollable & Searchable Dropdown Popup.
 Prevents dropdown menus with 50+ items from overflowing the screen.
+Supports keyboard search, mouse wheel scrolling on Linux/Win/Mac, and click-to-select.
 """
 
+import sys
 import tkinter as tk
 from typing import Any, Callable, List, Optional
 
@@ -35,30 +37,22 @@ class CTkScrollableDropdown:
         self.searchable = searchable
         self.placeholder_text = placeholder_text
 
+        self.buttons: List[ctk.CTkButton] = []
         self.toplevel: Optional[ctk.CTkToplevel] = None
         self.scroll_frame: Optional[ctk.CTkScrollableFrame] = None
         self.search_entry: Optional[ctk.CTkEntry] = None
-        # Safely disable default CTkComboBox / CTkOptionMenu popup
+        self._click_binding_id: Optional[str] = None
+
+        # Route CTkComboBox internal dropdown trigger to our scrollable popup
         if hasattr(self.widget, "_open_dropdown_menu"):
-            self.widget._open_dropdown_menu = lambda: None
-        if hasattr(self.widget, "_dropdown_menu") and self.widget._dropdown_menu is not None:
-            try:
-                self.widget._dropdown_menu.is_open = lambda: False
-            except Exception:
-                pass
-        elif hasattr(self.widget, "_dropdown_menu") and self.widget._dropdown_menu is None:
-            class _DummyDropdown:
-                def is_open(self): return False
-                def close(self): pass
-                def open(self): pass
-            self.widget._dropdown_menu = _DummyDropdown()
+            self.widget._open_dropdown_menu = self._toggle_dropdown
 
-
-        # Bind click event on widget
+        # Bind click events across entry, canvas, and parent widget
         self.widget.bind("<Button-1>", self._toggle_dropdown, add="+")
         if hasattr(self.widget, "_entry"):
             self.widget._entry.bind("<Button-1>", self._toggle_dropdown, add="+")
-
+        if hasattr(self.widget, "_canvas"):
+            self.widget._canvas.bind("<Button-1>", self._toggle_dropdown, add="+")
 
     def configure(self, values: Optional[List[str]] = None, **kwargs):
         if values is not None:
@@ -84,6 +78,10 @@ class CTkScrollableDropdown:
         self.toplevel.overrideredirect(True)
         self.toplevel.configure(fg_color=ThemeManager.surface_alt())
         self.toplevel.attributes("-topmost", True)
+        try:
+            self.toplevel.transient(root)
+        except Exception:
+            pass
 
         # Calculate position & dimensions
         self.widget.update_idletasks()
@@ -95,7 +93,6 @@ class CTkScrollableDropdown:
         screen_height = root.winfo_screenheight()
         dropdown_h = self.max_height
         if y + dropdown_h > screen_height - 40:
-            # If not enough room below, open above widget
             alt_y = self.widget.winfo_rooty() - dropdown_h - 2
             if alt_y > 40:
                 y = alt_y
@@ -131,7 +128,6 @@ class CTkScrollableDropdown:
             self.search_entry.pack(fill="x", padx=4, pady=2)
             self.search_entry.bind("<KeyRelease>", self._on_search)
 
-
         # Scrollable List Container
         self.scroll_frame = ctk.CTkScrollableFrame(
             main_card,
@@ -142,6 +138,11 @@ class CTkScrollableDropdown:
         )
         self.scroll_frame.pack(fill="both", expand=True, padx=4, pady=4)
 
+        # Bind mouse wheel on container for Linux X11/Wayland & Win/Mac
+        self._bind_mousewheel(self.scroll_frame)
+        if hasattr(self.scroll_frame, "_parent_canvas"):
+            self._bind_mousewheel(self.scroll_frame._parent_canvas)
+
         self._populate_list(self.values)
 
         self.toplevel.deiconify()
@@ -151,13 +152,31 @@ class CTkScrollableDropdown:
             self.search_entry.focus_set()
 
         # Click outside to dismiss
-        root.bind("<Button-1>", self._check_click_outside, add="+")
+        self._click_binding_id = root.bind("<Button-1>", self._check_click_outside, add="+")
         self.toplevel.bind("<Escape>", lambda _: self._close())
+
+    def _bind_mousewheel(self, widget: Any):
+        """Cross-platform mouse wheel scrolling attachment."""
+        if sys.platform.startswith("linux"):
+            widget.bind("<Button-4>", lambda e: self._scroll_units(-1), add="+")
+            widget.bind("<Button-5>", lambda e: self._scroll_units(1), add="+")
+        else:
+            widget.bind("<MouseWheel>", lambda e: self._scroll_units(int(-1 * (e.delta / 120))), add="+")
+
+    def _scroll_units(self, units: int):
+        if self.scroll_frame and hasattr(self.scroll_frame, "_parent_canvas"):
+            try:
+                self.scroll_frame._parent_canvas.yview_scroll(units, "units")
+            except Exception:
+                pass
 
     def _populate_list(self, items: List[str]):
         # Clear existing buttons
         for btn in self.buttons:
-            btn.destroy()
+            try:
+                btn.destroy()
+            except Exception:
+                pass
         self.buttons.clear()
 
         current_val = self.variable.get() if self.variable else None
@@ -177,6 +196,7 @@ class CTkScrollableDropdown:
                 command=lambda val=item: self._select_item(val)
             )
             btn.pack(fill="x", padx=2, pady=1)
+            self._bind_mousewheel(btn)
             self.buttons.append(btn)
 
     def _on_search(self, event=None):
@@ -191,37 +211,50 @@ class CTkScrollableDropdown:
         if self.variable:
             self.variable.set(val)
         if hasattr(self.widget, "set"):
-            self.widget.set(val)
+            try:
+                self.widget.set(val)
+            except Exception:
+                pass
         if self.command:
-            self.command(val)
+            try:
+                self.command(val)
+            except Exception as e:
+                print(f"Dropdown callback error: {e}")
         self._close()
 
     def _check_click_outside(self, event):
         if not self.toplevel or not self.toplevel.winfo_exists():
             return
-        x, y = event.x_root, event.y_root
-        top_x = self.toplevel.winfo_rootx()
-        top_y = self.toplevel.winfo_rooty()
-        top_w = self.toplevel.winfo_width()
-        top_h = self.toplevel.winfo_height()
+        try:
+            x, y = event.x_root, event.y_root
+            top_x = self.toplevel.winfo_rootx()
+            top_y = self.toplevel.winfo_rooty()
+            top_w = self.toplevel.winfo_width()
+            top_h = self.toplevel.winfo_height()
 
-        widget_x = self.widget.winfo_rootx()
-        widget_y = self.widget.winfo_rooty()
-        widget_w = self.widget.winfo_width()
-        widget_h = self.widget.winfo_height()
+            widget_x = self.widget.winfo_rootx()
+            widget_y = self.widget.winfo_rooty()
+            widget_w = self.widget.winfo_width()
+            widget_h = self.widget.winfo_height()
 
-        inside_top = (top_x <= x <= top_x + top_w) and (top_y <= y <= top_y + top_h)
-        inside_widget = (widget_x <= x <= widget_x + widget_w) and (widget_y <= y <= widget_y + widget_h)
+            inside_top = (top_x <= x <= top_x + top_w) and (top_y <= y <= top_y + top_h)
+            inside_widget = (widget_x <= x <= widget_x + widget_w) and (widget_y <= y <= widget_y + widget_h)
 
-        if not inside_top and not inside_widget:
+            if not inside_top and not inside_widget:
+                self._close()
+        except Exception:
             self._close()
 
     def _close(self):
         if self.toplevel and self.toplevel.winfo_exists():
             try:
                 root = self.widget.winfo_toplevel()
-                root.unbind("<Button-1>")
+                if self._click_binding_id:
+                    root.unbind("<Button-1>", self._click_binding_id)
             except Exception:
                 pass
-            self.toplevel.destroy()
+            try:
+                self.toplevel.destroy()
+            except Exception:
+                pass
             self.toplevel = None

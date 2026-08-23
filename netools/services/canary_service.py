@@ -27,7 +27,7 @@ import dns.exception
 import dns.rcode
 import dns.resolver
 
-from netools.config import USER_CONFIG_DIR
+from netools.config import CONFIGS_DIR, USER_CONFIG_DIR
 from netools.libs.logger import get_logger
 
 log = get_logger(__name__)
@@ -134,29 +134,46 @@ CANARY_CONFIG_FILE = USER_CONFIG_DIR / "canary.json"
 DEFAULT_CUSTOM_CANARIES: list[str] = []  # users can add their own
 
 
+_in_memory_custom_canaries: Optional[list[str]] = None
+
+
 def _load_custom_canaries() -> list[str]:
-    if not CANARY_CONFIG_FILE.exists():
-        return list(DEFAULT_CUSTOM_CANARIES)
-    try:
-        data = json.loads(CANARY_CONFIG_FILE.read_text(encoding="utf-8"))
-        canaries = data.get("custom_canaries", [])
-        if not isinstance(canaries, list):
-            return list(DEFAULT_CUSTOM_CANARIES)
-        return [str(c).strip() for c in canaries if str(c).strip()]
-    except Exception as e:
-        log.warning(f"canary.json unreadable, ignoring: {e}")
-        return list(DEFAULT_CUSTOM_CANARIES)
+    global _in_memory_custom_canaries
+    if _in_memory_custom_canaries is not None:
+        return list(_in_memory_custom_canaries)
+
+    for cfg_path in (CANARY_CONFIG_FILE, CONFIGS_DIR / "canary.json"):
+        if cfg_path.exists():
+            try:
+                data = json.loads(cfg_path.read_text(encoding="utf-8"))
+                canaries = data.get("custom_canaries", [])
+                if isinstance(canaries, list):
+                    _in_memory_custom_canaries = [str(c).strip() for c in canaries if str(c).strip()]
+                    return list(_in_memory_custom_canaries)
+            except Exception as e:
+                log.warning(f"{cfg_path} unreadable: {e}")
+
+    _in_memory_custom_canaries = list(DEFAULT_CUSTOM_CANARIES)
+    return list(_in_memory_custom_canaries)
 
 
 def _save_custom_canaries(canaries: list[str]) -> None:
-    try:
-        CANARY_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        CANARY_CONFIG_FILE.write_text(
-            json.dumps({"custom_canaries": canaries}, indent=2),
-            encoding="utf-8",
-        )
-    except Exception as e:
-        log.warning(f"canary.json write failed: {e}")
+    global _in_memory_custom_canaries
+    _in_memory_custom_canaries = list(canaries)
+    saved = False
+    for cfg_path in (CANARY_CONFIG_FILE, CONFIGS_DIR / "canary.json"):
+        try:
+            cfg_path.parent.mkdir(parents=True, exist_ok=True)
+            cfg_path.write_text(
+                json.dumps({"custom_canaries": canaries}, indent=2),
+                encoding="utf-8",
+            )
+            saved = True
+            break
+        except Exception:
+            pass
+    if not saved:
+        log.debug("Canary config stored in-memory")
 
 
 def get_all_canary_hostnames(include_custom: bool = True) -> list[dict[str, str]]:
@@ -183,18 +200,36 @@ def get_all_canary_hostnames(include_custom: bool = True) -> list[dict[str, str]
 def _make_resolver(target: str, timeout: float) -> dns.resolver.Resolver:
     """Build a dns.resolver.Resolver for `target`.
 
-    target == "system" -> use OS resolver (/etc/resolv.conf)
+    target == "system" -> use OS resolver (/etc/resolv.conf or active interface DNS)
     target == "custom:IP" or "custom:IP#port" -> that specific upstream
     """
+    if target == "system":
+        try:
+            r = dns.resolver.Resolver(configure=True)
+        except Exception:
+            r = dns.resolver.Resolver(configure=False)
+
+        r.timeout = timeout
+        r.lifetime = timeout
+
+        if not r.nameservers:
+            try:
+                from netools.adapters import platform_dns
+                ifaces = platform_dns.get_network_interfaces()
+                dev = ifaces[0]["device"] if ifaces else "default"
+                active_dns = platform_dns.get_interface_dns(dev)
+                if active_dns:
+                    r.nameservers = active_dns
+            except Exception:
+                pass
+
+        if not r.nameservers:
+            r.nameservers = ["1.1.1.1", "8.8.8.8"]
+        return r
+
     r = dns.resolver.Resolver(configure=False)
     r.timeout = timeout
     r.lifetime = timeout
-    if target == "system":
-        r.read_resolv_conf(None)
-        if not r.nameservers:
-            # Fallback if /etc/resolv.conf empty.
-            r.nameservers = ["1.1.1.1", "8.8.8.8"]
-        return r
     addr = target.split(":", 1)[1]  # strip "custom:" prefix
     if "#" in addr:
         host, port_str = addr.split("#", 1)
@@ -222,7 +257,7 @@ def _probe(hostname: str, resolver_target: str, timeout: float) -> CanaryProbe:
         try:
             ans = res.resolve(hostname, "A", raise_on_no_answer=False)
             rcode = ans.response.rcode() if ans.response else None
-            if ans.rrset is not None:
+            if ans.rrset is not None and len(ans.rrset) > 0:
                 sample = ", ".join(str(rdata) for rdata in list(ans.rrset)[:3])
                 return CanaryProbe(
                     hostname=hostname, resolver=label,
@@ -245,10 +280,7 @@ def _probe(hostname: str, resolver_target: str, timeout: float) -> CanaryProbe:
         except dns.resolver.NoNameservers:
             return CanaryProbe(hostname, label, STATUS_SERVFAIL, "NoNameservers",
                                (time.perf_counter() - started) * 1000, "NoNameservers")
-        except dns.resolver.LifetimeTimeout:
-            return CanaryProbe(hostname, label, STATUS_TIMEOUT, "timeout",
-                               (time.perf_counter() - started) * 1000, "timeout")
-        except dns.exception.Timeout:
+        except (dns.resolver.LifetimeTimeout, dns.exception.Timeout):
             return CanaryProbe(hostname, label, STATUS_TIMEOUT, "timeout",
                                (time.perf_counter() - started) * 1000, "timeout")
     except Exception as e:
@@ -258,10 +290,17 @@ def _probe(hostname: str, resolver_target: str, timeout: float) -> CanaryProbe:
 
 def _probe_precheck(resolver_target: str, timeout: float) -> bool:
     """Returns True if at least one pre-check hostname resolved to a real A record."""
-    for host in PRECHECK_HOSTNAMES:
-        p = _probe(host, resolver_target, timeout)
-        if p.status == STATUS_INTERCEPTED:
-            return True
+    try:
+        res = _make_resolver(resolver_target, timeout)
+        for host in PRECHECK_HOSTNAMES:
+            try:
+                ans = res.resolve(host, "A", raise_on_no_answer=False)
+                if ans.rrset is not None and len(ans.rrset) > 0:
+                    return True
+            except Exception:
+                continue
+    except Exception:
+        pass
     return False
 
 

@@ -206,14 +206,14 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         ctk.CTkLabel(
             smart_card,
             text="🏆 Smart Mix Recommendation (GRC Optimum Triad)",
-            font=Fonts.subtitle(12),
+            font=Fonts.subtitle(13),
             text_color=ThemeManager.success()
         ).pack(anchor="w", padx=14, pady=(10, 4))
 
         self.lbl_smart_rec = ctk.CTkLabel(
             smart_card,
             text="• Run benchmark to generate composite latency recommendations for Slot 1, 2, and 3.",
-            font=Fonts.mono(10),
+            font=Fonts.mono(11),
             text_color=ThemeManager.text_muted(),
             justify="left"
         )
@@ -222,26 +222,25 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         btn_row = ctk.CTkFrame(smart_card, fg_color=ThemeManager.surface())
         btn_row.pack(fill="x", padx=14, pady=(0, 10))
 
-
         self.btn_apply_smart = ctk.CTkButton(
-            btn_row, text="⚡ Apply GRC Smart Mix (Slots 1-3)", font=Fonts.bold(11),
-            fg_color=ThemeManager.success(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.success(),
-            height=32, state="disabled", command=self.apply_smart_mix
+            btn_row, text="⚡ Apply GRC Smart Mix (Slots 1-3)", font=Fonts.bold(12),
+            fg_color=ThemeManager.success(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.accent(),
+            height=36, state="disabled", command=self.apply_smart_mix
         )
         self.btn_apply_smart.pack(side="left", padx=(0, 6))
 
         self.btn_apply_fastest = ctk.CTkButton(
-            btn_row, text="🥇 Apply #1 Fastest Only", font=Fonts.bold(11),
+            btn_row, text="🥇 Apply #1 Fastest Only", font=Fonts.bold(12),
             fg_color=ThemeManager.primary(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.accent(),
-            height=32, state="disabled", command=self.apply_fastest_single
+            height=36, state="disabled", command=self.apply_fastest_single
         )
         self.btn_apply_fastest.pack(side="left", padx=6)
 
         ctk.CTkButton(
-            btn_row, text="Close", font=Fonts.regular(11),
+            btn_row, text="Tutup", font=Fonts.bold(11),
             fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(),
-            height=32, width=80, command=self.destroy
-        )
+            height=36, width=90, command=self.destroy
+        ).pack(side="right")
 
     def sort_column(self, col: str):
         """Sort Treeview rows by clicking column headers (Numeric & String)."""
@@ -523,6 +522,12 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         if len(ips) > 0: self.dns_view.dns1_entry.insert(0, ips[0])
         if len(ips) > 1: self.dns_view.dns2_entry.insert(0, ips[1])
+        if len(ips) > 2:
+            self.dns_view.dns3_entry.insert(0, ips[2])
+        elif len(sorted_res) > 1:
+            sec_ips = sorted_res[1].get("ipv6", []) if (is_ipv6 and sorted_res[1].get("ipv6")) else sorted_res[1].get("ipv4", [])
+            if sec_ips:
+                self.dns_view.dns3_entry.insert(0, sec_ips[0])
 
         self.lbl_status.configure(text=f"⚡ Menerapkan #{fastest['name']} ke sistem jaringan...", text_color=ThemeManager.warning())
 

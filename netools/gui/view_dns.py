@@ -13,6 +13,7 @@ from netools.gui.theme import (
     ThemeManager,
 )
 from netools.gui.view_benchmark_modal import GRCBenchmarkModal
+from netools.gui.view_dpi_inspector import DPIInspectorModal
 from netools.libs import dns_db as db
 from netools.services import canary_service
 
@@ -183,38 +184,38 @@ class DNSView(ctk.CTkScrollableFrame):
 
         # Slot 1
         self.s1 = ctk.CTkFrame(self.slots_card, fg_color=ThemeManager.surface())
-        self.s1.pack(fill="x", pady=4, padx=14)
-        ctk.CTkLabel(self.s1, text="DNS 1 (Primary)   :", font=Fonts.bold(11), width=130, anchor="w", text_color=ThemeManager.text()).pack(side="left")
-        self.dns1_entry = ctk.CTkEntry(self.s1, width=200, height=30, font=Fonts.mono(11), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
+        self.s1.pack(fill="x", pady=6, padx=14)
+        ctk.CTkLabel(self.s1, text="DNS 1 (Primary)   :", font=Fonts.bold(12), width=140, anchor="w", text_color=ThemeManager.text()).pack(side="left")
+        self.dns1_entry = ctk.CTkEntry(self.s1, width=220, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
         self.dns1_entry.pack(side="left", padx=4)
 
-        self.btn_ping1 = ctk.CTkButton(self.s1, text="Ping", width=60, height=28, font=Fonts.bold(10), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(1))
+        self.btn_ping1 = ctk.CTkButton(self.s1, text="Ping", width=64, height=30, font=Fonts.bold(11), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(1))
         self.btn_ping1.pack(side="left", padx=4)
-        self.lbl_ping1 = ctk.CTkLabel(self.s1, text="", font=Fonts.bold(11), text_color=ThemeManager.success())
+        self.lbl_ping1 = ctk.CTkLabel(self.s1, text="", font=Fonts.bold(12), text_color=ThemeManager.success())
         self.lbl_ping1.pack(side="left", padx=6)
 
         # Slot 2
         self.s2 = ctk.CTkFrame(self.slots_card, fg_color=ThemeManager.surface())
-        self.s2.pack(fill="x", pady=4, padx=14)
-        ctk.CTkLabel(self.s2, text="DNS 2 (Secondary) :", font=Fonts.bold(11), width=130, anchor="w", text_color=ThemeManager.text()).pack(side="left")
-        self.dns2_entry = ctk.CTkEntry(self.s2, width=200, height=30, font=Fonts.mono(11), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
+        self.s2.pack(fill="x", pady=6, padx=14)
+        ctk.CTkLabel(self.s2, text="DNS 2 (Secondary) :", font=Fonts.bold(12), width=140, anchor="w", text_color=ThemeManager.text()).pack(side="left")
+        self.dns2_entry = ctk.CTkEntry(self.s2, width=220, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
         self.dns2_entry.pack(side="left", padx=4)
 
-        self.btn_ping2 = ctk.CTkButton(self.s2, text="Ping", width=60, height=28, font=Fonts.bold(10), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(2))
+        self.btn_ping2 = ctk.CTkButton(self.s2, text="Ping", width=64, height=30, font=Fonts.bold(11), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(2))
         self.btn_ping2.pack(side="left", padx=4)
-        self.lbl_ping2 = ctk.CTkLabel(self.s2, text="", font=Fonts.bold(11), text_color=ThemeManager.success())
+        self.lbl_ping2 = ctk.CTkLabel(self.s2, text="", font=Fonts.bold(12), text_color=ThemeManager.success())
         self.lbl_ping2.pack(side="left", padx=6)
 
         # Slot 3
         self.s3 = ctk.CTkFrame(self.slots_card, fg_color=ThemeManager.surface())
-        self.s3.pack(fill="x", pady=4, padx=14)
-        ctk.CTkLabel(self.s3, text="DNS 3 (Tertiary)  :", font=Fonts.bold(11), width=130, anchor="w", text_color=ThemeManager.text()).pack(side="left")
-        self.dns3_entry = ctk.CTkEntry(self.s3, width=200, height=30, font=Fonts.mono(11), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
+        self.s3.pack(fill="x", pady=6, padx=14)
+        ctk.CTkLabel(self.s3, text="DNS 3 (Tertiary)  :", font=Fonts.bold(12), width=140, anchor="w", text_color=ThemeManager.text()).pack(side="left")
+        self.dns3_entry = ctk.CTkEntry(self.s3, width=220, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
         self.dns3_entry.pack(side="left", padx=4)
 
-        self.btn_ping3 = ctk.CTkButton(self.s3, text="Ping", width=60, height=28, font=Fonts.bold(10), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(3))
+        self.btn_ping3 = ctk.CTkButton(self.s3, text="Ping", width=64, height=30, font=Fonts.bold(11), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(3))
         self.btn_ping3.pack(side="left", padx=4)
-        self.lbl_ping3 = ctk.CTkLabel(self.s3, text="", font=Fonts.bold(11), text_color=ThemeManager.success())
+        self.lbl_ping3 = ctk.CTkLabel(self.s3, text="", font=Fonts.bold(12), text_color=ThemeManager.success())
         self.lbl_ping3.pack(side="left", padx=6)
 
         # Options Row
@@ -229,7 +230,7 @@ class DNSView(ctk.CTkScrollableFrame):
             self.opts,
             text="Enable DNS-over-TLS (DoT / Opportunistic)",
             variable=self.dot_var,
-            font=Fonts.regular(11),
+            font=Fonts.regular(12),
             text_color=ThemeManager.text(),
             fg_color=ThemeManager.primary()
         )
@@ -240,7 +241,7 @@ class DNSView(ctk.CTkScrollableFrame):
             self.opts,
             text="Persist across Network Reconnects",
             variable=self.persist_var,
-            font=Fonts.regular(11),
+            font=Fonts.regular(12),
             text_color=ThemeManager.text(),
             fg_color=ThemeManager.primary()
         )
@@ -253,86 +254,97 @@ class DNSView(ctk.CTkScrollableFrame):
         ctk.CTkButton(
             self.actions,
             text="⚡ Apply DNS",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.success(),
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
-            height=34,
+            height=36,
             command=self.apply_dns
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
             self.actions,
             text="♻️ Flush DNS",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
-            height=34,
+            height=36,
             command=self.flush_dns
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
             self.actions,
             text="↩️ Restore DHCP",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.surface_alt(),
             text_color=ThemeManager.danger(),
             hover_color=ThemeManager.border(),
-            height=34,
+            height=36,
             command=self.restore_dhcp
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
             self.actions,
             text="🔍 Verify DNS & DoH",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.primary(),
             hover_color=ThemeManager.surface_alt(),
-            height=34,
+            height=36,
             command=self.verify_dns_status
+        ).pack(side="left", padx=6)
+
+        ctk.CTkButton(
+            self.actions,
+            text="🔬 Inspect Blocked Domain / DPI",
+            font=Fonts.bold(12),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.warning(),
+            hover_color=ThemeManager.surface_alt(),
+            height=36,
+            command=self.open_dpi_inspector
         ).pack(side="left", padx=6)
 
 
         ctk.CTkButton(
             self.actions,
             text="🏆 Fastest DNS Benchmark (GRC Engine)",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.warning(),
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
-            height=34,
+            height=36,
             command=self.open_benchmark
         ).pack(side="right", padx=(6, 0))
 
         # ---- Canary Domain Interception Check Card ----
         self.canary_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
         self.canary_card.pack(fill="x", padx=16, pady=(8, 4))
-        self.canary_hdr = ctk.CTkFrame(self.canary_card, fg_color=ThemeManager.surface(), height=28)
-        self.canary_hdr.pack(fill="x", padx=10, pady=(8, 2))
+        self.canary_hdr = ctk.CTkFrame(self.canary_card, fg_color=ThemeManager.surface(), height=30)
+        self.canary_hdr.pack(fill="x", padx=12, pady=(10, 2))
         self.canary_lbl = ctk.CTkLabel(
             self.canary_hdr, text="🛡️ DNS Canary (Interception Check)",
-            font=Fonts.subtitle(11), text_color=ThemeManager.text()
+            font=Fonts.subtitle(13), text_color=ThemeManager.text()
         )
         self.canary_lbl.pack(side="left")
         self.canary_badge = ctk.CTkLabel(
             self.canary_hdr, text="● Not Checked",
-            font=Fonts.bold(9), text_color=ThemeManager.text_muted()
+            font=Fonts.badge(10), text_color=ThemeManager.text_muted()
         )
         self.canary_badge.pack(side="right", padx=4)
         self.canary_body = ctk.CTkFrame(self.canary_card, fg_color=ThemeManager.surface())
-        self.canary_body.pack(fill="x", padx=10, pady=(0, 8))
+        self.canary_body.pack(fill="x", padx=12, pady=(0, 10))
         self.canary_stat = ctk.CTkLabel(
             self.canary_body,
-            text="Click 'Check' to test Mozilla + Apple + Custom canary domains (system + custom resolver).",
-            font=Fonts.regular(9), text_color=ThemeManager.text_muted(), justify="left"
+            text="Click 'Check Now' to test Mozilla + Apple + Custom canary domains (system + custom resolver).",
+            font=Fonts.regular(11), text_color=ThemeManager.text_muted(), justify="left"
         )
         self.canary_stat.pack(anchor="w", pady=2)
         self.canary_btn = ctk.CTkButton(
             self.canary_body, text="🔄 Check Now",
-            font=Fonts.bold(9), fg_color=ThemeManager.accent(), text_color=ThemeManager.get("on_primary"),
-            hover_color=ThemeManager.accent(), height=26,
+            font=Fonts.bold(11), fg_color=ThemeManager.accent(), text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(), height=30,
             command=self._run_canary_check,
         )
         self.canary_btn.pack(anchor="e", pady=(2, 0))
@@ -646,6 +658,20 @@ class DNSView(ctk.CTkScrollableFrame):
 
         self.benchmark_modal = GRCBenchmarkModal(self.main_app, self)
         self.main_app.child_windows.append(self.benchmark_modal)
+
+    def open_dpi_inspector(self):
+        if hasattr(self, "dpi_modal") and self.dpi_modal is not None:
+            try:
+                if self.dpi_modal.winfo_exists():
+                    self.dpi_modal.deiconify()
+                    self.dpi_modal.lift()
+                    self.dpi_modal.focus_force()
+                    return
+            except Exception:
+                pass
+
+        self.dpi_modal = DPIInspectorModal(self.main_app)
+        self.main_app.child_windows.append(self.dpi_modal)
 
     def verify_dns_status(self):
         if hasattr(self, "verify_modal") and self.verify_modal is not None:

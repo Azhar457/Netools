@@ -36,3 +36,4 @@ uv.lock
 # Android build artifacts (if separate)
 *.apk
 singbox-rotator-arm64.apk
+

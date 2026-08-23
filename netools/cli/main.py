@@ -118,6 +118,55 @@ def cmd_gui(args):
     from netools.gui.app import main as run_gui
     run_gui()
 
+def cmd_tray_test(args):
+    """Test System Tray initialization and print diagnostics."""
+    import sys
+    import time
+    import traceback
+    print("=== Netools System Tray Diagnostics ===")
+    print("Python version:", sys.version)
+    try:
+        import pystray
+        print("Direct import pystray succeeded:", pystray)
+    except Exception as e:
+        print("Direct import pystray failed:")
+        traceback.print_exc()
+    from netools.gui.tray import PYSTRAY_AVAILABLE, TrayManager
+    print("PYSTRAY_AVAILABLE:", PYSTRAY_AVAILABLE)
+    class DummyApp:
+        def after(self, *args): pass
+        def show_toast(self, *args, **kwargs): pass
+    tray = TrayManager(DummyApp())
+    print("TrayManager instance created:", tray)
+    try:
+        import gi
+        print("gi available:", gi)
+        gi.require_version('Gtk', '3.0')
+        from gi.repository import Gtk
+        print("Gtk 3.0 loaded successfully")
+        try:
+            gi.require_version('AppIndicator3', '0.1')
+            from gi.repository import AppIndicator3
+            print("AppIndicator3 0.1 loaded successfully")
+        except Exception as e:
+            print("AppIndicator3 load error:", e)
+        try:
+            gi.require_version('AyatanaAppIndicator3', '0.1')
+            from gi.repository import AyatanaAppIndicator3
+            print("AyatanaAppIndicator3 loaded successfully")
+        except Exception as e:
+            print("AyatanaAppIndicator3 load error:", e)
+    except Exception as e:
+        print("GTK / GI error:", e)
+
+    print("Starting tray...")
+    tray.start()
+    time.sleep(1)
+    print("Tray is_running:", tray.is_running)
+    print("Tray icon:", tray.icon)
+    tray.stop()
+    print("=== Tray test finished ===")
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="netools",
@@ -150,6 +199,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # gui subcommand
     subparsers.add_parser("gui", help="Launch Desktop GUI All-In-One")
+    subparsers.add_parser("tray-test", help="Test System Tray Diagnostics")
     return parser
 
 def main():
@@ -168,6 +218,8 @@ def main():
         cmd_pac(args)
     elif args.command == "web":
         cmd_web(args)
+    elif args.command == "tray-test":
+        cmd_tray_test(args)
     elif args.command == "gui" or args.command is None:
         cmd_gui(args)
     else:

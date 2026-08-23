@@ -16,7 +16,10 @@ try:
     import pystray
     from PIL import Image, ImageDraw
     PYSTRAY_AVAILABLE = True
-except ImportError:
+except Exception as e:
+    import traceback
+    print("[DEBUG] netools.gui.tray import failed:", e)
+    traceback.print_exc()
     PYSTRAY_AVAILABLE = False
 
 
@@ -38,7 +41,7 @@ class TrayManager:
         self.is_running = False
 
     def is_available(self) -> bool:
-        return PYSTRAY_AVAILABLE
+        return PYSTRAY_AVAILABLE and (self.is_running or self.icon is not None)
 
     def update_status_icon(self, verdict: str):
         """Swap the tray icon to reflect DNS canary verdict.
@@ -105,16 +108,24 @@ class TrayManager:
             pystray.MenuItem("❌ Keluar (Exit)", self._on_exit)
         )
 
-        self.icon = pystray.Icon("netools", image, "Netools Suite v2.0", menu)
-        self.is_running = True
-
         def _run_tray():
-            try:
-                self.icon.run()
-            except Exception as e:
-                print(f"[WARN] System tray loop ended: {e}")
-            finally:
-                self.is_running = False
+            backends_to_try = [None, "gtk", "xorg", "appindicator"]
+            for backend_name in backends_to_try:
+                try:
+                    if backend_name:
+                        import os
+                        os.environ["PYSTRAY_BACKEND"] = backend_name
+                        import importlib
+                        importlib.reload(pystray)
+                    self.icon = pystray.Icon("netools", image, "Netools Suite v2.0", menu)
+                    self.is_running = True
+                    self.icon.run()
+                    break
+                except Exception as e:
+                    print(f"[WARN] System tray backend {backend_name or 'default'} failed: {e}")
+                    self.is_running = False
+                finally:
+                    self.is_running = False
 
         tray_thread = threading.Thread(target=_run_tray, daemon=True)
         tray_thread.start()

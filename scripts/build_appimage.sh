@@ -19,17 +19,6 @@ echo "==> [2/4] Compiling lean onedir bundle with PyInstaller..."
 rm -rf dist/netools build/netools build/AppDir
 .venv/bin/pyinstaller -y --clean netools.spec
 
-# Prune unused heavy format decoders and plugins from Pillow
-rm -f dist/netools/_internal/pillow.libs/libavif* \
-      dist/netools/_internal/pillow.libs/libopenjp2* \
-      dist/netools/_internal/pillow.libs/libtiff* \
-      dist/netools/_internal/pillow.libs/libwebp* 2>/dev/null || true
-
-# Prune unneeded Pillow image format plugins (only PNG/ICO/JPEG are used)
-find dist/netools/_internal/PIL/ -maxdepth 1 -type f -name "*ImagePlugin*" \
-    ! -name "PngImagePlugin*" ! -name "IcoImagePlugin*" ! -name "JpegImagePlugin*" ! -name "BmpImagePlugin*" \
-    -delete 2>/dev/null || true
-
 # Prune heavy unused CJK multibyte codecs
 rm -f dist/netools/_internal/python3.*/lib-dynload/_codecs_*.so 2>/dev/null || true
 
@@ -77,8 +66,8 @@ cat << 'INNER_EOF' > build/AppDir/AppRun
 SELF=$(readlink -f "$0")
 HERE=${SELF%/*}
 export PATH="${HERE}/usr/bin/netools:${PATH}"
-export LD_LIBRARY_PATH="${HERE}/usr/bin/netools:${LD_LIBRARY_PATH}"
-export GI_TYPELIB_PATH="/usr/lib64/girepository-1.0:/usr/lib/girepository-1.0:${GI_TYPELIB_PATH}"
+export LD_LIBRARY_PATH="${HERE}/usr/bin/netools:${HERE}/usr/bin/netools/_internal:${HERE}/usr/bin/netools/_internal/lib:${LD_LIBRARY_PATH}"
+export GI_TYPELIB_PATH="${HERE}/usr/bin/netools/_internal/gi_typelibs:/usr/lib64/girepository-1.0:/usr/lib/x86_64-linux-gnu/girepository-1.0:/usr/lib/girepository-1.0:${GI_TYPELIB_PATH}"
 if [ $# -eq 0 ]; then
     exec "${HERE}/usr/bin/netools/netools" gui
 else

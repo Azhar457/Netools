@@ -49,7 +49,7 @@ class SettingsView(ctk.CTkFrame):
         self.lbl_title = ctk.CTkLabel(
             self.hdr,
             text="🔌 9Router & AI Multi-Provider Gateway Binding",
-            font=Fonts.title(15),
+            font=Fonts.title(16),
             text_color=ThemeManager.secondary()
         )
         self.lbl_title.pack(side="left")
@@ -57,12 +57,12 @@ class SettingsView(ctk.CTkFrame):
         self.btn_refresh = ctk.CTkButton(
             self.hdr,
             text="🔄 Refresh",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
-            width=90,
-            height=30,
+            width=110,
+            height=34,
             command=self.refresh
         )
         self.btn_refresh.pack(side="right")
@@ -75,13 +75,13 @@ class SettingsView(ctk.CTkFrame):
         self.f_nr = ctk.CTkFrame(self.card_cfg, fg_color=ThemeManager.surface())
         self.f_nr.pack(fill="x", padx=14, pady=10)
 
-        ctk.CTkLabel(self.f_nr, text="9Router API:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
-        self.entry_nr_url = ctk.CTkEntry(self.f_nr, width=220, height=30, font=Fonts.mono(11), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
+        ctk.CTkLabel(self.f_nr, text="9Router API:", font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
+        self.entry_nr_url = ctk.CTkEntry(self.f_nr, width=240, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
         self.entry_nr_url.insert(0, NINEROUTER_URL)
         self.entry_nr_url.pack(side="left", padx=4)
 
-        ctk.CTkLabel(self.f_nr, text="CLI Token:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left", padx=(12, 6))
-        self.entry_nr_tok = ctk.CTkEntry(self.f_nr, width=150, height=30, font=Fonts.mono(11), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text(), show="•")
+        ctk.CTkLabel(self.f_nr, text="CLI Token:", font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(12, 6))
+        self.entry_nr_tok = ctk.CTkEntry(self.f_nr, width=170, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text(), show="•")
         self.entry_nr_tok.insert(0, get_ninerouter_token())
         self.entry_nr_tok.pack(side="left", padx=4)
 
@@ -99,16 +99,16 @@ class SettingsView(ctk.CTkFrame):
         ctk.CTkButton(
             self.f_nr,
             text="🔍 Auto-Detect",
-            font=Fonts.bold(10),
+            font=Fonts.bold(11),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
-            width=90,
-            height=28,
+            width=110,
+            height=34,
             command=_do_autodetect
-        ).pack(side="left", padx=4)
+        ).pack(side="left", padx=6)
 
-        self.lbl_gw_stat = ctk.CTkLabel(self.f_nr, text="Checking...", font=Fonts.bold(11), text_color=ThemeManager.text_muted())
+        self.lbl_gw_stat = ctk.CTkLabel(self.f_nr, text="Checking...", font=Fonts.bold(12), text_color=ThemeManager.text_muted())
         self.lbl_gw_stat.pack(side="left", padx=(10, 0))
 
         # Action Buttons Row
@@ -118,22 +118,22 @@ class SettingsView(ctk.CTkFrame):
         ctk.CTkButton(
             self.actions,
             text="🔗 Bind Active Pools to Connections",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.secondary(),
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
-            height=32,
+            height=36,
             command=self.bind_pools
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
             self.actions,
             text="✂️ Unlink / Clear All Proxies from 9Router",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.surface_alt(),
             text_color=ThemeManager.danger(),
             hover_color=ThemeManager.border(),
-            height=32,
+            height=36,
             command=self.clear_pools
         ).pack(side="left", padx=6)
 
@@ -144,7 +144,7 @@ class SettingsView(ctk.CTkFrame):
         ctk.CTkLabel(
             self.card_conns,
             text="📋 Registered Provider Connections & Proxy Pools",
-            font=Fonts.subtitle(12),
+            font=Fonts.subtitle(13),
             text_color=ThemeManager.text()
         ).pack(anchor="w", padx=14, pady=(12, 6))
 

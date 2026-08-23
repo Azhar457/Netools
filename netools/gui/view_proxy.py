@@ -46,34 +46,32 @@ class ProxyView(ctk.CTkFrame):
         self.lbl_title = ctk.CTkLabel(
             self.hdr,
             text="🌐 Turbo Sing-box Proxy Rotator",
-            font=Fonts.title(15),
+            font=Fonts.title(16),
             text_color=ThemeManager.success()
         )
-        self.lbl_title.pack(side="left")
-
-
+        self.lbl_title.pack(side="left", padx=(0, 14))
 
         # Action Buttons
         self.btn_start = ctk.CTkButton(
             self.hdr,
             text="🚀 Start Pool",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.success(),
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
-            height=30,
+            height=36,
             command=self.on_start
         )
-        self.btn_start.pack(side="left", padx=(16, 4))
+        self.btn_start.pack(side="left", padx=4)
 
         self.btn_stop = ctk.CTkButton(
             self.hdr,
             text="🛑 Stop Pool",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.danger(),
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.warning(),
-            height=30,
+            height=36,
             command=self.on_stop
         )
         self.btn_stop.pack(side="left", padx=4)
@@ -81,11 +79,11 @@ class ProxyView(ctk.CTkFrame):
         self.btn_refresh = ctk.CTkButton(
             self.hdr,
             text="🔄 Refresh",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
-            height=30,
+            height=36,
             command=self.on_refresh
         )
         self.btn_refresh.pack(side="left", padx=4)
@@ -95,7 +93,7 @@ class ProxyView(ctk.CTkFrame):
             self.hdr,
             text="Auto-Heal Watchdog",
             variable=self.watchdog_var,
-            font=Fonts.bold(11),
+            font=Fonts.regular(12),
             text_color=ThemeManager.text(),
             fg_color=ThemeManager.success(),
             command=self.toggle_watchdog
@@ -106,11 +104,11 @@ class ProxyView(ctk.CTkFrame):
         self.btn_pac_toggle = ctk.CTkButton(
             self.hdr,
             text="🟢 Start PAC",
-            font=Fonts.bold(11),
+            font=Fonts.bold(12),
             fg_color=ThemeManager.primary(),
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
-            height=30,
+            height=36,
             command=self.toggle_pac
         )
         self.btn_pac_toggle.pack(side="right", padx=(4, 0))
@@ -123,7 +121,7 @@ class ProxyView(ctk.CTkFrame):
         self.lbl_summary = ctk.CTkLabel(
             self.summary_card,
             text="Instances: 0 active | SOCKS: 11080–11099 | HTTP: 21080–21099 | Upstream: gstatic 204",
-            font=Fonts.mono(11),
+            font=Fonts.mono(12),
             text_color=ThemeManager.text_muted()
         )
         self.lbl_summary.pack(padx=14, pady=8, anchor="w")

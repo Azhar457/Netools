@@ -1,8 +1,11 @@
 """
 Linux System DNS Adapter: resolvectl, systemd-resolved, and NetworkManager (nmcli).
+Provides atomic batched execution to prevent multiple repetitive password / polkit prompts.
 """
 
 import ipaddress
+import os
+import shutil
 import subprocess
 from typing import Any, Dict, List, Optional
 
@@ -20,6 +23,53 @@ def _validate_ips(ips: list) -> list:
         except ValueError:
             pass
     return validated
+
+
+def _run_batched_commands(cmds: List[List[str]]) -> bool:
+    """
+    Execute a list of shell commands with minimal authentication prompts.
+    First tries unprivileged execution. If any command requires elevated privileges,
+    bundles the failed commands into a single pkexec / sudo call so the user is prompted AT MOST ONCE.
+    """
+    failed_cmds = []
+    for cmd in cmds:
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode != 0:
+                failed_cmds.append(cmd)
+        except Exception:
+            failed_cmds.append(cmd)
+
+    if not failed_cmds:
+        return True
+
+    # If commands failed due to permissions, execute all remaining commands in ONE single pkexec invocation
+    pkexec_bin = shutil.which("pkexec")
+    if pkexec_bin and (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
+        script_parts = []
+        for cmd in failed_cmds:
+            escaped_args = " ".join(f"'{arg}'" for arg in cmd)
+            script_parts.append(escaped_args)
+
+        batch_script = " && ".join(script_parts)
+        try:
+            res = subprocess.run([pkexec_bin, "sh", "-c", batch_script], capture_output=True, text=True)
+            return res.returncode == 0
+        except Exception:
+            pass
+
+    # Fallback to sudo if pkexec is unavailable
+    if shutil.which("sudo"):
+        script_parts = [" ".join(f"'{arg}'" for arg in cmd) for cmd in failed_cmds]
+        batch_script = " && ".join(script_parts)
+        try:
+            res = subprocess.run(["sudo", "sh", "-c", batch_script], capture_output=True, text=True)
+            return res.returncode == 0
+        except Exception:
+            pass
+
+    return False
+
 
 def get_network_interfaces() -> List[Dict[str, Any]]:
     """Detect active network interfaces and their connection details."""
@@ -68,6 +118,7 @@ def get_network_interfaces() -> List[Dict[str, Any]]:
     interfaces.sort(key=lambda x: 0 if x["is_default"] else 1)
     return interfaces
 
+
 def get_interface_dns(device: str) -> List[str]:
     """Retrieve active DNS IPs for a given network device."""
     dns_servers = []
@@ -100,51 +151,65 @@ def get_interface_dns(device: str) -> List[str]:
             pass
     return dns_servers
 
+
 def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str] = None, enable_dot: bool = False, persistent: bool = True) -> bool:
-    """Set DNS on interface via resolvectl and NetworkManager."""
+    """Set DNS on interface via resolvectl and NetworkManager atomically with at most 1 auth prompt."""
     valid_ips = _validate_ips(ips)
     if not valid_ips or not device:
         return False
 
-    # 1. Update NetworkManager if persistent
+    cmds: List[List[str]] = []
+
+    # 1. Update NetworkManager in a single combined command if persistent
     if persistent and connection_name:
         v4_ips = [ip for ip in valid_ips if ":" not in ip]
         v6_ips = [ip for ip in valid_ips if ":" in ip]
-        if v4_ips:
-            cmd_nm_v4 = ["nmcli", "connection", "modify", connection_name, "ipv4.dns", " ".join(v4_ips), "ipv4.ignore-auto-dns", "yes"]
-            subprocess.run(cmd_nm_v4, capture_output=True)
-        if v6_ips:
-            cmd_nm_v6 = ["nmcli", "connection", "modify", connection_name, "ipv6.dns", " ".join(v6_ips), "ipv6.ignore-auto-dns", "yes"]
-            subprocess.run(cmd_nm_v6, capture_output=True)
-        subprocess.run(["nmcli", "connection", "up", connection_name], capture_output=True)
 
-    # 2. Apply runtime DNS to systemd-resolved
-    cmd = ["resolvectl", "dns", device] + valid_ips
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    if res.returncode != 0:
-        subprocess.run(["sudo", "resolvectl", "dns", device] + valid_ips, capture_output=True)
+        nm_args = ["nmcli", "connection", "modify", connection_name]
+        if v4_ips:
+            nm_args.extend(["ipv4.dns", " ".join(v4_ips), "ipv4.ignore-auto-dns", "yes"])
+        else:
+            nm_args.extend(["ipv4.ignore-auto-dns", "no"])
+
+        if v6_ips:
+            nm_args.extend(["ipv6.dns", " ".join(v6_ips), "ipv6.ignore-auto-dns", "yes"])
+        else:
+            nm_args.extend(["ipv6.ignore-auto-dns", "no"])
+
+        cmds.append(nm_args)
+
+    # 2. Runtime DNS via resolvectl
+    cmds.append(["resolvectl", "dns", device] + valid_ips)
 
     # 3. Configure DNS-over-TLS (DoT)
     if enable_dot:
-        # Enable TLS (opportunistic encryption for IP resolvers) and route global domains (~.)
-        subprocess.run(["resolvectl", "dnsovertls", device, "opportunistic"], capture_output=True)
-        subprocess.run(["resolvectl", "domain", device, "~."], capture_output=True)
+        cmds.append(["resolvectl", "dnsovertls", device, "opportunistic"])
+        cmds.append(["resolvectl", "domain", device, "~."])
     else:
-        subprocess.run(["resolvectl", "dnsovertls", device, "no"], capture_output=True)
+        cmds.append(["resolvectl", "dnsovertls", device, "no"])
 
-    flush_dns_cache()
-    return True
+    # 4. Flush caches
+    cmds.append(["resolvectl", "flush-caches"])
+
+    return _run_batched_commands(cmds)
+
 
 def restore_default_dns(device: str, connection_name: Optional[str] = None) -> bool:
-    """Revert interface back to DHCP DNS."""
+    """Revert interface back to DHCP DNS atomically."""
     if not device:
         return False
-    subprocess.run(["resolvectl", "revert", device], capture_output=True)
+    cmds: List[List[str]] = [
+        ["resolvectl", "revert", device]
+    ]
     if connection_name:
-        subprocess.run(["nmcli", "connection", "modify", connection_name, "ipv4.ignore-auto-dns", "no", "ipv4.dns", "", "ipv6.ignore-auto-dns", "no", "ipv6.dns", ""], capture_output=True)
-        subprocess.run(["nmcli", "connection", "up", connection_name], capture_output=True)
-    flush_dns_cache()
-    return True
+        cmds.append([
+            "nmcli", "connection", "modify", connection_name,
+            "ipv4.ignore-auto-dns", "no", "ipv4.dns", "",
+            "ipv6.ignore-auto-dns", "no", "ipv6.dns", ""
+        ])
+    cmds.append(["resolvectl", "flush-caches"])
+    return _run_batched_commands(cmds)
+
 
 def flush_dns_cache() -> None:
     """Flush systemd-resolved DNS cache."""

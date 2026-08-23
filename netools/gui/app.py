@@ -154,19 +154,19 @@ class NetoolsApp(ctk.CTk):
             self.preferences_view.apply_theme()
 
     def _build_ui(self):
-        from netools.gui.theme import ThemeManager
+        from netools.gui.theme import Fonts, ThemeManager
         # Header banner
-        self.header = ctk.CTkFrame(self, fg_color=ThemeManager.surface_alt(), height=60)
+        self.header = ctk.CTkFrame(self, fg_color=ThemeManager.surface_alt(), height=64)
         self.header.pack(fill="x", padx=0, pady=0)
         self.header.pack_propagate(False)
 
         self.title_box = ctk.CTkFrame(self.header, fg_color=ThemeManager.surface_alt())
-        self.title_box.pack(side="left", padx=20, pady=6)
+        self.title_box.pack(side="left", padx=20, pady=8)
 
         self.title_label = ctk.CTkLabel(
             self.title_box,
             text="⚡ Netools Suite v2.0",
-            font=("sans-serif", 16, "bold"),
+            font=Fonts.display(17),
             text_color=ThemeManager.primary()
         )
         self.title_label.pack(anchor="w")
@@ -174,22 +174,22 @@ class NetoolsApp(ctk.CTk):
         self.subtitle_label = ctk.CTkLabel(
             self.title_box,
             text="Unified Sing-box Rotator, Real-Time GRC DNS Benchmark & AI Gateway Router",
-            font=("sans-serif", 10),
+            font=Fonts.regular(11),
             text_color=ThemeManager.text_muted()
         )
         self.subtitle_label.pack(anchor="w")
 
         # Right-side Live Status Pill (Visibility of System Status - Nielsen #1)
         self.status_box = ctk.CTkFrame(self.header, fg_color=ThemeManager.bg(), corner_radius=20, border_width=1, border_color=ThemeManager.border())
-        self.status_box.pack(side="right", padx=20, pady=12)
+        self.status_box.pack(side="right", padx=20, pady=14)
 
         self.lbl_header_status = ctk.CTkLabel(
             self.status_box,
             text="● System Ready",
-            font=("sans-serif", 10, "bold"),
+            font=Fonts.bold(11),
             text_color=ThemeManager.success(),
-            padx=12,
-            pady=4
+            padx=14,
+            pady=5
         )
         self.lbl_header_status.pack()
 
@@ -203,6 +203,7 @@ class NetoolsApp(ctk.CTk):
             segmented_button_selected_hover_color=ThemeManager.border(),
             segmented_button_unselected_color=ThemeManager.bg(),
             segmented_button_unselected_hover_color=ThemeManager.border(),
+            segmented_button_font=Fonts.bold(12),
             text_color=ThemeManager.text(),
             text_color_disabled=ThemeManager.text_muted(),
             corner_radius=8
@@ -266,13 +267,15 @@ class NetoolsApp(ctk.CTk):
 
     def on_root_close(self):
         """Handle window close event (X button).
-        Keep running in the System Tray so PAC/proxy/DNS services stay alive."""
-        if self.tray.is_available():
+        Keep running in the System Tray if available; if tray is disabled or unavailable, minimize to taskbar or exit."""
+        if hasattr(self, "tray") and self.tray and self.tray.is_running and self.minimize_to_tray_enabled:
             self.withdraw()
             self.show_toast("Netools aktif di latar belakang (System Tray). PAC & proxy tetap berjalan.", level="info")
         elif self.minimize_to_tray_enabled:
-            self.withdraw()
-            self.show_toast("Netools berjalan di latar belakang (tanpa System Tray).", level="info")
+            # If user wants background persistence but tray daemon is not attached to this desktop session,
+            # minimize to taskbar rather than vanishing completely or killing services!
+            self.iconify()
+            self.show_toast("Netools diminimalkan ke taskbar. PAC & proxy tetap berjalan.", level="info")
         else:
             self.force_exit()
 
