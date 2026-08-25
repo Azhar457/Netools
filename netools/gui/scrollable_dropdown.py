@@ -17,6 +17,8 @@ from netools.gui.theme import (
 )
 
 
+RENDER_LIMIT = 25  # max buttons rendered per filter pass (freeze guard)
+
 class CTkScrollableDropdown:
     def __init__(
         self,
@@ -39,7 +41,7 @@ class CTkScrollableDropdown:
         self.placeholder_text = placeholder_text
 
         self.buttons: List[ctk.CTkButton] = []
-        self._render_limit: int = 40
+        self._render_limit: int = RENDER_LIMIT
         self._last_rendered: Optional[List[str]] = None
         self._search_after_id: Optional[str] = None
         self.toplevel: Optional[ctk.CTkToplevel] = None
