@@ -39,6 +39,9 @@ class CTkScrollableDropdown:
         self.placeholder_text = placeholder_text
 
         self.buttons: List[ctk.CTkButton] = []
+        self._render_limit: int = 40
+        self._last_rendered: Optional[List[str]] = None
+        self._search_after_id: Optional[str] = None
         self.toplevel: Optional[ctk.CTkToplevel] = None
         self.scroll_frame: Optional[ctk.CTkScrollableFrame] = None
         self.search_entry: Optional[ctk.CTkEntry] = None
@@ -57,6 +60,7 @@ class CTkScrollableDropdown:
     def configure(self, values: Optional[List[str]] = None, **kwargs):
         if values is not None:
             self.values = list(values)
+            self._last_rendered = None
             if self.toplevel and self.toplevel.winfo_exists():
                 self._populate_list(self.values)
 
@@ -186,7 +190,11 @@ class CTkScrollableDropdown:
             except Exception:
                 pass
 
-    def _populate_list(self, items: List[str]):
+    def _populate_list(self, items: List[str], hide_tail_note: bool = False):
+        if self._last_rendered == items:
+            return
+        self._last_rendered = items
+
         # Clear existing buttons
         for btn in self.buttons:
             try:
@@ -197,7 +205,15 @@ class CTkScrollableDropdown:
 
         current_val = self.variable.get() if self.variable else None
 
-        for item in items:
+        # Freeze guard: rendering dozens of CTkButtons per keystroke janks the
+        # UI. Show the first RENDER_LIMIT matches plus a tail note.
+        shown = items
+        tail_note = ""
+        if len(items) > self._render_limit:
+            shown = items[: self._render_limit]
+            tail_note = f"… {len(items) - self._render_limit} more — refine search"
+
+        for item in shown:
             is_selected = (item == current_val)
             btn = ctk.CTkButton(
                 self.scroll_frame,
@@ -215,10 +231,30 @@ class CTkScrollableDropdown:
             self._bind_mousewheel(btn)
             self.buttons.append(btn)
 
+        if tail_note or hide_tail_note:
+            note = ctk.CTkLabel(
+                self.scroll_frame,
+                text=(tail_note or "refine search to see more"),
+                font=Fonts.regular(9),
+                text_color=ThemeManager.text_muted(),
+                anchor="w",
+            )
+            note.pack(fill="x", padx=6, pady=(0, 2))
+
     def _on_search(self, event=None):
+        # Debounce: cancel pending rebuild, schedule after idle gap.
+        if self._search_after_id:
+            try:
+                self.widget.after_cancel(self._search_after_id)
+            except Exception:
+                pass
+        self._search_after_id = self.widget.after(120, self._apply_search_filter)
+
+    def _apply_search_filter(self):
+        self._search_after_id = None
         query = self.search_entry.get().strip().lower() if self.search_entry else ""
         if not query:
-            filtered = self.values
+            filtered = list(self.values)
         else:
             filtered = [v for v in self.values if query in v.lower()]
         self._populate_list(filtered)

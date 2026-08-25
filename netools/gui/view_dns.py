@@ -153,7 +153,7 @@ class DNSView(ctk.CTkFrame):
             variable=self.preset_var,
             max_height=280,
             searchable=True,
-            placeholder_text="🔍 Search 90+ DNS presets..."
+            placeholder_text=f"🔍 Search {len(preset_labels)} DNS presets..."
         )
 
         ctk.CTkLabel(
