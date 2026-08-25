@@ -10,6 +10,7 @@ from typing import List, Optional
 
 import customtkinter as ctk
 
+from netools.gui.i18n import tr
 from netools.gui.splash import SplashScreen
 from netools.gui.toast import ToastManager
 from netools.gui.tray import TrayManager
@@ -174,7 +175,7 @@ class NetoolsApp(ctk.CTk):
 
         self.title_label = ctk.CTkLabel(
             self.title_box,
-            text="⚡ Netools Suite v2.0",
+            text=tr("⚡ Netools Suite v2.0"),
             font=Fonts.display(17),
             text_color=ThemeManager.primary()
         )
@@ -182,7 +183,7 @@ class NetoolsApp(ctk.CTk):
 
         self.subtitle_label = ctk.CTkLabel(
             self.title_box,
-            text="Unified Sing-box Rotator, Real-Time GRC DNS Benchmark & AI Gateway Router",
+            text=tr("Unified Sing-box Rotator, Real-Time GRC DNS Benchmark & AI Gateway Router"),
             font=Fonts.regular(11),
             text_color=ThemeManager.text_muted()
         )
@@ -194,7 +195,7 @@ class NetoolsApp(ctk.CTk):
 
         self.lbl_header_status = ctk.CTkLabel(
             self.status_box,
-            text="● System Ready",
+            text=tr("● System Ready"),
             font=Fonts.bold(11),
             text_color=ThemeManager.success(),
             padx=14,
@@ -220,36 +221,47 @@ class NetoolsApp(ctk.CTk):
         self.tabview.pack(fill="both", expand=True, padx=16, pady=(0, 16))
 
         # Tab 1: Dashboard
-        self.tab_dashboard = self.tabview.add("📊 Dashboard")
+        self.tab_dashboard = self.tabview.add(tr("📊 Dashboard"))
         self.dashboard_view = DashboardView(self.tab_dashboard, self)
         self.dashboard_view.pack(fill="both", expand=True)
 
         # Tab 2: DNS Suite
-        self.tab_dns = self.tabview.add("⚡ DNS Suite")
+        self.tab_dns = self.tabview.add(tr("⚡ DNS Suite"))
         self.dns_view = DNSView(self.tab_dns, self)
         self.dns_view.pack(fill="both", expand=True)
 
         # Tab 3: Proxy Rotator
-        self.tab_proxy = self.tabview.add("🌐 Proxy Rotator")
+        self.tab_proxy = self.tabview.add(tr("🌐 Proxy Rotator"))
         self.proxy_view = ProxyView(self.tab_proxy, self)
         self.proxy_view.pack(fill="both", expand=True)
 
         # Tab 4: 9Router & AI Gateway
-        self.tab_settings = self.tabview.add("🔌 9Router & AI Sync")
+        self.tab_settings = self.tabview.add(tr("🔌 9Router & AI Sync"))
         self.settings_view = SettingsView(self.tab_settings, self)
         self.settings_view.pack(fill="both", expand=True)
 
         # Tab 5: Settings & About
-        self.tab_preferences = self.tabview.add("⚙️ Settings & About")
+        self.tab_preferences = self.tabview.add(tr("⚙️ Settings & About"))
         self.preferences_view = PreferencesView(self.tab_preferences, self)
         self.preferences_view.pack(fill="both", expand=True)
 
     def reload_ui(self):
-        """Rebuild entire UI with new theme colors while preserving active tab."""
-        active_tab = "⚙️ Settings & About"
+        """Rebuild entire UI with new theme colors or language while preserving active tab."""
+        tab_names = [
+            tr("📊 Dashboard"),
+            tr("⚡ DNS Suite"),
+            tr("🌐 Proxy Rotator"),
+            tr("🔌 9Router & AI Sync"),
+            tr("⚙️ Settings & About"),
+        ]
+        active_idx = 4
         if hasattr(self, "tabview"):
             try:
-                active_tab = self.tabview.get()
+                curr = self.tabview.get()
+                for idx, t in enumerate(self.tabview._tab_dict.keys()):
+                    if t == curr:
+                        active_idx = idx
+                        break
             except Exception:
                 pass
 
@@ -263,10 +275,45 @@ class NetoolsApp(ctk.CTk):
         self._build_ui()
         if hasattr(self, "tabview"):
             try:
-                self.tabview.set(active_tab)
+                new_tab_name = tab_names[active_idx] if active_idx < len(tab_names) else tab_names[-1]
+                self.tabview.set(new_tab_name)
             except Exception:
                 pass
 
+
+    def select_tab(self, target: Any):
+        """Switch to tab by index (0-4), key ('dashboard', 'dns', 'proxy', 'settings', 'preferences'), or title."""
+        key_map = {
+            "dashboard": 0,
+            "dns": 1,
+            "proxy": 2,
+            "settings": 3,
+            "9router": 3,
+            "preferences": 4,
+            "about": 4,
+        }
+        if isinstance(target, str) and target.lower() in key_map:
+            target = key_map[target.lower()]
+
+        if hasattr(self, "tabview") and hasattr(self.tabview, "_tab_dict"):
+            tabs = list(self.tabview._tab_dict.keys())
+            if isinstance(target, int) and 0 <= target < len(tabs):
+                try:
+                    self.tabview.set(tabs[target])
+                except Exception:
+                    pass
+            elif isinstance(target, str) and target in tabs:
+                try:
+                    self.tabview.set(target)
+                except Exception:
+                    pass
+            elif isinstance(target, str):
+                tr_name = tr(target)
+                if tr_name in tabs:
+                    try:
+                        self.tabview.set(tr_name)
+                    except Exception:
+                        pass
 
     def restore_from_tray(self):
         """Restore window from System Tray."""
@@ -279,12 +326,12 @@ class NetoolsApp(ctk.CTk):
         Keep running in the System Tray if available; if tray is disabled or unavailable, minimize to taskbar or exit."""
         if hasattr(self, "tray") and self.tray and self.tray.is_running and self.minimize_to_tray_enabled:
             self.withdraw()
-            self.show_toast("Netools aktif di latar belakang (System Tray). PAC & proxy tetap berjalan.", level="info")
+            self.show_toast(tr("Netools aktif di latar belakang (System Tray). PAC & proxy tetap berjalan."), level="info")
         elif self.minimize_to_tray_enabled:
             # If user wants background persistence but tray daemon is not attached to this desktop session,
             # minimize to taskbar rather than vanishing completely or killing services!
             self.iconify()
-            self.show_toast("Netools diminimalkan ke taskbar. PAC & proxy tetap berjalan.", level="info")
+            self.show_toast(tr("Netools diminimalkan ke taskbar. PAC & proxy tetap berjalan."), level="info")
         else:
             self.force_exit()
 

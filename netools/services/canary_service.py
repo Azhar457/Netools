@@ -251,11 +251,15 @@ def _resolver_label(target: str) -> str:
 def _probe(hostname: str, resolver_target: str, timeout: float) -> CanaryProbe:
     label = _resolver_label(resolver_target)
     started = time.perf_counter()
+    # TLD canaries (".ai") are probed via a guaranteed-nonexistent subdomain:
+    # random.<tld> must NXDOMAIN; any answer means the resolver forges wildcards.
+    probe_host = f"canary-probe-{int(time.time()*1000):x}.{hostname.lstrip('.')}" \
+        if hostname.startswith(".") else hostname
     try:
         res = _make_resolver(resolver_target, timeout)
         # Use UDP A first; if it answers, intercepted. Empty A + AAAA NXDOMAIN = clean.
         try:
-            ans = res.resolve(hostname, "A", raise_on_no_answer=False)
+            ans = res.resolve(probe_host, "A", raise_on_no_answer=False)
             rcode = ans.response.rcode() if ans.response else None
             if ans.rrset is not None and len(ans.rrset) > 0:
                 sample = ", ".join(str(rdata) for rdata in list(ans.rrset)[:3])
@@ -414,7 +418,17 @@ def run_canary_sweep_async(
 
 def add_custom_canary(hostname: str) -> bool:
     hostname = hostname.strip().lower().rstrip(".")
-    if not hostname or not all(c.isalnum() or c in ".-" for c in hostname):
+    if not hostname:
+        return False
+    # Accept either a full domain (use-application-dns.net) or a bare TLD
+    # (".ai" / "ai") used as a canary suffix probe.
+    is_tld = hostname.startswith(".") or ("." not in hostname)
+    if is_tld:
+        tld = hostname if hostname.startswith(".") else f".{hostname}"
+        if not all(c.isalnum() for c in tld[1:]) or len(tld) < 3:
+            return False
+        hostname = tld
+    elif not all(c.isalnum() or c in ".-" for c in hostname):
         return False
     existing = _load_custom_canaries()
     if hostname not in existing:
@@ -424,9 +438,13 @@ def add_custom_canary(hostname: str) -> bool:
 
 
 def remove_custom_canary(hostname: str) -> bool:
+    hostname = hostname.strip().lower().rstrip(".")
     existing = _load_custom_canaries()
-    if hostname in existing:
-        existing.remove(hostname)
-        _save_custom_canaries(existing)
-        return True
-    return False
+    variants = {hostname, hostname.lstrip(".")}
+    hits = [h for h in existing if h in variants or h.lstrip(".") in variants]
+    if not hits:
+        return False
+    for h in hits:
+        existing.remove(h)
+    _save_custom_canaries(existing)
+    return True

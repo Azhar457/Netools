@@ -9,6 +9,7 @@ import customtkinter as ctk
 from netools.adapters import ninerouter as nr_adapt
 from netools.adapters import platform_dns as sys_dns
 from netools.config import SOCKS5_PORT_START
+from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,
     ThemeManager,
@@ -51,7 +52,7 @@ class DashboardView(ctk.CTkFrame):
 
         self.lbl_title = ctk.CTkLabel(
             self.hdr,
-            text="📊 Netools Suite — Real-Time Operations",
+            text=tr("📊 System Overview & Live Telemetry"),
             font=Fonts.title(16),
             text_color=ThemeManager.primary()
         )
@@ -59,7 +60,7 @@ class DashboardView(ctk.CTkFrame):
 
         self.btn_refresh = ctk.CTkButton(
             self.hdr,
-            text="🔄 Refresh Status",
+            text=tr("🔄 Refresh Status"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
@@ -91,7 +92,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.card_proxy,
-            text="🌐 Proxy Rotator Pool",
+            text=tr("🌐 Proxy Rotator Pool"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.success()
         ).pack(anchor="w", padx=14, pady=(12, 4))
@@ -111,7 +112,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.card_pac,
-            text="📜 PAC Auto-Config Server",
+            text=tr("📜 PAC Auto-Config Server"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.primary()
         ).pack(anchor="w", padx=14, pady=(12, 4))
@@ -131,7 +132,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.card_dns,
-            text="⚡ Active System DNS",
+            text=tr("⚡ Active System DNS"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.warning()
         ).pack(anchor="w", padx=14, pady=(12, 4))
@@ -152,7 +153,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.card_9r,
-            text="🔌 9Router & AI Gateway",
+            text=tr("🔌 9Router & AI Gateway"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.secondary()
         ).pack(anchor="w", padx=14, pady=(12, 4))
@@ -172,7 +173,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.qa,
-            text="⚡ Quick 1-Click Operations",
+            text=tr("⚡ Quick 1-Click Operations"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.text()
         ).pack(anchor="w", padx=14, pady=(12, 8))
@@ -182,7 +183,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkButton(
             self.btn_row,
-            text="🚀 Start Proxy Pool",
+            text=tr("🚀 Start Proxy Pool"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.success(),
             text_color=ThemeManager.get("on_primary"),
@@ -193,7 +194,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkButton(
             self.btn_row,
-            text="🛑 Stop Proxy Pool",
+            text=tr("🛑 Stop Proxy Pool"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.danger(),
             text_color=ThemeManager.get("on_primary"),
@@ -204,7 +205,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkButton(
             self.btn_row,
-            text="⚡ GRC Benchmark",
+            text=tr("⚡ GRC Benchmark"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.warning(),
             text_color=ThemeManager.get("on_primary"),
@@ -215,7 +216,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkButton(
             self.btn_row,
-            text="♻️ Flush DNS Cache",
+            text=tr("♻️ Flush DNS Cache"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
@@ -230,7 +231,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.pac_quick,
-            text="🌐 System PAC Configuration (Proxy Auto-Configuration)",
+            text=tr("🌐 System PAC Configuration (Proxy Auto-Configuration)"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.primary()
         ).pack(anchor="w", padx=14, pady=(12, 6))
@@ -240,7 +241,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.pac_url_frame,
-            text="PAC URL:",
+            text=tr("PAC URL:"),
             font=Fonts.bold(12),
             text_color=ThemeManager.text()
         ).pack(side="left", padx=(0, 6))
@@ -260,7 +261,7 @@ class DashboardView(ctk.CTkFrame):
 
         ctk.CTkButton(
             self.pac_url_frame,
-            text="📋 Copy PAC URL",
+            text=tr("📋 Copy PAC URL"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.primary(),
             text_color=ThemeManager.get("on_primary"),
@@ -271,7 +272,7 @@ class DashboardView(ctk.CTkFrame):
 
         self.btn_pac_action = ctk.CTkButton(
             self.pac_url_frame,
-            text="🟢 Start PAC" if not pac_active else "🛑 Stop PAC",
+            text=tr("🟢 Start PAC") if not pac_active else tr("🛑 Stop PAC"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.success() if not pac_active else ThemeManager.danger(),
             text_color=ThemeManager.get("on_primary"),
@@ -321,12 +322,12 @@ class DashboardView(ctk.CTkFrame):
         self.lbl_dns_stat.configure(text=dns_txt)
         self.lbl_9r_stat.configure(text=nr_txt)
         if pac_active:
-            self.btn_pac_action.configure(text="🛑 Stop PAC", fg_color=ThemeManager.danger(), hover_color=ThemeManager.warning())
+            self.btn_pac_action.configure(text=tr("🛑 Stop PAC"), fg_color=ThemeManager.danger(), hover_color=ThemeManager.warning())
         else:
-            self.btn_pac_action.configure(text="🟢 Start PAC", fg_color=ThemeManager.success(), hover_color=ThemeManager.accent())
+            self.btn_pac_action.configure(text=tr("🟢 Start PAC"), fg_color=ThemeManager.success(), hover_color=ThemeManager.accent())
 
     def on_start_pool(self):
-        self.main_app.show_toast("Memulai Turbo Proxy Pool...", level="info")
+        self.main_app.show_toast(tr("Memulai Turbo Proxy Pool..."), level="info")
         def _bg():
             proxy_service.start_proxy_pool(max_instances=20, standalone=False)
             try:
@@ -337,7 +338,7 @@ class DashboardView(ctk.CTkFrame):
         threading.Thread(target=_bg, daemon=True).start()
 
     def on_stop_pool(self):
-        self.main_app.show_toast("Menghentikan Proxy Pool...", level="warning")
+        self.main_app.show_toast(tr("Menghentikan Proxy Pool..."), level="warning")
         def _bg():
             proxy_service.stop_proxy_pool()
             try:
@@ -349,7 +350,7 @@ class DashboardView(ctk.CTkFrame):
 
     def on_flush_dns(self):
         sys_dns.flush_dns_cache()
-        self.main_app.show_toast("✓ DNS Cache berhasil dibersihkan!", level="success")
+        self.main_app.show_toast(tr("✓ DNS Cache berhasil dibersihkan!"), level="success")
         self.refresh()
 
     def copy_pac_url(self):
@@ -361,8 +362,8 @@ class DashboardView(ctk.CTkFrame):
     def toggle_pac_server(self):
         if pac_service.is_pac_server_running():
             pac_service.stop_pac_server()
-            self.main_app.show_toast("PAC Server dihentikan.", level="warning")
+            self.main_app.show_toast(tr("PAC Server dihentikan."), level="warning")
         else:
             pac_service.start_pac_server()
-            self.main_app.show_toast("✓ PAC Server aktif di " + pac_service.get_pac_url(), level="success")
+            self.main_app.show_toast(tr("✓ PAC Server aktif di ") + pac_service.get_pac_url(), level="success")
         self.refresh()

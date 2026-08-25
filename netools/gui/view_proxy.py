@@ -8,6 +8,7 @@ from tkinter import ttk
 import customtkinter as ctk
 
 from netools.config import HTTP_PORT_OFFSET, SOCKS5_PORT_START
+from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,
     ThemeManager,
@@ -45,7 +46,7 @@ class ProxyView(ctk.CTkFrame):
 
         self.lbl_title = ctk.CTkLabel(
             self.hdr,
-            text="🌐 Turbo Sing-box Proxy Rotator",
+            text=tr("🌐 Turbo Sing-box Proxy Rotator"),
             font=Fonts.title(16),
             text_color=ThemeManager.success()
         )
@@ -54,7 +55,7 @@ class ProxyView(ctk.CTkFrame):
         # Action Buttons
         self.btn_start = ctk.CTkButton(
             self.hdr,
-            text="🚀 Start Pool",
+            text=tr("🚀 Start Pool"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.success(),
             text_color=ThemeManager.get("on_primary"),
@@ -66,7 +67,7 @@ class ProxyView(ctk.CTkFrame):
 
         self.btn_stop = ctk.CTkButton(
             self.hdr,
-            text="🛑 Stop Pool",
+            text=tr("🛑 Stop Pool"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.danger(),
             text_color=ThemeManager.get("on_primary"),
@@ -78,7 +79,7 @@ class ProxyView(ctk.CTkFrame):
 
         self.btn_refresh = ctk.CTkButton(
             self.hdr,
-            text="🔄 Refresh",
+            text=tr("🔄 Refresh"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
@@ -91,7 +92,7 @@ class ProxyView(ctk.CTkFrame):
         self.watchdog_var = ctk.BooleanVar(value=False)
         self.chk_watchdog = ctk.CTkCheckBox(
             self.hdr,
-            text="Auto-Heal Watchdog",
+            text=tr("Auto-Heal Watchdog"),
             variable=self.watchdog_var,
             font=Fonts.regular(12),
             text_color=ThemeManager.text(),
@@ -103,7 +104,7 @@ class ProxyView(ctk.CTkFrame):
         # PAC Toggle Button
         self.btn_pac_toggle = ctk.CTkButton(
             self.hdr,
-            text="🟢 Start PAC",
+            text=tr("🟢 Start PAC"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.primary(),
             text_color=ThemeManager.get("on_primary"),
@@ -159,15 +160,15 @@ class ProxyView(ctk.CTkFrame):
 
 
         cols_config = [
-            ("slot", "Slot ID", 80, "center"),
-            ("protocol", "Protocol", 110, "center"),
-            ("server", "Upstream Node", 200, "center"),
-            ("socks", "SOCKS5 Port", 110, "center"),
-            ("http", "HTTP Port", 110, "center"),
-            ("pool", "Router Pool", 130, "center"),
-            ("dns", "DNS Engine", 150, "center"),
-            ("status", "Status", 100, "center"),
-            ("age", "Started At", 160, "center"),
+            ("slot", tr("Slot ID"), 80, "center"),
+            ("protocol", tr("Protocol"), 110, "center"),
+            ("server", tr("Upstream Node"), 200, "center"),
+            ("socks", tr("SOCKS5 Port"), 110, "center"),
+            ("http", tr("HTTP Port"), 110, "center"),
+            ("pool", tr("Router Pool"), 130, "center"),
+            ("dns", tr("DNS Engine"), 150, "center"),
+            ("status", tr("Status"), 100, "center"),
+            ("age", tr("Started At"), 160, "center"),
         ]
 
         self.sort_directions = {}
@@ -193,11 +194,16 @@ class ProxyView(ctk.CTkFrame):
         items = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
 
         def _val_key(v):
-            clean = str(v).strip()
+            if v is None:
+                return (1, 999999.0, "")
+            v_str = str(v).strip()
+            clean = v_str.replace(" ms", "").replace("#", "").strip()
+            if clean in ("", "—", "Timeout", "Failed", "Cutoff", "N/A", "null", "None"):
+                return (1, 999999.0, v_str.lower())
             try:
-                return float(clean)
+                return (0, float(clean), "")
             except ValueError:
-                return clean.lower()
+                return (2, 0.0, v_str.lower())
 
         items.sort(key=lambda t: _val_key(t[0]), reverse=reverse)
 
@@ -232,9 +238,9 @@ class ProxyView(ctk.CTkFrame):
         )
 
         if pac_running:
-            self.btn_pac_toggle.configure(text="🛑 Stop PAC", fg_color=ThemeManager.danger(), hover_color=ThemeManager.warning())
+            self.btn_pac_toggle.configure(text=tr("🛑 Stop PAC"), fg_color=ThemeManager.danger(), hover_color=ThemeManager.warning())
         else:
-            self.btn_pac_toggle.configure(text="🟢 Start PAC", fg_color=ThemeManager.primary(), hover_color=ThemeManager.accent())
+            self.btn_pac_toggle.configure(text=tr("🟢 Start PAC"), fg_color=ThemeManager.primary(), hover_color=ThemeManager.accent())
 
     def refresh(self):
         try:
@@ -243,7 +249,7 @@ class ProxyView(ctk.CTkFrame):
             pass
 
     def on_start(self):
-        self.main_app.show_toast("Mengunduh & memulai Turbo Proxy Pool...", level="info")
+        self.main_app.show_toast(tr("Memulai Turbo Proxy Pool..."), level="info")
         def _bg():
             proxy_service.start_proxy_pool(max_instances=20, standalone=False)
             try:
@@ -254,7 +260,7 @@ class ProxyView(ctk.CTkFrame):
         threading.Thread(target=_bg, daemon=True).start()
 
     def on_stop(self):
-        self.main_app.show_toast("Menghentikan seluruh instance Proxy...", level="warning")
+        self.main_app.show_toast(tr("Menghentikan seluruh instance Proxy..."), level="warning")
         def _bg():
             proxy_service.stop_proxy_pool()
             try:
@@ -266,21 +272,21 @@ class ProxyView(ctk.CTkFrame):
 
     def on_refresh(self):
         self.refresh()
-        self.main_app.show_toast("✓ Proxy table refreshed.", level="info")
+        self.main_app.show_toast(tr("✓ Tabel proxy berhasil diperbarui."), level="info")
 
     def toggle_watchdog(self):
         if self.watchdog_var.get():
             watchdog_service.start_watchdog_thread(interval=15)
-            self.main_app.show_toast("✓ Auto-Heal Watchdog aktif (setiap 15s)!", level="success")
+            self.main_app.show_toast(tr("✓ Auto-Heal Watchdog aktif (setiap 15s)!"), level="success")
         else:
             watchdog_service.stop_watchdog()
-            self.main_app.show_toast("Auto-Heal Watchdog dimatikan.", level="warning")
+            self.main_app.show_toast(tr("Auto-Heal Watchdog dimatikan."), level="warning")
 
     def toggle_pac(self):
         if pac_service.is_pac_server_running():
             pac_service.stop_pac_server()
-            self.main_app.show_toast("PAC Server dihentikan.", level="warning")
+            self.main_app.show_toast(tr("PAC Server dihentikan."), level="warning")
         else:
             pac_service.start_pac_server()
-            self.main_app.show_toast("✓ PAC Server aktif di http://127.0.0.1:18080/proxy.pac", level="success")
+            self.main_app.show_toast(tr("✓ PAC Server aktif di http://127.0.0.1:18080/proxy.pac"), level="success")
         self.refresh()

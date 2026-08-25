@@ -23,6 +23,9 @@ except Exception as e:
     PYSTRAY_AVAILABLE = False
 
 
+from netools.gui.i18n import tr
+
+
 def create_fallback_image():
     """Create a high-contrast 64x64 icon if assets/icon-64.png is not found."""
     img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
@@ -93,19 +96,19 @@ class TrayManager:
             pystray.MenuItem("🚫 AdGuard (Ad-Blocking)", lambda: self._on_quick_dns(["94.140.14.14", "94.140.15.15"], "AdGuard")),
             pystray.MenuItem("🇨🇳 AliDNS (Alibaba Cloud)", lambda: self._on_quick_dns(["223.5.5.5", "223.6.6.6"], "AliDNS")),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("↩️ Restore DHCP Default", self._on_restore_dhcp)
+            pystray.MenuItem(tr("↩️ Restore DHCP Default"), self._on_restore_dhcp)
         )
 
         menu = pystray.Menu(
-            pystray.MenuItem("⚡ Buka Netools GUI", self._on_show_gui, default=True),
+            pystray.MenuItem(tr("⚡ Buka Netools GUI"), self._on_show_gui, default=True),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("🌐 Quick DNS Switch", dns_menu),
+            pystray.MenuItem(tr("🌐 Quick DNS Switch"), dns_menu),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("🚀 Start Proxy Pool", self._on_start_pool),
-            pystray.MenuItem("🛑 Stop Proxy Pool", self._on_stop_pool),
-            pystray.MenuItem("♻️ Flush DNS Cache", self._on_flush_dns),
+            pystray.MenuItem(tr("🚀 Start Proxy Pool"), self._on_start_pool),
+            pystray.MenuItem(tr("🛑 Stop Proxy Pool"), self._on_stop_pool),
+            pystray.MenuItem(tr("♻️ Flush DNS Cache"), self._on_flush_dns),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("❌ Keluar (Exit)", self._on_exit)
+            pystray.MenuItem(tr("❌ Keluar (Exit)"), self._on_exit)
         )
 
         def _run_tray():
@@ -155,7 +158,7 @@ class TrayManager:
             success = sys_dns.apply_system_dns(dev, ips, connection_name=conn, enable_dot=True, persistent=True)
             try:
                 if success:
-                    self.main_app.after(0, lambda: self.main_app.show_toast(f"✓ DNS {prov_name} aktif dari System Tray!", level="success"))
+                    self.main_app.after(0, lambda: self.main_app.show_toast(tr("✓ DNS {prov_name} aktif dari System Tray!").replace("{prov_name}", prov_name), level="success"))
                     if hasattr(self.main_app, "dns_view"):
                         self.main_app.after(0, self.main_app.dns_view.load_active_interface_dns)
                     if hasattr(self.main_app, "dashboard_view"):
@@ -174,7 +177,7 @@ class TrayManager:
             conn = ifaces[0].get("connection")
             sys_dns.restore_default_dns(dev, connection_name=conn)
             try:
-                self.main_app.after(0, lambda: self.main_app.show_toast("✓ Interface dikembalikan ke DHCP dari System Tray.", level="info"))
+                self.main_app.after(0, lambda: self.main_app.show_toast(tr("✓ Interface dikembalikan ke DHCP dari System Tray."), level="info"))
                 if hasattr(self.main_app, "dns_view"):
                     self.main_app.after(0, self.main_app.dns_view.load_active_interface_dns)
                 if hasattr(self.main_app, "dashboard_view"):
@@ -188,7 +191,7 @@ class TrayManager:
         def _bg():
             proxy_service.start_proxy_pool(max_instances=20, standalone=False)
             try:
-                self.main_app.after(0, lambda: self.main_app.show_toast("✓ Proxy pool aktif dari System Tray!", level="success"))
+                self.main_app.after(0, lambda: self.main_app.show_toast(tr("✓ Proxy pool aktif dari System Tray!"), level="success"))
                 self.main_app.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
@@ -199,7 +202,7 @@ class TrayManager:
         def _bg():
             proxy_service.stop_proxy_pool()
             try:
-                self.main_app.after(0, lambda: self.main_app.show_toast("Proxy pool dimatikan dari System Tray.", level="warning"))
+                self.main_app.after(0, lambda: self.main_app.show_toast(tr("Proxy pool dimatikan dari System Tray."), level="warning"))
                 self.main_app.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
@@ -210,7 +213,7 @@ class TrayManager:
         def _bg():
             sys_dns.flush_dns_cache()
             try:
-                self.main_app.after(0, lambda: self.main_app.show_toast("✓ DNS cache di-flush dari System Tray!", level="success"))
+                self.main_app.after(0, lambda: self.main_app.show_toast(tr("✓ DNS cache di-flush dari System Tray!"), level="success"))
             except Exception:
                 pass
         threading.Thread(target=_bg, daemon=True).start()

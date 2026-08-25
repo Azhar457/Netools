@@ -106,7 +106,7 @@ fi
 
 echo "==> [4/4] Creating SquashFS & Generating Netools-x86_64.AppImage..."
 rm -f build/app.squashfs dist/Netools-x86_64.AppImage
-mksquashfs build/AppDir build/app.squashfs -root-owned -noappend -b 1048576 -comp zstd -Xcompression-level 22
+mksquashfs build/AppDir build/app.squashfs -root-owned -noappend -b 1048576 -comp zstd -Xcompression-level 13
 cat build/runtime-x86_64 build/app.squashfs > dist/Netools-x86_64.AppImage
 chmod +x dist/Netools-x86_64.AppImage
 

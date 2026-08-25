@@ -8,7 +8,12 @@ import json
 import re
 import urllib.request
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+
+from netools.config import USER_CONFIG_DIR
+from netools.libs.logger import get_logger
+
+log = get_logger(__name__)
 
 APP_DIR = Path.home() / ".local" / "share" / "dns-jumper"
 APP_DIR.mkdir(parents=True, exist_ok=True)
@@ -606,7 +611,156 @@ TLD_PRESETS = {
             "debian.org",
         ]
     },
+    "ai_gateways": {
+        "name": "🤖 AI Gateways & LLM Providers (.ai, .com, .io)",
+        "domains": [
+            # Primary Gateways & Aggregators
+            "openrouter.ai",
+            "opencode.ai",
+            "kilo.ai",
+            "tokenrouter.io",
+            "sdk.vercel.ai",
+            "api.airforce",
+            "bazaarlink.com",
+            # Major LLM Labs & Endpoints
+            "api.openai.com",
+            "chatgpt.com",
+            "api.anthropic.com",
+            "claude.ai",
+            "generativelanguage.googleapis.com",
+            "api.deepseek.com",
+            "api.x.ai",
+            "grok.com",
+            "api.mistral.ai",
+            "api.cohere.com",
+            "api.perplexity.ai",
+            "ollama.com",
+            # High-Speed Inference Engines
+            "api.groq.com",
+            "api.cerebras.ai",
+            "api.together.xyz",
+            "api.fireworks.ai",
+            "integrate.api.nvidia.com",
+            "ai.cloudflare.com",
+            "api.studio.nebius.ai",
+            "api.hyperbolic.xyz",
+            "chutes.ai",
+            "featherless.ai",
+            # Asian & Global Providers
+            "dashscope.aliyuncs.com",
+            "api.moonshot.cn",
+            "api.minimax.chat",
+            "open.bigmodel.cn",
+            "api.siliconflow.cn",
+            "byteplus.com",
+            "qianfan.baidubce.com",
+            "huggingface.co",
+            "cursor.com",
+            "copilot.github.com",
+        ]
+    },
 }
+
+# ---------------------------------------------------------------------------
+# User-customizable TLD categories (CRUD) for GRC Benchmark Tier-3 targets.
+# Built-in TLD_PRESETS are defaults; user edits live in tld_presets.json
+# (USER_CONFIG_DIR) and are merged over them. Deleting a built-in hides it.
+# ---------------------------------------------------------------------------
+
+TLD_USER_CONFIG_FILE = USER_CONFIG_DIR / "tld_presets.json"
+
+
+def load_tld_presets() -> Dict[str, Dict[str, Any]]:
+    """Effective TLD categories = built-ins merged with user overrides.
+
+    Returns {key: {"name": str, "domains": [..], "builtin": bool, "modified": bool}}
+    """
+    effective: Dict[str, Dict[str, Any]] = {}
+    for k, v in TLD_PRESETS.items():
+        effective[k] = {
+            "name": v["name"],
+            "domains": list(v["domains"]),
+            "builtin": True,
+            "modified": False,
+        }
+
+    user_data = _read_user_tld_config()
+    # deletions of built-ins
+    deleted = set(user_data.get("deleted", []))
+    for k in deleted:
+        effective.pop(k, None)
+    # overrides & additions
+    for k, v in user_data.get("categories", {}).items():
+        base = effective.get(k, {})
+        effective[k] = {
+            "name": v.get("name", base.get("name", k)),
+            "domains": list(v.get("domains", [])),
+            "builtin": k in TLD_PRESETS,
+            "modified": True,
+        }
+    return effective
+
+
+def _read_user_tld_config() -> Dict[str, Any]:
+    if not TLD_USER_CONFIG_FILE.exists():
+        return {}
+    try:
+        data = json.loads(TLD_USER_CONFIG_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def save_tld_category(key: str, name: str, domains: List[str]) -> bool:
+    """Create or update a TLD category (user-level; overlays built-ins)."""
+    key = key.strip().lower().replace(" ", "_")
+    domains = [d.strip().lower() for d in domains if d.strip()]
+    if not key or not name.strip():
+        return False
+    cfg = _read_user_tld_config()
+    cats = cfg.setdefault("categories", {})
+    cats[key] = {"name": name.strip(), "domains": domains}
+    try:
+        TLD_USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        TLD_USER_CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+        return True
+    except Exception as e:
+        log.warning(f"save_tld_category failed: {e}")
+        return False
+
+
+def delete_tld_category(key: str) -> bool:
+    """Delete a category. Built-ins are recorded as hidden; customs removed."""
+    key = key.strip().lower().replace(" ", "_")
+    cfg = _read_user_tld_config()
+    cats = cfg.setdefault("categories", {})
+    changed = False
+    if key in cats:
+        del cats[key]
+        changed = True
+    if key in TLD_PRESETS:
+        cfg.setdefault("deleted", [])
+        if key not in cfg["deleted"]:
+            cfg["deleted"].append(key)
+        changed = True
+    if not changed:
+        return False
+    try:
+        TLD_USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+        TLD_USER_CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+        return True
+    except Exception as e:
+        log.warning(f"delete_tld_category failed: {e}")
+        return False
+
+
+def reset_tld_presets() -> None:
+    """Remove all user customization, restoring built-in presets."""
+    try:
+        TLD_USER_CONFIG_FILE.unlink(missing_ok=True)
+    except Exception as e:
+        log.debug(f"reset_tld_presets: {e}")
+
 
 def reset_to_default_providers() -> Dict[str, Dict[str, Any]]:
     """Reset providers cache to built-in presets."""

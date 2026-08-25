@@ -5,8 +5,9 @@ Supports keyboard search, mouse wheel scrolling on Linux/Win/Mac, and click-to-s
 """
 
 import sys
+import time
 import tkinter as tk
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 import customtkinter as ctk
 
@@ -42,17 +43,16 @@ class CTkScrollableDropdown:
         self.scroll_frame: Optional[ctk.CTkScrollableFrame] = None
         self.search_entry: Optional[ctk.CTkEntry] = None
         self._click_binding_id: Optional[str] = None
+        self._open_ts: float = 0.0
+        self._geo: Tuple[int, int, int, int] = (0, 0, 0, 0)
 
         # Route CTkComboBox internal dropdown trigger to our scrollable popup
         if hasattr(self.widget, "_open_dropdown_menu"):
             self.widget._open_dropdown_menu = self._toggle_dropdown
 
-        # Bind click events across entry, canvas, and parent widget
-        self.widget.bind("<Button-1>", self._toggle_dropdown, add="+")
+        # When readonly entry is clicked, toggle dropdown
         if hasattr(self.widget, "_entry"):
             self.widget._entry.bind("<Button-1>", self._toggle_dropdown, add="+")
-        if hasattr(self.widget, "_canvas"):
-            self.widget._canvas.bind("<Button-1>", self._toggle_dropdown, add="+")
 
     def configure(self, values: Optional[List[str]] = None, **kwargs):
         if values is not None:
@@ -61,6 +61,10 @@ class CTkScrollableDropdown:
                 self._populate_list(self.values)
 
     def _toggle_dropdown(self, event=None):
+        now = time.monotonic()
+        if now - self._open_ts < 0.15:
+            return "break"
+
         if self.toplevel and self.toplevel.winfo_exists():
             self._close()
         else:
@@ -72,16 +76,7 @@ class CTkScrollableDropdown:
             return
 
         root = self.widget.winfo_toplevel()
-
-        self.toplevel = ctk.CTkToplevel(root)
-        self.toplevel.withdraw()
-        self.toplevel.overrideredirect(True)
-        self.toplevel.configure(fg_color=ThemeManager.surface_alt())
-        self.toplevel.attributes("-topmost", True)
-        try:
-            self.toplevel.transient(root)
-        except Exception:
-            pass
+        self._open_ts = time.monotonic()
 
         # Calculate position & dimensions
         self.widget.update_idletasks()
@@ -99,7 +94,17 @@ class CTkScrollableDropdown:
             else:
                 dropdown_h = max(150, screen_height - y - 60)
 
+        self._geo = (x, y, w, dropdown_h)
+
+        self.toplevel = ctk.CTkToplevel(root)
+        self.toplevel.overrideredirect(True)
         self.toplevel.geometry(f"{w}x{dropdown_h}+{x}+{y}")
+        self.toplevel.attributes("-topmost", True)
+        self.toplevel.configure(fg_color=ThemeManager.surface())
+        try:
+            self.toplevel.transient(root)
+        except Exception:
+            pass
 
         # Main Card Frame
         main_card = ctk.CTkFrame(
@@ -127,6 +132,8 @@ class CTkScrollableDropdown:
             )
             self.search_entry.pack(fill="x", padx=4, pady=2)
             self.search_entry.bind("<KeyRelease>", self._on_search)
+        else:
+            self.search_entry = None
 
         # Scrollable List Container
         self.scroll_frame = ctk.CTkScrollableFrame(
@@ -145,11 +152,20 @@ class CTkScrollableDropdown:
 
         self._populate_list(self.values)
 
-        self.toplevel.deiconify()
         self.toplevel.lift()
+        self.toplevel.update()
 
+        # focus_set() can race window creation on some WMs (esp. inside AppImage
+        # where the popup maps late) -> "bad window path name". Retry briefly.
         if self.search_entry:
-            self.search_entry.focus_set()
+            for _ in range(6):
+                try:
+                    if self.search_entry.winfo_exists():
+                        self.search_entry.focus_set()
+                    break
+                except tk.TclError:
+                    root.update_idletasks()
+                    self.widget.after(20, lambda: None)
 
         # Click outside to dismiss
         self._click_binding_id = root.bind("<Button-1>", self._check_click_outside, add="+")
@@ -213,37 +229,51 @@ class CTkScrollableDropdown:
         if hasattr(self.widget, "set"):
             try:
                 self.widget.set(val)
-            except Exception:
-                pass
+            except Exception as e:
+                from netools.libs.logger import get_logger
+                get_logger(__name__).warning(f"combobox.set failed: {e}")
+        # Keep the combobox's value list in sync
+        if hasattr(self.widget, "configure"):
+            try:
+                current = list(self.widget.cget("values") or [])
+                if val not in current:
+                    current.append(val)
+                    self.widget.configure(values=current)
+            except Exception as e:
+                from netools.libs.logger import get_logger
+                get_logger(__name__).warning(f"combobox values sync failed: {e}")
         if self.command:
             try:
                 self.command(val)
             except Exception as e:
-                print(f"Dropdown callback error: {e}")
+                from netools.libs.logger import get_logger
+                get_logger(__name__).error(f"Dropdown callback error: {e}", exc_info=True)
         self._close()
 
     def _check_click_outside(self, event):
         if not self.toplevel or not self.toplevel.winfo_exists():
             return
+        # Ignore clicks during the first 150ms of opening
+        if time.monotonic() - self._open_ts < 0.15:
+            return
         try:
+            w_str = str(event.widget)
+            top_str = str(self.toplevel)
+            widget_str = str(self.widget)
+            # If clicked inside the dropdown popup or on the combobox, do not close
+            if w_str.startswith(top_str) or w_str.startswith(widget_str):
+                return
+
             x, y = event.x_root, event.y_root
-            top_x = self.toplevel.winfo_rootx()
-            top_y = self.toplevel.winfo_rooty()
-            top_w = self.toplevel.winfo_width()
-            top_h = self.toplevel.winfo_height()
-
-            widget_x = self.widget.winfo_rootx()
-            widget_y = self.widget.winfo_rooty()
-            widget_w = self.widget.winfo_width()
-            widget_h = self.widget.winfo_height()
-
-            inside_top = (top_x <= x <= top_x + top_w) and (top_y <= y <= top_y + top_h)
-            inside_widget = (widget_x <= x <= widget_x + widget_w) and (widget_y <= y <= widget_y + widget_h)
-
-            if not inside_top and not inside_widget:
-                self._close()
+            gx, gy, gw, gh = self._geo
+            if (gx <= x <= gx + gw) and (gy <= y <= gy + gh):
+                return
+            wx, wy, ww, wh = self.widget.winfo_rootx(), self.widget.winfo_rooty(), self.widget.winfo_width(), self.widget.winfo_height()
+            if (wx <= x <= wx + ww) and (wy <= y <= wy + wh):
+                return
         except Exception:
-            self._close()
+            pass
+        self._close()
 
     def _close(self):
         if self.toplevel and self.toplevel.winfo_exists():

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import customtkinter as ctk
+from netools.gui.i18n import tr
 
 
 class SplashScreen(ctk.CTkToplevel):
@@ -41,71 +42,77 @@ class SplashScreen(ctk.CTkToplevel):
                 pass
 
         self._build_ui()
-        self.after(30, self._run_preloader_sequence)
+        self.after(10, self._run_preloader_sequence)
 
     def _build_ui(self):
-        # Outer border frame
-        border = ctk.CTkFrame(self, fg_color="#181825", corner_radius=12, border_width=1, border_color="#313244")
-        border.pack(fill="both", expand=True, padx=2, pady=2)
+        main_card = ctk.CTkFrame(
+            self,
+            fg_color="#1e1e2e",
+            corner_radius=12,
+            border_width=1,
+            border_color="#313244"
+        )
+        main_card.pack(fill="both", expand=True, padx=4, pady=4)
 
-        # App Brand Header
-        hdr = ctk.CTkFrame(border, fg_color="#11111b", corner_radius=10, height=80)
-        hdr.pack(fill="x", padx=14, pady=(14, 16))
-        hdr.pack_propagate(False)
-
-        ctk.CTkLabel(
-            hdr,
+        # Header Title
+        lbl_title = ctk.CTkLabel(
+            main_card,
             text="⚡ Netools Suite v2.0",
-            font=("sans-serif", 18, "bold"),
+            font=ctk.CTkFont(family="sans-serif", size=18, weight="bold"),
             text_color="#89b4fa"
-        ).pack(anchor="w", padx=20, pady=(14, 2))
+        )
+        lbl_title.pack(anchor="w", padx=24, pady=(24, 2))
 
-        ctk.CTkLabel(
-            hdr,
+        # Subtitle
+        lbl_sub = ctk.CTkLabel(
+            main_card,
             text="Unified Sing-box Rotator, GRC DNS Benchmark & AI Gateway",
-            font=("sans-serif", 10),
+            font=ctk.CTkFont(family="sans-serif", size=11),
             text_color="#a6adc8"
-        ).pack(anchor="w", padx=20, pady=(0, 10))
+        )
+        lbl_sub.pack(anchor="w", padx=24, pady=(0, 20))
 
-        # Status Message & Percentage Row
-        row = ctk.CTkFrame(border, fg_color="#181825")
-        row.pack(fill="x", padx=24, pady=(12, 6))
+        # Progress bar
+        self.prog_bar = ctk.CTkProgressBar(
+            main_card,
+            height=6,
+            corner_radius=3,
+            fg_color="#313244",
+            progress_color="#89b4fa"
+        )
+        self.prog_bar.pack(fill="x", padx=24, pady=(10, 8))
+        self.prog_bar.set(0.01)
+
+        # Percentage label & Status info
+        info_row = ctk.CTkFrame(main_card, fg_color="transparent")
+        info_row.pack(fill="x", padx=24, pady=(0, 10))
 
         self.lbl_status = ctk.CTkLabel(
-            row,
-            text="Memulai sistem...",
-            font=("sans-serif", 11),
+            info_row,
+            text=tr("🔍 Memuat modul & konfigurasi sistem..."),
+            font=ctk.CTkFont(family="sans-serif", size=11),
             text_color="#cdd6f4",
             anchor="w"
         )
         self.lbl_status.pack(side="left")
 
         self.lbl_pct = ctk.CTkLabel(
-            row,
-            text="0%",
-            font=("sans-serif", 12, "bold"),
-            text_color="#a6e3a1"
+            info_row,
+            text="1%",
+            font=ctk.CTkFont(family="sans-serif", size=11, weight="bold"),
+            text_color="#89b4fa",
+            anchor="e"
         )
         self.lbl_pct.pack(side="right")
 
-        # Progress Bar
-        self.prog_bar = ctk.CTkProgressBar(
-            border,
-            height=8,
-            corner_radius=4,
-            fg_color="#313244",
-            progress_color="#89b4fa"
-        )
-        self.prog_bar.pack(fill="x", padx=24, pady=(4, 14))
-        self.prog_bar.set(0.0)
-
-        # Footer tip
-        ctk.CTkLabel(
-            border,
-            text="Memuat database & merender modul ke memori untuk performa instan...",
-            font=("sans-serif", 9),
+        # Footer detail hint
+        lbl_hint = ctk.CTkLabel(
+            main_card,
+            text=tr("Memuat database & me-render modul ke memori untuk performa instan..."),
+            font=ctk.CTkFont(family="sans-serif", size=9),
             text_color="#6c7086"
-        ).pack(anchor="center", pady=(0, 10))
+        )
+        lbl_hint.pack(side="bottom", pady=(0, 16))
 
     def _set_step(self, pct: int, status_text: str):
         self.prog_bar.set(pct / 100.0)
@@ -116,44 +123,44 @@ class SplashScreen(ctk.CTkToplevel):
 
     def _run_preloader_sequence(self):
         # Stage 1: Environment & Theme
-        self._set_step(15, "🔍 Inisialisasi Environment & Core Networking...")
+        self._set_step(15, tr("🔍 Inisialisasi Environment & Core Networking..."))
         self.main_app.update_idletasks()
         time.sleep(0.05)
 
         # Stage 2: Database & Presets
-        self._set_step(35, "🗄️ Memuat Database Resolvers & Presets (97 DNS)...")
+        self._set_step(35, tr("🗄️ Memuat Database Resolvers & Presets (97 DNS)..."))
         self.main_app.update_idletasks()
         time.sleep(0.05)
 
         # Stage 3: Pre-render all views in background
-        self._set_step(55, "📊 Menyiapkan Dashboard & Live Monitor...")
-        self.main_app.tabview.set("📊 Dashboard")
+        self._set_step(55, tr("📊 Menyiapkan Dashboard & Live Monitor..."))
+        self.main_app.select_tab(0)
         self.main_app.update_idletasks()
         time.sleep(0.05)
 
-        self._set_step(70, "⚡ Menyiapkan DNS Suite & Switcher Engine...")
-        self.main_app.tabview.set("⚡ DNS Suite")
+        self._set_step(70, tr("⚡ Menyiapkan DNS Suite & Switcher Engine..."))
+        self.main_app.select_tab(1)
         self.main_app.update_idletasks()
         time.sleep(0.05)
 
-        self._set_step(85, "🌐 Menyiapkan Turbo Proxy Rotator & SOCKS5 Pool...")
-        self.main_app.tabview.set("🌐 Proxy Rotator")
+        self._set_step(85, tr("🌐 Menyiapkan Turbo Proxy Rotator & SOCKS5 Pool..."))
+        self.main_app.select_tab(2)
         self.main_app.update_idletasks()
         time.sleep(0.05)
 
-        self._set_step(92, "🔌 Menyiapkan 9Router AI Gateway Matrix...")
-        self.main_app.tabview.set("🔌 9Router & AI Sync")
+        self._set_step(92, tr("🔌 Menyiapkan 9Router AI Gateway Matrix..."))
+        self.main_app.select_tab(3)
         self.main_app.update_idletasks()
         time.sleep(0.05)
 
-        self._set_step(98, "⚙️ Menyiapkan Settings & System Diagnostics...")
-        self.main_app.tabview.set("⚙️ Settings & About")
+        self._set_step(98, tr("⚙️ Menyiapkan Settings & System Diagnostics..."))
+        self.main_app.select_tab(4)
         self.main_app.update_idletasks()
         time.sleep(0.05)
 
         # Return to Dashboard ready
-        self._set_step(100, "✓ Sistem Siap! Membuka Netools Suite...")
-        self.main_app.tabview.set("📊 Dashboard")
+        self._set_step(100, tr("✓ Sistem Siap! Membuka Netools Suite..."))
+        self.main_app.select_tab(0)
         self.main_app.update_idletasks()
         time.sleep(0.08)
 

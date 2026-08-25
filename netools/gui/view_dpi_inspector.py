@@ -8,6 +8,7 @@ import threading
 
 import customtkinter as ctk
 
+from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,
     ThemeManager,
@@ -48,7 +49,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             hdr,
-            text="🔬 Multi-Layer Censorship & Deep Packet Inspection (DPI) Flow Analyzer",
+            text=tr("🔬 Multi-Layer Censorship & Deep Packet Inspection (DPI) Flow Analyzer"),
             font=Fonts.title(15),
             text_color=ThemeManager.warning()
         ).pack(side="left", padx=20, pady=10)
@@ -60,7 +61,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
         r1 = ctk.CTkFrame(card_input, fg_color=ThemeManager.surface())
         r1.pack(fill="x", padx=14, pady=10)
 
-        ctk.CTkLabel(r1, text="Target Domain / Hostname:", font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(r1, text=tr("Target Domain / Hostname:"), font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(0, 8))
 
         self.entry_domain = ctk.CTkEntry(
             r1,
@@ -77,7 +78,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         self.btn_run = ctk.CTkButton(
             r1,
-            text="🚀 Analyze Network Flow",
+            text=tr("🚀 Analyze Network Flow"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.warning(),
             text_color=ThemeManager.get("on_primary"),
@@ -92,7 +93,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
         r2 = ctk.CTkFrame(card_input, fg_color=ThemeManager.surface())
         r2.pack(fill="x", padx=14, pady=(0, 8))
 
-        ctk.CTkLabel(r2, text="Quick Test Presets:", font=Fonts.regular(11), text_color=ThemeManager.text_muted()).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(r2, text=tr("Quick Test Presets:"), font=Fonts.regular(11), text_color=ThemeManager.text_muted()).pack(side="left", padx=(0, 6))
 
         presets = ["dashboard.ngrok.com", "reddit.com", "discord.com", "cloudflare.com", "google.com"]
         for p in presets:
@@ -113,7 +114,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             self.card_nodes,
-            text="📊 Network Handshake & OSI Stage Flow Diagram",
+            text=tr("📊 Network Handshake & OSI Stage Flow Diagram"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.primary()
         ).pack(anchor="w", padx=14, pady=(8, 4))
@@ -124,10 +125,10 @@ class DPIInspectorModal(ctk.CTkToplevel):
         # Build 4 Interactive Node Cards
         self.node_widgets = {}
         nodes_config = [
-            ("A", "🌐 Node A\nDNS Resolution", "Layer 7 (IP Lookup)"),
-            ("B", "🔌 Node B\nTCP Port 443", "Layer 4 (Routing & SYN)"),
-            ("C", "🔒 Node C\nTLS SNI Handshake", "Layer 7 DPI (ClientHello)"),
-            ("D", "🛡️ Node D\nSSL & MITM Cert", "Layer 7 (Encryption Cert)")
+            ("A", tr("🌐 Node A\nDNS Resolution"), tr("Layer 7 (IP Lookup)")),
+            ("B", tr("🔌 Node B\nTCP Port 443"), tr("Layer 4 (Routing & SYN)")),
+            ("C", tr("🔒 Node C\nTLS SNI Handshake"), tr("Layer 7 DPI (ClientHello)")),
+            ("D", tr("🛡️ Node D\nSSL & MITM Cert"), tr("Layer 7 (Encryption Cert)"))
         ]
 
         for idx, (nid, title, subtitle) in enumerate(nodes_config):
@@ -167,7 +168,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             self.details_card,
-            text="📑 Stage-by-Stage Diagnostic Details",
+            text=tr("📑 Stage-by-Stage Diagnostic Details"),
             font=Fonts.subtitle(11),
             text_color=ThemeManager.text()
         ).pack(anchor="w", padx=14, pady=(8, 4))
@@ -177,7 +178,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         self.lbl_initial_hint = ctk.CTkLabel(
             self.details_scroll,
-            text="Masukkan nama domain dan klik 'Analyze Network Flow' untuk memeriksa jalur koneksi secara bertahap.",
+            text=tr("Masukkan nama domain dan klik 'Analyze Network Flow' untuk memeriksa jalur koneksi secara bertahap."),
             font=Fonts.regular(10),
             text_color=ThemeManager.text_muted(),
             justify="left"
@@ -190,7 +191,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         self.lbl_headline = ctk.CTkLabel(
             self.rec_card,
-            text="⚪ Status: Siap melakukan analisis jaringan multi-layer.",
+            text=tr("⚪ Status: Siap melakukan analisis jaringan multi-layer."),
             font=Fonts.bold(11),
             text_color=ThemeManager.text(),
             anchor="w"
@@ -199,7 +200,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         self.lbl_recommendation = ctk.CTkLabel(
             self.rec_card,
-            text="• Masukkan domain untuk melihat analisis apakah blokir terjadi di level DNS, IP Firewall, SNI DPI, atau SSL MITM.",
+            text=tr("• Masukkan domain untuk melihat analisis apakah blokir terjadi di level DNS, IP Firewall, SNI DPI, atau SSL MITM."),
             font=Fonts.regular(10),
             text_color=ThemeManager.text_muted(),
             justify="left",
@@ -214,7 +215,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         self.btn_proxy_shortcut = ctk.CTkButton(
             btn_row,
-            text="⚡ Buka Tab Proxy (Sing-box)",
+            text=tr("⚡ Buka Tab Proxy (Sing-box)"),
             font=Fonts.bold(10),
             fg_color=ThemeManager.secondary(),
             text_color=ThemeManager.get("on_primary"),
@@ -226,7 +227,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         self.btn_dns_shortcut = ctk.CTkButton(
             btn_row,
-            text="⚡ Ganti DNS (Smart Mix)",
+            text=tr("⚡ Ganti DNS (Smart Mix)"),
             font=Fonts.bold(10),
             fg_color=ThemeManager.primary(),
             text_color=ThemeManager.get("on_primary"),
@@ -238,7 +239,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         ctk.CTkButton(
             btn_row,
-            text="Tutup",
+            text=tr("Close"),
             font=Fonts.regular(10),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),

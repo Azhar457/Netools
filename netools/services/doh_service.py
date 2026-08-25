@@ -14,6 +14,7 @@ from netools.libs.logger import get_logger
 log = get_logger(__name__)
 
 _doh_url = ""
+_active_provider: Optional[str] = None
 _doh_server: Optional[socketserver.ThreadingUDPServer] = None
 _doh_thread: Optional[threading.Thread] = None
 
@@ -58,8 +59,13 @@ def is_doh_forwarder_running() -> bool:
     return _doh_server is not None
 
 
+def get_active_provider() -> Optional[str]:
+    """Provider id whose DoH endpoint the local forwarder currently targets."""
+    return _active_provider if is_doh_forwarder_running() else None
+
+
 def stop_doh_forwarder() -> bool:
-    global _doh_server, _doh_thread
+    global _doh_server, _doh_thread, _active_provider
     if _doh_server:
         try:
             _doh_server.shutdown()
@@ -68,13 +74,14 @@ def stop_doh_forwarder() -> bool:
             pass
         _doh_server = None
         _doh_thread = None
+        _active_provider = None
         log.info("DoH forwarder stopped")
     return True
 
 
 def start_doh_forwarder(provider: str = "alidns", port: int = DOH_PROXY_PORT) -> bool:
     """Start UDP->DoH forwarder on 127.0.0.1:port (background thread)."""
-    global _doh_server, _doh_thread, _doh_url
+    global _doh_server, _doh_thread, _doh_url, _active_provider
 
     providers = dns_db.load_providers()
     p = providers.get(provider)
@@ -82,6 +89,7 @@ def start_doh_forwarder(provider: str = "alidns", port: int = DOH_PROXY_PORT) ->
         log.error(f"Unknown or unsupported DoH provider: {provider}")
         return False
     _doh_url = p["doh_url"]
+    _active_provider = provider
 
     if _doh_server:
         log.info(f"DoH forwarder already running on udp://127.0.0.1:{port}")

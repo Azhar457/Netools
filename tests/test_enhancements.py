@@ -70,6 +70,40 @@ class TestEnhancements(unittest.TestCase):
             finally:
                 cache_file.unlink(missing_ok=True)
 
+    def test_treeview_heterogeneous_sorting(self):
+        """Verify that mixed data (numbers, strings, timeouts, emojis) sorts without TypeError."""
+        def _val_key(v):
+            if v is None:
+                return (1, 999999.0, "")
+            v_str = str(v).strip()
+            clean = v_str.replace(" ms", "").replace("#", "").strip()
+            if clean in ("", "—", "Timeout", "Failed", "Cutoff", "N/A", "null", "None"):
+                return (1, 999999.0, v_str.lower())
+            try:
+                return (0, float(clean), "")
+            except ValueError:
+                return (2, 0.0, v_str.lower())
+
+        mixed_items = [
+            ("12.5 ms", "row1"),
+            ("Timeout", "row2"),
+            ("Google DNS", "row3"),
+            ("#1", "row4"),
+            ("—", "row5"),
+            ("1.1.1.1 Cloudflare", "row6"),
+            ("25.0", "row7"),
+            ("Cutoff", "row8"),
+            ("🇨🇳/🇸🇬/🇯🇵 Asia", "row9"),
+            (None, "row10"),
+        ]
+
+        # Must not raise TypeError: '<' not supported between instances of 'str' and 'float'
+        mixed_items.sort(key=lambda t: _val_key(t[0]))
+        self.assertEqual(mixed_items[0][1], "row4")  # #1 is lowest numeric
+
+        mixed_items.sort(key=lambda t: _val_key(t[0]), reverse=True)
+        self.assertEqual(len(mixed_items), 10)
+
 
 if __name__ == "__main__":
     unittest.main()

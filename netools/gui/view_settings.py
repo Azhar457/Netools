@@ -1,8 +1,3 @@
-"""
-Tab 4: 9Router AI Gateway & OmniRoute Connection Matrix View (CustomTkinter).
-Uses native ttk.Treeview for high-performance, flicker-free, and leak-free table rendering.
-"""
-
 import threading
 from tkinter import ttk
 
@@ -10,6 +5,7 @@ import customtkinter as ctk
 
 from netools.adapters import ninerouter as nr_adapt
 from netools.config import NINEROUTER_URL, get_ninerouter_token
+from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,
     ThemeManager,
@@ -48,7 +44,7 @@ class SettingsView(ctk.CTkFrame):
 
         self.lbl_title = ctk.CTkLabel(
             self.hdr,
-            text="🔌 9Router & AI Multi-Provider Gateway Binding",
+            text=tr("🔌 9Router & AI Multi-Provider Gateway Binding"),
             font=Fonts.title(16),
             text_color=ThemeManager.secondary()
         )
@@ -56,7 +52,7 @@ class SettingsView(ctk.CTkFrame):
 
         self.btn_refresh = ctk.CTkButton(
             self.hdr,
-            text="🔄 Refresh",
+            text=tr("🔄 Refresh"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
@@ -75,12 +71,12 @@ class SettingsView(ctk.CTkFrame):
         self.f_nr = ctk.CTkFrame(self.card_cfg, fg_color=ThemeManager.surface())
         self.f_nr.pack(fill="x", padx=14, pady=10)
 
-        ctk.CTkLabel(self.f_nr, text="9Router API:", font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.f_nr, text=tr("9Router API:"), font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
         self.entry_nr_url = ctk.CTkEntry(self.f_nr, width=240, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
         self.entry_nr_url.insert(0, NINEROUTER_URL)
         self.entry_nr_url.pack(side="left", padx=4)
 
-        ctk.CTkLabel(self.f_nr, text="CLI Token:", font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(12, 6))
+        ctk.CTkLabel(self.f_nr, text=tr("CLI Token:"), font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(12, 6))
         self.entry_nr_tok = ctk.CTkEntry(self.f_nr, width=170, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text(), show="•")
         self.entry_nr_tok.insert(0, get_ninerouter_token())
         self.entry_nr_tok.pack(side="left", padx=4)
@@ -91,14 +87,14 @@ class SettingsView(ctk.CTkFrame):
             if tok:
                 self.entry_nr_tok.delete(0, "end")
                 self.entry_nr_tok.insert(0, tok)
-                self.main_app.show_toast("✓ 9Router CLI Token berhasil dideteksi otomatis!", level="success")
+                self.main_app.show_toast(tr("✓ 9Router CLI Token berhasil dideteksi otomatis!"), level="success")
                 self.refresh()
             else:
-                self.main_app.show_toast("Tidak dapat menemukan kredensial ~/.9router pada sistem ini.", level="warning")
+                self.main_app.show_toast(tr("Tidak dapat menemukan kredensial ~/.9router pada sistem ini."), level="warning")
 
         ctk.CTkButton(
             self.f_nr,
-            text="🔍 Auto-Detect",
+            text=tr("🔍 Auto-Detect"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
@@ -117,7 +113,7 @@ class SettingsView(ctk.CTkFrame):
 
         ctk.CTkButton(
             self.actions,
-            text="🔗 Bind Active Pools to Connections",
+            text=tr("🔗 Bind Active Pools to Connections"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.secondary(),
             text_color=ThemeManager.get("on_primary"),
@@ -128,7 +124,7 @@ class SettingsView(ctk.CTkFrame):
 
         ctk.CTkButton(
             self.actions,
-            text="✂️ Unlink / Clear All Proxies from 9Router",
+            text=tr("✂️ Unlink / Clear All Proxies from 9Router"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.surface_alt(),
             text_color=ThemeManager.danger(),
@@ -143,7 +139,7 @@ class SettingsView(ctk.CTkFrame):
 
         ctk.CTkLabel(
             self.card_conns,
-            text="📋 Registered Provider Connections & Proxy Pools",
+            text=tr("📋 Registered Provider Connections & Proxy Pools"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.text()
         ).pack(anchor="w", padx=14, pady=(12, 6))
@@ -176,10 +172,10 @@ class SettingsView(ctk.CTkFrame):
 
 
         cols_config = [
-            ("name", "Provider Connection Name", 260, "center"),
-            ("type", "Provider Type", 140, "center"),
-            ("pool", "Assigned Proxy Pool", 200, "center"),
-            ("status", "Routing Status", 140, "center"),
+            ("name", tr("Provider Connection Name"), 260, "center"),
+            ("type", tr("Provider Type"), 140, "center"),
+            ("pool", tr("Assigned Proxy Pool"), 200, "center"),
+            ("status", tr("Routing Status"), 140, "center"),
         ]
 
         for col_id, title, w, align in cols_config:
@@ -237,7 +233,7 @@ class SettingsView(ctk.CTkFrame):
         threading.Thread(target=_bg, daemon=True).start()
 
     def bind_pools(self):
-        self.main_app.show_toast("Menghubungkan Proxy Pools ke 9Router...", level="info")
+        self.main_app.show_toast(tr("Menghubungkan Proxy Pools ke 9Router..."), level="info")
         def _bg():
             from netools.state import load_state
             st = load_state()
@@ -246,7 +242,7 @@ class SettingsView(ctk.CTkFrame):
 
             if not proxy_urls:
                 try:
-                    self.after(0, lambda: self.main_app.show_toast("Tidak ada active proxy. Mulai Proxy Pool terlebih dahulu.", level="warning"))
+                    self.after(0, lambda: self.main_app.show_toast(tr("Tidak ada active proxy. Mulai Proxy Pool terlebih dahulu."), level="warning"))
                 except Exception:
                     pass
                 return
@@ -258,14 +254,14 @@ class SettingsView(ctk.CTkFrame):
                     self.after(0, self.main_app.dashboard_view.refresh)
                 if hasattr(self.main_app, "proxy_view"):
                     self.after(0, self.main_app.proxy_view._populate_sync)
-                self.after(0, lambda: self.main_app.show_toast(f"✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!", level="success"))
+                self.after(0, lambda: self.main_app.show_toast(tr("✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!").replace("{assigned}", str(assigned)), level="success"))
             except Exception:
                 pass
 
         threading.Thread(target=_bg, daemon=True).start()
 
     def clear_pools(self):
-        self.main_app.show_toast("Menghapus seluruh proxy dari 9Router...", level="warning")
+        self.main_app.show_toast(tr("Menghapus seluruh proxy dari 9Router..."), level="warning")
         def _bg():
             cleared = nr_adapt.clear_all_proxies()
             try:
@@ -274,7 +270,7 @@ class SettingsView(ctk.CTkFrame):
                     self.after(0, self.main_app.dashboard_view.refresh)
                 if hasattr(self.main_app, "proxy_view"):
                     self.after(0, self.main_app.proxy_view._populate_sync)
-                self.after(0, lambda: self.main_app.show_toast(f"✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct.", level="info"))
+                self.after(0, lambda: self.main_app.show_toast(tr("✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct.").replace("{cleared}", str(cleared)), level="info"))
             except Exception:
                 pass
 

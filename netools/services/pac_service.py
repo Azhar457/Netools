@@ -62,21 +62,29 @@ class PACHandler(http.server.SimpleHTTPRequestHandler):
         state = load_state()
         instances = state.get("instances", {})
         if not instances:
-            # Fallback to standard range
-            proxy_list = [f"SOCKS5 127.0.0.1:{11080 + i}; SOCKS 127.0.0.1:{11080 + i}" for i in range(20)]
+            # Fallback to standard range (SOCKS5, SOCKS, and HTTP proxy)
+            proxy_list = [f"SOCKS5 127.0.0.1:{11080 + i}; SOCKS 127.0.0.1:{11080 + i}; PROXY 127.0.0.1:{21080 + i}" for i in range(20)]
         else:
-            proxy_list = [f"SOCKS5 127.0.0.1:{info['port']}; SOCKS 127.0.0.1:{info['port']}" for info in instances.values()]
+            proxy_list = [f"SOCKS5 127.0.0.1:{info['port']}; SOCKS 127.0.0.1:{info['port']}; PROXY 127.0.0.1:{info['port'] + 10000}" for info in instances.values()]
 
         proxies_str = "; ".join(proxy_list) + "; DIRECT"
 
         return f"""function FindProxyForURL(url, host) {{
-    // Local / private IP bypass
+    // Fast & safe local/private bypass (avoids dnsResolve IPv6 exceptions & DNS leaks)
     if (isPlainHostName(host) ||
         shExpMatch(host, "*.local") ||
-        isInNet(dnsResolve(host), "10.0.0.0", "255.0.0.0") ||
-        isInNet(dnsResolve(host), "172.16.0.0", "255.240.0.0") ||
-        isInNet(dnsResolve(host), "192.168.0.0", "255.255.0.0") ||
-        isInNet(dnsResolve(host), "127.0.0.0", "255.0.0.0")) {{
+        shExpMatch(host, "localhost") ||
+        shExpMatch(host, "127.*") ||
+        shExpMatch(host, "10.*") ||
+        shExpMatch(host, "192.168.*") ||
+        shExpMatch(host, "172.16.*") ||
+        shExpMatch(host, "172.17.*") ||
+        shExpMatch(host, "172.18.*") ||
+        shExpMatch(host, "172.19.*") ||
+        shExpMatch(host, "172.2*") ||
+        shExpMatch(host, "172.3*") ||
+        shExpMatch(host, "*.internal") ||
+        shExpMatch(host, "*.lan")) {{
         return "DIRECT";
     }}
     return "{proxies_str}";

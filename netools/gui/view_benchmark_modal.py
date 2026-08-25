@@ -35,6 +35,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.sort_directions = {}
 
         self.providers = db.load_providers()
+        self.target_tlds = db.load_tld_presets()
         self.target_tlds = getattr(db, "TLD_PRESETS", getattr(db, "TARGET_TLD_DOMAINS", {}))
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -109,7 +110,13 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         )
         self.tld_cb.pack(side="left", padx=4)
 
-
+        # Manage TLD Categories (CRUD)
+        ctk.CTkButton(
+            r2, text=tr("🗂 Manage"), font=Fonts.bold(10),
+            fg_color=ThemeManager.border(), text_color=ThemeManager.primary(),
+            hover_color=ThemeManager.surface_alt(), height=30, width=90,
+            command=self.open_tld_manager,
+        ).pack(side="left", padx=(6, 0))
 
         # Turbo Mode Switch (Max Latency Cutoff)
         self.turbo_var = ctk.BooleanVar(value=True)
@@ -269,6 +276,152 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         if "doh" in m: return "doh"
         if "dot" in m: return "dot"
         return "ipv4"
+
+    def _tld_choices(self):
+        return [f"{v['name']} ({k})" for k, v in self.target_tlds.items()]
+
+    def open_tld_manager(self):
+        """CRUD manager for GRC Tier-3 TLD categories."""
+        win = ctk.CTkToplevel(self)
+        win.title("TLD Category Manager")
+        win.geometry("560x560")
+        win.transient(self.winfo_toplevel())
+        win.after(120, win.lift)
+
+        ctk.CTkLabel(win, text="Categories:", font=Fonts.bold(12),
+                     text_color=ThemeManager.text()).pack(anchor="w", padx=14, pady=(12, 2))
+        cat_box = ctk.CTkTextbox(win, height=90, font=Fonts.mono(11),
+                                 fg_color=ThemeManager.surface_alt(),
+                                 text_color=ThemeManager.text())
+        cat_box.pack(fill="x", padx=14)
+
+        row1 = ctk.CTkFrame(win, fg_color="transparent")
+        row1.pack(fill="x", padx=14, pady=(8, 0))
+        ctk.CTkLabel(row1, text="Key:", font=Fonts.bold(11),
+                     text_color=ThemeManager.text()).pack(side="left")
+        key_entry = ctk.CTkEntry(row1, width=130, font=Fonts.mono(11),
+                                 fg_color=ThemeManager.surface(),
+                                 border_color=ThemeManager.border(),
+                                 text_color=ThemeManager.text())
+        key_entry.pack(side="left", padx=6)
+        ctk.CTkLabel(row1, text="Name:", font=Fonts.bold(11),
+                     text_color=ThemeManager.text()).pack(side="left", padx=(8, 0))
+        name_entry = ctk.CTkEntry(row1, width=200, font=Fonts.regular(11),
+                                  fg_color=ThemeManager.surface(),
+                                  text_color=ThemeManager.text())
+        name_entry.pack(side="left", padx=6)
+
+        ctk.CTkLabel(win, text="Domains (one per line):", font=Fonts.bold(11),
+                     text_color=ThemeManager.text()).pack(anchor="w", padx=14, pady=(8, 2))
+        dom_box = ctk.CTkTextbox(win, font=Fonts.mono(11),
+                                 fg_color=ThemeManager.surface_alt(),
+                                 text_color=ThemeManager.text())
+        dom_box.pack(fill="both", expand=True, padx=14, pady=(0, 6))
+
+        btns = ctk.CTkFrame(win, fg_color="transparent")
+        btns.pack(fill="x", padx=14, pady=(0, 12))
+
+        state = {"current_key": ""}
+
+        def _refresh_cat_list():
+            cats = db.load_tld_presets()
+            cat_box.configure(state="normal")
+            cat_box.delete("1.0", "end")
+            for k, v in cats.items():
+                tag = " [modified]" if v.get("modified") else ""
+                cat_box.insert("end", f"{k:22s} {len(v['domains'])} domains{tag}\n")
+            cat_box.configure(state="disabled")
+
+        def _load_key(key):
+            cats = db.load_tld_presets()
+            info = cats.get(key)
+            key_entry.delete(0, "end"); name_entry.delete(0, "end")
+            dom_box.delete("1.0", "end")
+            if not info:
+                return
+            state["current_key"] = key
+            key_entry.insert(0, key)
+            name_entry.insert(0, info["name"])
+            for d in info["domains"]:
+                dom_box.insert("end", d + "\n")
+
+        def _on_cat_click(event=None):
+            try:
+                line = cat_box.get("insert linestart", "insert lineend").strip()
+                key = line.split()[0] if line else ""
+                if key:
+                    _load_key(key)
+            except Exception:
+                pass
+        cat_box.bind("<ButtonRelease-1>", _on_cat_click)
+
+        def _new():
+            state["current_key"] = ""
+            key_entry.delete(0, "end"); name_entry.delete(0, "end")
+            dom_box.delete("1.0", "end")
+            key_entry.focus_set()
+
+        def _save():
+            key = key_entry.get().strip().lower().replace(" ", "_")
+            name = name_entry.get().strip()
+            raw = dom_box.get("1.0", "end").splitlines()
+            domains = [d.strip() for d in raw if d.strip()]
+            if not key or not name or not domains:
+                self.dns_view.main_app.show_toast(
+                    "Key, Name, and at least 1 domain required.", level="warning")
+                return
+            if db.save_tld_category(key, name, domains):
+                self.target_tlds = db.load_tld_presets()
+                self.tld_cb.configure(values=self._tld_choices())
+                _refresh_cat_list()
+                self.dns_view.main_app.show_toast(
+                    f"✓ TLD category '{key}' saved.", level="success")
+            else:
+                self.dns_view.main_app.show_toast(f"Failed to save '{key}'.", level="error")
+
+        def _delete():
+            key = (state["current_key"] or key_entry.get().strip()).lower()
+            if not key:
+                return
+            if db.delete_tld_category(key):
+                self.target_tlds = db.load_tld_presets()
+                choices = self._tld_choices()
+                self.tld_cb.configure(values=choices)
+                if choices:
+                    self.tld_var.set(choices[0])
+                _refresh_cat_list(); _new()
+                self.dns_view.main_app.show_toast(
+                    f"🗑 TLD category '{key}' deleted/hidden.", level="info")
+            else:
+                self.dns_view.main_app.show_toast(f"Not found: '{key}'", level="warning")
+
+        def _reset_all():
+            db.reset_tld_presets()
+            self.target_tlds = db.load_tld_presets()
+            choices = self._tld_choices()
+            self.tld_cb.configure(values=choices)
+            if choices:
+                self.tld_var.set(choices[0])
+            _refresh_cat_list(); _new()
+            self.dns_view.main_app.show_toast("TLD presets reset to defaults.", level="info")
+
+        ctk.CTkButton(btns, text="➕ New", width=80, height=30, font=Fonts.bold(11),
+                      fg_color=ThemeManager.primary(), text_color=ThemeManager.get("on_primary"),
+                      hover_color=ThemeManager.accent(), command=_new).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(btns, text="💾 Save", width=90, height=30, font=Fonts.bold(11),
+                      fg_color=ThemeManager.success(), text_color=ThemeManager.get("on_primary"),
+                      hover_color=ThemeManager.accent(), command=_save).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(btns, text="🗑 Delete", width=90, height=30, font=Fonts.bold(11),
+                      fg_color=ThemeManager.danger(), text_color=ThemeManager.get("on_primary"),
+                      hover_color=ThemeManager.accent(), command=_delete).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(btns, text="↺ Reset Defaults", width=130, height=30, font=Fonts.bold(11),
+                      fg_color=ThemeManager.border(), text_color=ThemeManager.text(),
+                      hover_color=ThemeManager.surface_alt(), command=_reset_all).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(btns, text="Close", width=80, height=30, font=Fonts.bold(11),
+                      fg_color=ThemeManager.border(), text_color=ThemeManager.text(),
+                      hover_color=ThemeManager.surface_alt(), command=win.destroy).pack(side="right")
+
+        _refresh_cat_list()
 
     def start_benchmark(self):
         if self.benchmark_running:
@@ -469,24 +622,35 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
     def apply_smart_mix(self):
         smart = bm.calculate_smart_mix(self.results_map)
-        is_ipv6 = (self._get_benchmark_mode_key() == "ipv6")
+        mode_key = self._get_benchmark_mode_key()
 
-        def _get_ips(item):
-            if is_ipv6:
-                return item.get("ipv6", []) or item.get("ipv4", [])
-            return item.get("ipv4", [])
+        picks = [
+            (smart.get("cached", {}).get("key"), smart.get("cached", {})),
+            (smart.get("uncached", {}).get("key"), smart.get("uncached", {})),
+            (smart.get("dotcom", {}).get("key"), smart.get("dotcom", {})),
+        ]
 
-        c_ips = _get_ips(smart.get("cached", {}))
-        u_ips = _get_ips(smart.get("uncached", {}))
-        d_ips = _get_ips(smart.get("dotcom", {}))
+        entries = self.dns_view.dns1_entry, self.dns_view.dns2_entry, self.dns_view.dns3_entry
+        for entry in entries:
+            entry.delete(0, "end")
 
-        self.dns_view.dns1_entry.delete(0, "end")
-        self.dns_view.dns2_entry.delete(0, "end")
-        self.dns_view.dns3_entry.delete(0, "end")
+        primary_provider_id = None
+        for slot, (p_key, item) in enumerate(picks):
+            if not item:
+                continue
+            provider = self.providers.get(p_key, {})
+            ips = self.dns_view.compute_provider_ips(provider, p_key, self._family_label(mode_key))
+            if not ips:
+                continue
+            if slot == 0:
+                primary_provider_id = p_key
+            if len(ips) > 0:
+                entries[slot].insert(0, ips[0])
 
-        if c_ips: self.dns_view.dns1_entry.insert(0, c_ips[0])
-        if u_ips: self.dns_view.dns2_entry.insert(0, u_ips[0])
-        if d_ips: self.dns_view.dns3_entry.insert(0, d_ips[0])
+        self.dns_view.sync_after_external_apply(
+            provider_id=primary_provider_id,
+            mode_key=mode_key,
+        )
 
         self.lbl_status.configure(text="⚡ Menerapkan GRC Smart Mix ke sistem jaringan...", text_color=ThemeManager.warning())
 
@@ -502,33 +666,51 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         threading.Thread(target=_bg, daemon=True).start()
 
+    def _family_label(self, mode_key: str) -> str:
+        return {
+            "ipv4": "IPv4 (Standard)",
+            "ipv6": "IPv6 (Next-Gen)",
+            "doh": "DoH (HTTPS)",
+            "dot": "DoT (TLS Port 853)",
+        }.get(mode_key, "IPv4 (Standard)")
+
     def apply_fastest_single(self):
-        sorted_res = sorted(
-            [r for r in self.results_map.values() if r.get("score") is not None],
-            key=lambda x: x.get("score", 9999)
+        ranked = [r for r in self.results_map.values() if r.get("score") is not None]
+        ranked.sort(key=lambda x: x.get("score", 9999))
+        if not ranked:
+            return
+
+        mode_key = self._get_benchmark_mode_key()
+        family = self._family_label(mode_key)
+
+        entries = self.dns_view.dns1_entry, self.dns_view.dns2_entry, self.dns_view.dns3_entry
+        for entry in entries:
+            entry.delete(0, "end")
+
+        filled = 0
+        primary_provider_id = None
+        for res in ranked:
+            if filled >= 3:
+                break
+            p_key = res.get("key")
+            provider = self.providers.get(p_key, {})
+            ips = self.dns_view.compute_provider_ips(provider, p_key, family)
+            if not ips:
+                continue
+            if filled == 0:
+                primary_provider_id = p_key
+            entries[filled].insert(0, ips[0])
+            filled += 1
+
+        if filled == 0:
+            return
+
+        self.dns_view.sync_after_external_apply(
+            provider_id=primary_provider_id,
+            mode_key=mode_key,
         )
-        if not sorted_res:
-            return
 
-        fastest = sorted_res[0]
-        is_ipv6 = (self._get_benchmark_mode_key() == "ipv6")
-        ips = fastest.get("ipv6", []) if (is_ipv6 and fastest.get("ipv6")) else fastest.get("ipv4", [])
-        if not ips:
-            return
-
-        self.dns_view.dns1_entry.delete(0, "end")
-        self.dns_view.dns2_entry.delete(0, "end")
-        self.dns_view.dns3_entry.delete(0, "end")
-
-        if len(ips) > 0: self.dns_view.dns1_entry.insert(0, ips[0])
-        if len(ips) > 1: self.dns_view.dns2_entry.insert(0, ips[1])
-        if len(ips) > 2:
-            self.dns_view.dns3_entry.insert(0, ips[2])
-        elif len(sorted_res) > 1:
-            sec_ips = sorted_res[1].get("ipv6", []) if (is_ipv6 and sorted_res[1].get("ipv6")) else sorted_res[1].get("ipv4", [])
-            if sec_ips:
-                self.dns_view.dns3_entry.insert(0, sec_ips[0])
-
+        fastest = ranked[0]
         self.lbl_status.configure(text=f"⚡ Menerapkan #{fastest['name']} ke sistem jaringan...", text_color=ThemeManager.warning())
 
         def _bg():

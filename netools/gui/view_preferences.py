@@ -11,6 +11,15 @@ from tkinter import filedialog
 import customtkinter as ctk
 
 from netools.config import USER_CONFIG_DIR, USER_CONFIG_FILE
+from netools.gui.i18n import (
+    get_available_locales,
+    get_locale,
+    get_locale_labels,
+    label_from_locale,
+    locale_from_label,
+    set_locale,
+    tr,
+)
 from netools.gui.theme import Fonts, ThemeManager
 from netools.libs import dns_db as db
 from netools.libs.env import get_system_diagnostics
@@ -43,7 +52,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         self.lbl_title = ctk.CTkLabel(
             self.hdr,
-            text="⚙️ Settings, Cross-Platform Diagnostics & About",
+            text=tr("⚙️ Settings, Cross-Platform Diagnostics & About"),
             font=Fonts.title(16),
             text_color=ThemeManager.primary()
         )
@@ -57,7 +66,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             self.sec_app,
-            text="🎨 Appearance & UI Font Scaling",
+            text=tr("🎨 Appearance & UI Font Scaling"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.warning()
         ).pack(anchor="w", padx=14, pady=(12, 6))
@@ -65,7 +74,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
         self.r_app = ctk.CTkFrame(self.sec_app, fg_color=ThemeManager.surface())
         self.r_app.pack(fill="x", padx=14, pady=(0, 10))
 
-        ctk.CTkLabel(self.r_app, text="UI Scale / Font Size:", font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(self.r_app, text=tr("UI Scale / Font Size:"), font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
 
         self.scale_var = ctk.StringVar(value="100%")
         self.scale_cb = ctk.CTkComboBox(
@@ -79,7 +88,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
         )
         self.scale_cb.pack(side="left", padx=4)
 
-        ctk.CTkLabel(self.r_app, text="|  Theme Palette:", font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(16, 6))
+        ctk.CTkLabel(self.r_app, text=tr("|  Theme Palette:"), font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(16, 6))
 
         current_theme_title = ThemeManager.get_current_theme_key().capitalize()
         self.theme_var = ctk.StringVar(value=current_theme_title)
@@ -94,11 +103,27 @@ class PreferencesView(ctk.CTkScrollableFrame):
         )
         self.theme_cb.pack(side="left", padx=4)
 
+        # Language (Modular & Scalable)
+        ctk.CTkLabel(self.r_app, text=tr("|  Language:"), font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(16, 6))
+
+        self.lang_var = ctk.StringVar(value=label_from_locale(get_locale()))
+        self.lang_cb = ctk.CTkComboBox(
+            self.r_app,
+            values=get_locale_labels(),
+            variable=self.lang_var,
+            state="readonly",
+            font=Fonts.regular(11),
+            width=175,
+            height=32,
+            command=self.on_language_changed
+        )
+        self.lang_cb.pack(side="left", padx=4)
+
         # System Tray Option
-        self.tray_var = ctk.BooleanVar(value=True)
+        self.tray_var = ctk.BooleanVar(value=getattr(self.main_app, "minimize_to_tray_enabled", True))
         self.tray_chk = ctk.CTkCheckBox(
             self.sec_app,
-            text="Minimize to System Tray on Close (Tetap aktif di background saat ditutup)",
+            text=tr("Minimize to System Tray on Close (Tetap aktif di background saat ditutup)"),
             variable=self.tray_var,
             font=Fonts.regular(12),
             text_color=ThemeManager.text(),
@@ -115,7 +140,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             self.sec_env,
-            text="🔍 Cross-Platform Environment & Dependency Diagnostics",
+            text=tr("🔍 Cross-Platform Environment & Dependency Diagnostics"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.success()
         ).pack(anchor="w", padx=14, pady=(12, 6))
@@ -131,7 +156,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             self.sec_env,
-            text="🔄 Re-scan System Capabilities",
+            text=tr("🔄 Refresh Diagnostics"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
@@ -148,7 +173,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             self.sec_dns,
-            text="🗄️ DNS Database & Resolver Management",
+            text=tr("💾 DNS Database Backup & Cloud Sync"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.primary()
         ).pack(anchor="w", padx=14, pady=(12, 6))
@@ -158,7 +183,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             self.r_dns,
-            text="📥 Import DNS (.json / .txt)",
+            text=tr("📥 Import JSON DNS"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.primary(),
             text_color=ThemeManager.get("on_primary"),
@@ -169,7 +194,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             self.r_dns,
-            text="📋 Import DnsJumper (.ini)",
+            text=tr("📥 Import DnsJumper INI"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.warning(),
             text_color=ThemeManager.get("on_primary"),
@@ -180,7 +205,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             self.r_dns,
-            text="📤 Export DNS (.json)",
+            text=tr("📤 Export DNS to JSON"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
@@ -191,7 +216,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             self.r_dns,
-            text="🔄 Cloud Sync DB",
+            text=tr("☁️ Sync Cloud Preset DB"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.success(),
             text_color=ThemeManager.get("on_primary"),
@@ -202,7 +227,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             self.r_dns,
-            text="♻️ Reset DB Defaults",
+            text=tr("♻️ Reset Default Providers"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.surface_alt(),
             text_color=ThemeManager.danger(),
@@ -219,7 +244,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             self.sec_about,
-            text="ℹ️ About Netools Suite",
+            text=tr("ℹ️ About Netools Suite"),
             font=Fonts.subtitle(13),
             text_color=ThemeManager.secondary()
         ).pack(anchor="w", padx=14, pady=(12, 6))
@@ -229,7 +254,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         lbl_ver = ctk.CTkLabel(
             self.r_about,
-            text="⚡ Netools Suite v2.0.0 (Clean Architecture Edition)",
+            text=tr("⚡ Netools Suite v2.0.0 (Clean Architecture Edition)"),
             font=Fonts.bold(12),
             text_color=ThemeManager.text()
         )
@@ -237,7 +262,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         lbl_desc = ctk.CTkLabel(
             self.r_about,
-            text="Cross-platform High-performance Desktop Suite for GRC-style 3-Tier DNS Benchmarking, Smart Split-DNS Switching, Turbo Sing-box Proxy Pool Rotation, PAC Auto-Configuration & AI Multi-Provider Router Routing on Linux, Windows & macOS.",
+            text=tr("Cross-platform High-performance Desktop Suite for GRC-style 3-Tier DNS Benchmarking, Smart Split-DNS Switching, Turbo Sing-box Proxy Pool Rotation, PAC Auto-Configuration & AI Multi-Provider Router Routing on Linux, Windows & macOS."),
             font=Fonts.regular(11),
             text_color=ThemeManager.text_muted(),
             wraplength=700,
@@ -250,7 +275,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             btn_row,
-            text="🚀 Check for Updates",
+            text=tr("🚀 Check for Updates"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.secondary(),
             text_color=ThemeManager.get("on_secondary"),
@@ -261,7 +286,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         ctk.CTkButton(
             btn_row,
-            text="📖 GitHub Repository",
+            text=tr("📖 GitHub Repository"),
             font=Fonts.bold(11),
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
@@ -301,6 +326,16 @@ class PreferencesView(ctk.CTkScrollableFrame):
         except Exception:
             self.main_app.show_toast(f"Skala {choice} disimpan (efek penuh saat restart).", level="info")
 
+    def on_language_changed(self, choice: str):
+        code = locale_from_label(choice)
+        set_locale(code)
+        if hasattr(self.main_app, "reload_ui"):
+            self.main_app.reload_ui()
+        if code == "id":
+            self.main_app.show_toast(tr("✓ Bahasa berhasil diubah ke Bahasa Indonesia!"), level="success")
+        else:
+            self.main_app.show_toast(tr("✓ Language changed to English!"), level="success")
+
     def on_theme_changed(self, choice: str):
         ThemeManager.apply_theme(choice, self.main_app)
         try:
@@ -313,8 +348,6 @@ class PreferencesView(ctk.CTkScrollableFrame):
         except Exception:
             pass
         if hasattr(self.main_app, "reload_ui"):
-            # Full UI rebuild: every widget is re-created with current ThemeManager
-            # variables, guaranteeing 100% theme consistency (no stale colors).
             self.main_app.reload_ui()
         self.main_app.show_toast(f"✓ Tema berhasil diubah ke {choice}", level="info")
 
