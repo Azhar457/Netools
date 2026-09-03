@@ -121,6 +121,8 @@ class ThemeManager:
     @classmethod
     def primary(cls) -> str: return cls.get("primary")
     @classmethod
+    def primary_hover(cls) -> str: return cls.get("secondary")
+    @classmethod
     def secondary(cls) -> str: return cls.get("secondary")
     @classmethod
     def accent(cls) -> str: return cls.get("accent")
