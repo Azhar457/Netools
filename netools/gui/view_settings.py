@@ -65,16 +65,17 @@ class SettingsView(ctk.CTkFrame):
 
         self.btn_extractor = ctk.CTkButton(
             self.hdr,
-            text=tr("🍪 Ambil Token Browser"),
+            text=tr("🍪 Buka Cookie Extractor"),
             font=Fonts.bold(12),
             fg_color=ThemeManager.primary(),
             text_color="#FFFFFF",
             hover_color=ThemeManager.primary_hover(),
-            width=170,
+            width=175,
             height=34,
             command=self._open_extractor_modal
         )
         self.btn_extractor.pack(side="right", padx=(0, 6))
+
 
 
 
@@ -291,9 +292,12 @@ class SettingsView(ctk.CTkFrame):
         threading.Thread(target=_bg, daemon=True).start()
 
     def _open_extractor_modal(self):
-        from netools.gui.view_extractor_modal import SessionExtractorModal
-        if hasattr(self.main_app, "extractor_modal") and self.main_app.extractor_modal and self.main_app.extractor_modal.winfo_exists():
-            self.main_app.extractor_modal.lift()
-            return
-        self.main_app.extractor_modal = SessionExtractorModal(self.main_app)
+        # Switch directly to the dedicated Cookie Extractor tab (single source of truth)
+        if hasattr(self.main_app, "tabview"):
+            try:
+                self.main_app.tabview.set(tr("🍪 Cookie Extractor"))
+                return
+            except Exception:
+                pass
+
 

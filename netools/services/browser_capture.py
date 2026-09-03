@@ -21,10 +21,30 @@ from netools.services.session_extractor import (
 log = get_logger(__name__)
 
 PROVIDER_URLS = {
-    "zai-web": "https://chat.z.ai/",
-    "kimi-web": "https://www.kimi.ai/",
-    "deepseek-web": "https://chat.deepseek.com/",
-    "claude-web": "https://claude.ai/login",
+    "adapta-web":      "https://adapta.org/",
+    "lmarena":         "https://lmarena.ai/",
+    "blackbox-web":    "https://www.blackbox.ai/",
+    "chatgpt-web":     "https://chatgpt.com/",
+    "claude-web":      "https://claude.ai/login",
+    "deepseek-web":    "https://chat.deepseek.com/",
+    "doubao-web":      "https://www.dola.com/",
+    "gemini-business": "https://gemini.google.com/",
+    "gemini-web":      "https://gemini.google.com/",
+    "grok-web":        "https://grok.com/",
+    "huggingchat":     "https://huggingface.co/chat/",
+    "inner-ai":        "https://inner.ai/",
+    "kimi-web":        "https://www.kimi.ai/",
+    "copilot-m365-web":"https://www.microsoft365.com/",
+    "copilot-web":     "https://copilot.microsoft.com/",
+    "muse-spark-web":  "https://meta.ai/",
+    "perplexity-web":  "https://www.perplexity.ai/",
+    "poe-web":         "https://www.poe.com/",
+    "t3-web":          "https://t3.chat/",
+    "yuanbao-web":     "https://yuanbao.tencent.com/",
+    "v0-vercel-web":   "https://v0.dev/",
+    "venice-web":      "https://venice.ai/",
+    "zai-web":         "https://chat.z.ai/",
+    "zenmux-free":     "https://zenmux.com/",
 }
 
 
