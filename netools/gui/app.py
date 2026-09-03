@@ -18,7 +18,9 @@ from netools.gui.view_dashboard import DashboardView
 from netools.gui.view_dns import DNSView
 from netools.gui.view_preferences import PreferencesView
 from netools.gui.view_proxy import ProxyView
+from netools.gui.view_session_extractor import SessionExtractorView
 from netools.gui.view_settings import SettingsView
+
 
 
 def center_window(window: ctk.CTk, width: int = 920, height: int = 720):
@@ -160,8 +162,11 @@ class NetoolsApp(ctk.CTk):
             self.proxy_view.apply_theme()
         if hasattr(self, "settings_view") and hasattr(self.settings_view, "apply_theme"):
             self.settings_view.apply_theme()
+        if hasattr(self, "extractor_view") and hasattr(self.extractor_view, "apply_theme"):
+            self.extractor_view.apply_theme()
         if hasattr(self, "preferences_view") and hasattr(self.preferences_view, "apply_theme"):
             self.preferences_view.apply_theme()
+
 
     def _build_ui(self):
         from netools.gui.theme import Fonts, ThemeManager
@@ -240,7 +245,12 @@ class NetoolsApp(ctk.CTk):
         self.settings_view = SettingsView(self.tab_settings, self)
         self.settings_view.pack(fill="both", expand=True)
 
-        # Tab 5: Settings & About
+        # Tab 5: AI Cookie & Session Extractor
+        self.tab_extractor = self.tabview.add(tr("🍪 Cookie Extractor"))
+        self.extractor_view = SessionExtractorView(self.tab_extractor, self)
+        self.extractor_view.pack(fill="both", expand=True)
+
+        # Tab 6: Settings & About
         self.tab_preferences = self.tabview.add(tr("⚙️ Settings & About"))
         self.preferences_view = PreferencesView(self.tab_preferences, self)
         self.preferences_view.pack(fill="both", expand=True)
@@ -252,8 +262,10 @@ class NetoolsApp(ctk.CTk):
             tr("⚡ DNS Suite"),
             tr("🌐 Proxy Rotator"),
             tr("🔌 9Router & AI Sync"),
+            tr("🍪 Cookie Extractor"),
             tr("⚙️ Settings & About"),
         ]
+
         active_idx = 4
         if hasattr(self, "tabview"):
             try:
