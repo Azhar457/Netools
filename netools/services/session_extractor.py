@@ -1,6 +1,6 @@
 """
 Browser Session & Token Extractor for AI Web Providers (Brave, Chrome, Firefox).
-Extracts LocalStorage tokens and cookies for Z.ai, Kimi, Claude, DeepSeek without opening DevTools.
+Extracts LocalStorage tokens and cookies with granular filtering and deduplication.
 """
 
 import base64
@@ -29,6 +29,14 @@ BROWSER_PATHS = {
     ],
 }
 
+SUPPORTED_PROVIDERS = [
+    ("all", "Semua Provider AI"),
+    ("zai-web", "Z.ai Web (chat.z.ai)"),
+    ("kimi-web", "Kimi Web (kimi.ai)"),
+    ("deepseek-web", "DeepSeek Web (chat.deepseek.com)"),
+    ("custom", "Kustom (Domain / Kata Kunci)"),
+]
+
 
 def decode_jwt_payload(token: str) -> Optional[Dict[str, Any]]:
     """Safely decode JWT payload without verification."""
@@ -43,15 +51,19 @@ def decode_jwt_payload(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def extract_chromium_storage(profile_dir: Path) -> List[Dict[str, Any]]:
-    """Scan Chromium/Brave LevelDB for JWT tokens and session data."""
+def extract_chromium_storage(
+    profile_dir: Path,
+    browser_name: str,
+    provider_filter: str = "all",
+    custom_keyword: str = "",
+) -> List[Dict[str, Any]]:
+    """Scan Chromium/Brave LevelDB for JWT tokens and session data with precise domain matching."""
     leveldb_dir = profile_dir / "Local Storage" / "leveldb"
     if not leveldb_dir.exists():
         return []
 
     found = []
     seen_tokens = set()
-
     files = list(leveldb_dir.glob("*.ldb")) + list(leveldb_dir.glob("*.log"))
     jwt_pattern = re.compile(rb"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+")
 
@@ -63,36 +75,57 @@ def extract_chromium_storage(profile_dir: Path) -> List[Dict[str, Any]]:
                 token_str = m.decode("ascii")
                 if token_str in seen_tokens:
                     continue
-                seen_tokens.add(token_str)
 
                 payload = decode_jwt_payload(token_str)
                 if not payload:
                     continue
 
-                email = payload.get("email") or ""
-                uid = payload.get("id") or payload.get("user_id") or payload.get("sub") or ""
+                # Precise Identification
+                prov = "unknown"
+                account = ""
 
-                # Identify Provider
-                provider = "Unknown"
-                if "chat.z.ai" in str(raw) or "z.ai" in str(raw):
-                    provider = "zai-web"
-                elif "kimi" in str(raw) or "moonshot" in str(raw):
-                    provider = "kimi-web"
-                elif "deepseek" in str(raw):
-                    provider = "deepseek-web"
+                # 1. Kimi Web (aud: ["kimi.ai"], app_id: "kimi")
+                if payload.get("app_id") == "kimi" or "kimi.ai" in payload.get("aud", []):
+                    prov = "kimi-web"
+                    account = payload.get("sub", "")
+                    if payload.get("typ") == "refresh":
+                        continue  # Keep only access token
 
-                # Check payload clues
-                if not email and not uid:
-                    continue
+                # 2. Z.ai Web (id + email only in payload)
+                elif "email" in payload and "id" in payload and len(payload) <= 3:
+                    prov = "zai-web"
+                    account = payload.get("email", "")
 
-                label = f"{provider} ({email or uid})"
+                # 3. DeepSeek
+                elif "deepseek" in str(raw).lower() and ("user" in payload or "id" in payload):
+                    prov = "deepseek-web"
+                    account = payload.get("email") or payload.get("id") or "DeepSeek User"
+
+                # 4. Custom Keyword Filter
+                elif custom_keyword and custom_keyword.lower() in str(raw).lower():
+                    prov = f"custom:{custom_keyword}"
+                    account = payload.get("email") or payload.get("id") or "Akun Kustom"
+
+                # Apply Filter
+                if provider_filter == "all":
+                    if prov == "unknown":
+                        continue
+                elif provider_filter == "custom":
+                    if not prov.startswith("custom:"):
+                        continue
+                else:
+                    if prov != provider_filter:
+                        continue
+
+                seen_tokens.add(token_str)
+                label = f"[{browser_name}] {prov} — {account}"
                 found.append({
-                    "provider": provider,
+                    "browser": browser_name,
+                    "provider": prov,
+                    "account": account,
                     "label": label,
-                    "account": email or str(uid),
                     "token": token_str,
                     "payload": payload,
-                    "source": f.name,
                 })
         except Exception:
             continue
@@ -100,23 +133,34 @@ def extract_chromium_storage(profile_dir: Path) -> List[Dict[str, Any]]:
     return found
 
 
-def extract_all_browser_sessions() -> List[Dict[str, Any]]:
-    """Extract all available AI sessions from installed browsers on the system."""
+def extract_all_browser_sessions(
+    browser_filter: str = "all",
+    provider_filter: str = "all",
+    custom_keyword: str = "",
+) -> List[Dict[str, Any]]:
+    """Extract filtered AI sessions from installed browsers on the system."""
     all_sessions = []
-    for browser_name, paths in BROWSER_PATHS.items():
+    selected_browsers = BROWSER_PATHS.keys() if browser_filter == "all" else [browser_filter]
+
+    for b_name in selected_browsers:
+        paths = BROWSER_PATHS.get(b_name, [])
         for p in paths:
             if p.exists():
-                items = extract_chromium_storage(p)
-                for it in items:
-                    it["browser"] = browser_name
-                    all_sessions.append(it)
-                break  # Stop on first existing profile per browser
+                items = extract_chromium_storage(
+                    p,
+                    browser_name=b_name,
+                    provider_filter=provider_filter,
+                    custom_keyword=custom_keyword,
+                )
+                all_sessions.extend(items)
+                break  # First profile found for this browser
 
-    # Sort so zai-web and kimi-web with real email come first
-    def _sort_key(x):
-        has_email = "@" in x.get("account", "")
-        is_known = x.get("provider") in ("zai-web", "kimi-web", "deepseek-web")
-        return (0 if (is_known and has_email) else (1 if is_known else 2), x.get("label", ""))
+    # Deduplicate by token and sort
+    unique_sessions = []
+    seen = set()
+    for s in all_sessions:
+        if s["token"] not in seen:
+            seen.add(s["token"])
+            unique_sessions.append(s)
 
-    all_sessions.sort(key=_sort_key)
-    return all_sessions
+    return unique_sessions
