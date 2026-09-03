@@ -240,8 +240,8 @@ class NetoolsApp(ctk.CTk):
         self.proxy_view = ProxyView(self.tab_proxy, self)
         self.proxy_view.pack(fill="both", expand=True)
 
-        # Tab 4: 9Router & AI Gateway
-        self.tab_settings = self.tabview.add(tr("🔌 9Router & AI Sync"))
+        # Tab 4: Sync Router (OmniRoute & 9Router)
+        self.tab_settings = self.tabview.add(tr("🔌 Sync Router"))
         self.settings_view = SettingsView(self.tab_settings, self)
         self.settings_view.pack(fill="both", expand=True)
 
@@ -261,10 +261,11 @@ class NetoolsApp(ctk.CTk):
             tr("📊 Dashboard"),
             tr("⚡ DNS Suite"),
             tr("🌐 Proxy Rotator"),
-            tr("🔌 9Router & AI Sync"),
+            tr("🔌 Sync Router"),
             tr("🍪 Cookie Extractor"),
             tr("⚙️ Settings & About"),
         ]
+
 
         active_idx = 4
         if hasattr(self, "tabview"):

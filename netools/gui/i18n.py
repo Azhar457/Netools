@@ -44,8 +44,11 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "📊 Dashboard": {"id": "📊 Dasbor"},
     "⚡ DNS Suite": {"id": "⚡ DNS Suite"},
     "🌐 Proxy Rotator": {"id": "🌐 Proxy Rotator"},
-    "🔌 9Router & AI Sync": {"id": "🔌 9Router & AI Sync"},
+    "🔌 Sync Router": {"id": "🔌 Sync Router"},
+    "🔌 9Router & AI Sync": {"id": "🔌 Sync Router"},
+    "🍪 Cookie Extractor": {"id": "🍪 Cookie Extractor"},
     "⚙️ Settings & About": {"id": "⚙️ Pengaturan & Info"},
+
 
     # -----------------------------------------------------------------------
     # Window & Tray Notifications

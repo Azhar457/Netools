@@ -64,9 +64,13 @@ class TestOmnirouteAdapter(unittest.TestCase):
 
     def test_health_check_offline(self):
         from netools.adapters import omniroute
+        omniroute.set_credentials(url="http://127.0.0.1:59999")
         omniroute._health_cache["val"] = None
         # When omniroute port is not listening, safe_backend_call safely returns False without raising
         self.assertFalse(omniroute.is_healthy())
+        # Restore default
+        omniroute.set_credentials(url="http://localhost:20128")
+
 
 
 if __name__ == "__main__":

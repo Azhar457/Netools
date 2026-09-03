@@ -72,8 +72,21 @@ def is_healthy() -> bool:
     now = time.monotonic()
     if _health_cache["val"] is not None and (now - _health_cache["ts"]) < _HEALTH_TTL:
         return _health_cache["val"]
-    res = api_request("GET", "/api/providers")
-    healthy = "error" not in res
+
+    # Check TCP socket first
+    healthy = False
+    try:
+        url_part = _CURRENT_URL.replace("http://", "").replace("https://", "").split("/")[0]
+        host, port_str = url_part.split(":") if ":" in url_part else (url_part, "20128")
+        with socket.create_connection((host, int(port_str)), timeout=0.6):
+            healthy = True
+    except Exception:
+        healthy = False
+
+    if not healthy:
+        res = api_request("GET", "/api/providers")
+        healthy = "error" not in res or "AUTH_001" in str(res)
+
     _health_cache["val"] = healthy
     _health_cache["ts"] = now
     return healthy
@@ -81,9 +94,47 @@ def is_healthy() -> bool:
 
 @safe_backend_call(fallback_return=[])
 def get_connections() -> List[Dict[str, Any]]:
-    """Retrieve all provider connections from OmniRoute."""
+    """Retrieve all provider connections from OmniRoute with SQLite fallback."""
     res = api_request("GET", "/api/providers")
-    return res.get("connections", [])
+    conns = res.get("connections", [])
+    if isinstance(conns, list) and len(conns) > 0:
+        return conns
+
+    # Fallback to local SQLite read if server requires dashboard session login
+    try:
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+        import sqlite3
+        if _DEFAULT_DB_PATH.exists():
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                db.row_factory = sqlite3.Row
+                rows = db.execute(
+                    "SELECT id, name, provider, is_active, test_status, proxy_enabled, provider_specific_data, auth_type FROM provider_connections ORDER BY created_at DESC"
+                ).fetchall()
+                parsed = []
+                for r in rows:
+                    psd = {}
+                    if r["provider_specific_data"]:
+                        try:
+                            psd = json.loads(r["provider_specific_data"])
+                        except Exception:
+                            pass
+                    proxy_url = psd.get("connectionProxyUrl") or ""
+                    proxy_enabled = bool(psd.get("connectionProxyEnabled") or (r["proxy_enabled"] and proxy_url))
+                    parsed.append({
+                        "id": r["id"],
+                        "name": r["name"] or r["provider"],
+                        "provider": r["provider"],
+                        "isActive": bool(r["is_active"]),
+                        "testStatus": r["test_status"],
+                        "connectionProxyUrl": proxy_url,
+                        "connectionProxyEnabled": proxy_enabled,
+                        "authType": r["auth_type"],
+                    })
+                return parsed
+    except Exception:
+        pass
+
+    return []
 
 
 @safe_backend_call(fallback_return={})
@@ -108,7 +159,34 @@ def assign_proxy_to_connection(conn_id: str, proxy_url: str) -> Optional[Dict[st
             "connectionNoProxy": "localhost,127.0.0.1",
         },
     )
-    return res.get("connection") if "connection" in res else None
+    if "connection" in res:
+        return res.get("connection")
+
+    # Fallback: direct SQLite update
+    try:
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+        import sqlite3
+        if _DEFAULT_DB_PATH.exists():
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                row = db.execute("SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)).fetchone()
+                psd = {}
+                if row and row[0]:
+                    try:
+                        psd = json.loads(row[0])
+                    except Exception:
+                        pass
+                psd["connectionProxyEnabled"] = True
+                psd["connectionProxyUrl"] = proxy_url
+                psd["connectionNoProxy"] = "localhost,127.0.0.1"
+                db.execute(
+                    "UPDATE provider_connections SET proxy_enabled = 1, provider_specific_data = ? WHERE id = ?",
+                    (json.dumps(psd), conn_id),
+                )
+                db.commit()
+                return {"id": conn_id, "connectionProxyUrl": proxy_url, "connectionProxyEnabled": True}
+    except Exception:
+        pass
+    return None
 
 
 def remove_proxy_from_connection(conn_id: str) -> Optional[Dict[str, Any]]:
@@ -123,7 +201,36 @@ def remove_proxy_from_connection(conn_id: str) -> Optional[Dict[str, Any]]:
             "proxyPoolId": None,
         },
     )
-    return res.get("connection") if "connection" in res else None
+    if "connection" in res:
+        return res.get("connection")
+
+    # Fallback: direct SQLite update
+    try:
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+        import sqlite3
+        if _DEFAULT_DB_PATH.exists():
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                row = db.execute("SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)).fetchone()
+                psd = {}
+                if row and row[0]:
+                    try:
+                        psd = json.loads(row[0])
+                    except Exception:
+                        pass
+                psd["connectionProxyEnabled"] = False
+                psd["connectionProxyUrl"] = ""
+                psd["connectionNoProxy"] = ""
+                db.execute(
+                    "UPDATE provider_connections SET proxy_enabled = 0, provider_specific_data = ? WHERE id = ?",
+                    (json.dumps(psd), conn_id),
+                )
+                db.commit()
+                return {"id": conn_id, "connectionProxyUrl": "", "connectionProxyEnabled": False}
+    except Exception:
+        pass
+    return None
+
+
 
 
 def clear_all_connection_proxies() -> int:
