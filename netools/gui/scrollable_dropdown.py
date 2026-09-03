@@ -1,12 +1,11 @@
 """
 Modern CustomTkinter Scrollable & Searchable Dropdown Popup.
-Prevents dropdown menus with 50+ items from overflowing the screen.
-Supports keyboard search, mouse wheel scrolling on Linux/Win/Mac, and click-to-select.
+Uses a single native tk.Listbox (instant rendering for 90+ items, native
+scrolling/keyboard) instead of per-item CTkButtons, which froze the UI.
 """
 
-import sys
-import time
 import tkinter as tk
+import time
 from typing import Any, Callable, List, Optional, Tuple
 
 import customtkinter as ctk
@@ -15,9 +14,9 @@ from netools.gui.theme import (
     Fonts,
     ThemeManager,
 )
+from netools.gui.wm import mark_popup
 
 
-RENDER_LIMIT = 25  # max buttons rendered per filter pass (freeze guard)
 
 class CTkScrollableDropdown:
     def __init__(
@@ -40,12 +39,10 @@ class CTkScrollableDropdown:
         self.searchable = searchable
         self.placeholder_text = placeholder_text
 
-        self.buttons: List[ctk.CTkButton] = []
-        self._render_limit: int = RENDER_LIMIT
-        self._last_rendered: Optional[List[str]] = None
+        self._filtered: List[str] = []
         self._search_after_id: Optional[str] = None
         self.toplevel: Optional[ctk.CTkToplevel] = None
-        self.scroll_frame: Optional[ctk.CTkScrollableFrame] = None
+        self.listbox: Optional[tk.Listbox] = None
         self.search_entry: Optional[ctk.CTkEntry] = None
         self._click_binding_id: Optional[str] = None
         self._open_ts: float = 0.0
@@ -62,9 +59,8 @@ class CTkScrollableDropdown:
     def configure(self, values: Optional[List[str]] = None, **kwargs):
         if values is not None:
             self.values = list(values)
-            self._last_rendered = None
             if self.toplevel and self.toplevel.winfo_exists():
-                self._populate_list(self.values)
+                self._populate(self.values)
 
     def _toggle_dropdown(self, event=None):
         now = time.monotonic()
@@ -103,16 +99,13 @@ class CTkScrollableDropdown:
         self._geo = (x, y, w, dropdown_h)
 
         self.toplevel = ctk.CTkToplevel(root)
+        mark_popup(self.toplevel, root)
         self.toplevel.overrideredirect(True)
         self.toplevel.geometry(f"{w}x{dropdown_h}+{x}+{y}")
         self.toplevel.attributes("-topmost", True)
         self.toplevel.configure(fg_color=ThemeManager.surface())
-        try:
-            self.toplevel.transient(root)
-        except Exception:
-            pass
 
-        # Main Card Frame
+
         main_card = ctk.CTkFrame(
             self.toplevel,
             fg_color=ThemeManager.surface(),
@@ -124,142 +117,117 @@ class CTkScrollableDropdown:
 
         # Search Bar (if searchable)
         if self.searchable and len(self.values) > 6:
-            search_box = ctk.CTkFrame(main_card, fg_color=ThemeManager.surface(), height=36)
-            search_box.pack(fill="x", padx=6, pady=(6, 2))
-            search_box.pack_propagate(False)
-
             self.search_entry = ctk.CTkEntry(
-                search_box,
+                main_card,
                 placeholder_text=self.placeholder_text,
                 font=Fonts.regular(10),
                 fg_color=ThemeManager.surface_alt(),
                 border_color=ThemeManager.border(),
-                height=26
+                height=28
             )
-            self.search_entry.pack(fill="x", padx=4, pady=2)
+            self.search_entry.pack(fill="x", padx=8, pady=(8, 4))
             self.search_entry.bind("<KeyRelease>", self._on_search)
+            self.search_entry.bind("<Down>", lambda e: self._focus_list())
+            self.search_entry.bind("<Return>", lambda e: self._select_first())
         else:
             self.search_entry = None
 
-        # Scrollable List Container
-        self.scroll_frame = ctk.CTkScrollableFrame(
-            main_card,
-            fg_color="transparent",
-            corner_radius=6,
-            scrollbar_button_color=ThemeManager.border(),
-            scrollbar_button_hover_color=ThemeManager.primary()
+        # Native Listbox: renders 90+ items instantly, scrolls natively
+        list_frame = tk.Frame(main_card, bg=ThemeManager.surface())
+        list_frame.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+
+        sb = tk.Scrollbar(list_frame, width=10)
+        self.listbox = tk.Listbox(
+            list_frame,
+            font=Fonts.regular(11),
+            bg=ThemeManager.surface(),
+            fg=ThemeManager.text(),
+            selectbackground=ThemeManager.border(),
+            selectforeground=ThemeManager.primary(),
+            highlightthickness=0,
+            borderwidth=0,
+            activestyle="none",
+            yscrollcommand=sb.set,
         )
-        self.scroll_frame.pack(fill="both", expand=True, padx=4, pady=4)
+        sb.config(command=self.listbox.yview)
+        sb.pack(side="right", fill="y")
+        self.listbox.pack(side="left", fill="both", expand=True)
 
-        # Bind mouse wheel on container for Linux X11/Wayland & Win/Mac
-        self._bind_mousewheel(self.scroll_frame)
-        if hasattr(self.scroll_frame, "_parent_canvas"):
-            self._bind_mousewheel(self.scroll_frame._parent_canvas)
+        self.listbox.bind("<ButtonRelease-1>", self._on_pick)
+        self.listbox.bind("<Return>", self._on_pick)
+        self.listbox.bind("<Escape>", lambda _: self._close())
 
-        self._populate_list(self.values)
+        self._populate(self.values)
 
         self.toplevel.lift()
-        self.toplevel.update()
+        self.toplevel.update_idletasks()  # NOT update(): re-entrant mainloop froze the UI
 
-        # focus_set() can race window creation on some WMs (esp. inside AppImage
-        # where the popup maps late) -> "bad window path name". Retry briefly.
         if self.search_entry:
-            for _ in range(6):
-                try:
-                    if self.search_entry.winfo_exists():
-                        self.search_entry.focus_set()
-                    break
-                except tk.TclError:
-                    root.update_idletasks()
-                    self.widget.after(20, lambda: None)
+            self.search_entry.after(50, self._safe_focus)
 
         # Click outside to dismiss
         self._click_binding_id = root.bind("<Button-1>", self._check_click_outside, add="+")
         self.toplevel.bind("<Escape>", lambda _: self._close())
 
-    def _bind_mousewheel(self, widget: Any):
-        """Cross-platform mouse wheel scrolling attachment."""
-        if sys.platform.startswith("linux"):
-            widget.bind("<Button-4>", lambda e: self._scroll_units(-1), add="+")
-            widget.bind("<Button-5>", lambda e: self._scroll_units(1), add="+")
-        else:
-            widget.bind("<MouseWheel>", lambda e: self._scroll_units(int(-1 * (e.delta / 120))), add="+")
+    def _safe_focus(self):
+        try:
+            if self.search_entry and self.search_entry.winfo_exists():
+                self.search_entry.focus_set()
+        except tk.TclError:
+            pass
 
-    def _scroll_units(self, units: int):
-        if self.scroll_frame and hasattr(self.scroll_frame, "_parent_canvas"):
-            try:
-                self.scroll_frame._parent_canvas.yview_scroll(units, "units")
-            except Exception:
-                pass
+    def _focus_list(self):
+        if self.listbox and self.listbox.size():
+            self.listbox.focus_set()
+            self.listbox.selection_clear(0, "end")
+            self.listbox.selection_set(0)
+            self.listbox.activate(0)
 
-    def _populate_list(self, items: List[str], hide_tail_note: bool = False):
-        if self._last_rendered == items:
+    def _select_first(self):
+        if self._filtered:
+            self._select_item(self._filtered[0])
+
+    def _populate(self, items: List[str]):
+        self._filtered = list(items)
+        lb = self.listbox
+        if not lb:
             return
-        self._last_rendered = items
-
-        # Clear existing buttons
-        for btn in self.buttons:
-            try:
-                btn.destroy()
-            except Exception:
-                pass
-        self.buttons.clear()
-
+        lb.delete(0, "end")
         current_val = self.variable.get() if self.variable else None
-
-        # Freeze guard: rendering dozens of CTkButtons per keystroke janks the
-        # UI. Show the first RENDER_LIMIT matches plus a tail note.
-        shown = items
-        tail_note = ""
-        if len(items) > self._render_limit:
-            shown = items[: self._render_limit]
-            tail_note = f"… {len(items) - self._render_limit} more — refine search"
-
-        for item in shown:
-            is_selected = (item == current_val)
-            btn = ctk.CTkButton(
-                self.scroll_frame,
-                text=item,
-                font=Fonts.bold(10) if is_selected else Fonts.regular(10),
-                text_color=ThemeManager.primary() if is_selected else ThemeManager.text(),
-                fg_color=ThemeManager.border() if is_selected else "transparent",
-                hover_color=ThemeManager.surface_alt(),
-                anchor="w",
-                height=26,
-                corner_radius=4,
-                command=lambda val=item: self._select_item(val)
-            )
-            btn.pack(fill="x", padx=2, pady=1)
-            self._bind_mousewheel(btn)
-            self.buttons.append(btn)
-
-        if tail_note or hide_tail_note:
-            note = ctk.CTkLabel(
-                self.scroll_frame,
-                text=(tail_note or "refine search to see more"),
-                font=Fonts.regular(9),
-                text_color=ThemeManager.text_muted(),
-                anchor="w",
-            )
-            note.pack(fill="x", padx=6, pady=(0, 2))
+        for i, item in enumerate(items):
+            lb.insert("end", f"  {item}")
+            if item == current_val:
+                lb.itemconfig(i, foreground=ThemeManager.primary())
+        # scroll current selection into view
+        if current_val in items:
+            lb.see(items.index(current_val))
 
     def _on_search(self, event=None):
+        if event and event.keysym in ("Down", "Up", "Return", "Escape"):
+            return
         # Debounce: cancel pending rebuild, schedule after idle gap.
         if self._search_after_id:
             try:
                 self.widget.after_cancel(self._search_after_id)
             except Exception:
                 pass
-        self._search_after_id = self.widget.after(120, self._apply_search_filter)
+        self._search_after_id = self.widget.after(80, self._apply_search_filter)
 
     def _apply_search_filter(self):
         self._search_after_id = None
         query = self.search_entry.get().strip().lower() if self.search_entry else ""
-        if not query:
-            filtered = list(self.values)
-        else:
-            filtered = [v for v in self.values if query in v.lower()]
-        self._populate_list(filtered)
+        filtered = [v for v in self.values if query in v.lower()] if query else list(self.values)
+        self._populate(filtered)
+
+    def _on_pick(self, event=None):
+        if not self.listbox:
+            return
+        sel = self.listbox.curselection()
+        if not sel:
+            return
+        idx = sel[0]
+        if 0 <= idx < len(self._filtered):
+            self._select_item(self._filtered[idx])
 
     def _select_item(self, val: str):
         if self.variable:
@@ -326,3 +294,4 @@ class CTkScrollableDropdown:
             except Exception:
                 pass
             self.toplevel = None
+            self.listbox = None

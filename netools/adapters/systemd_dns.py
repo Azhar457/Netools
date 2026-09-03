@@ -10,18 +10,35 @@ import subprocess
 from typing import Any, Dict, List, Optional
 
 
+def _split_host_port(ip: str):
+    """Return (host, port) from 'host' or 'host:port' (IPv4 or [IPv6]:port)."""
+    ip = ip.strip()
+    if ip.startswith("["):  # [IPv6]:port
+        end = ip.rfind("]")
+        host = ip[1:end]
+        port = ip[end + 2:] if end + 1 < len(ip) and ip[end + 1] == ":" else None
+        return host, port
+    if ip.count(":") == 1:  # IPv4:port
+        host, _, port = ip.partition(":")
+        return host, (port or None)
+    return ip, None
+
+
 def _validate_ips(ips: list) -> list:
-    """Validate and filter IP addresses to prevent injection attacks."""
+    """Validate and filter IP addresses (optionally with :port) to prevent injection."""
     validated = []
-    for ip in ips:
-        ip = ip.strip()
+    for raw in ips:
+        ip = (raw or "").strip()
         if not ip:
             continue
+        host, port = _split_host_port(ip)
         try:
-            ipaddress.ip_address(ip)
-            validated.append(ip)
+            ipaddress.ip_address(host)
         except ValueError:
-            pass
+            continue
+        if port is not None and not port.isdigit():
+            continue
+        validated.append(ip)
     return validated
 
 
@@ -161,24 +178,22 @@ def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str]
     cmds: List[List[str]] = []
 
     # 1. Update NetworkManager in a single combined command if persistent
+    # Note: nmcli ipv4.dns/ipv6.dns strictly rejects custom ports (e.g. 127.0.0.1:5353).
+    # Custom ports are routed at runtime by systemd-resolved (resolvectl) in step 2.
     if persistent and connection_name:
-        v4_ips = [ip for ip in valid_ips if ":" not in ip]
-        v6_ips = [ip for ip in valid_ips if ":" in ip]
+        nm_v4 = [_split_host_port(ip)[0] for ip in valid_ips if ":" not in _split_host_port(ip)[0] and _split_host_port(ip)[1] is None]
+        nm_v6 = [_split_host_port(ip)[0] for ip in valid_ips if ":" in _split_host_port(ip)[0] and _split_host_port(ip)[1] is None]
 
-        nm_args = ["nmcli", "connection", "modify", connection_name]
-        if v4_ips:
-            nm_args.extend(["ipv4.dns", " ".join(v4_ips), "ipv4.ignore-auto-dns", "yes"])
-        else:
-            nm_args.extend(["ipv4.ignore-auto-dns", "no"])
+        if nm_v4 or nm_v6:
+            nm_args = ["nmcli", "connection", "modify", connection_name]
+            if nm_v4:
+                nm_args.extend(["ipv4.dns", " ".join(nm_v4), "ipv4.ignore-auto-dns", "yes"])
+            if nm_v6:
+                nm_args.extend(["ipv6.dns", " ".join(nm_v6), "ipv6.ignore-auto-dns", "yes"])
+            cmds.append(nm_args)
 
-        if v6_ips:
-            nm_args.extend(["ipv6.dns", " ".join(v6_ips), "ipv6.ignore-auto-dns", "yes"])
-        else:
-            nm_args.extend(["ipv6.ignore-auto-dns", "no"])
 
-        cmds.append(nm_args)
-
-    # 2. Runtime DNS via resolvectl
+    # 2. Runtime DNS via resolvectl (accepts <IP>[:PORT], e.g. 127.0.0.1:5353)
     cmds.append(["resolvectl", "dns", device] + valid_ips)
 
     # 3. Configure DNS-over-TLS (DoT)

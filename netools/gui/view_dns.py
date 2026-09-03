@@ -23,9 +23,9 @@ class DNSView(ctk.CTkFrame):
     _canary_items: list = []
     _canary_selected: str = ""
 
-    def __init__(self, main_app):
-        super().__init__(main_app, fg_color=ThemeManager.bg())
-        self.main_app = main_app
+    def __init__(self, parent, main_app=None):
+        super().__init__(parent, fg_color=ThemeManager.bg(), corner_radius=0)
+        self.main_app = main_app if main_app is not None else parent
         self.providers = db.load_providers()
         self.interfaces = sys_dns.get_network_interfaces() or []
         self.active_interface = self.interfaces[0]["device"] if self.interfaces else "default"
@@ -397,7 +397,8 @@ class DNSView(ctk.CTkFrame):
         win = ctk.CTkToplevel(self)
         win.title(tr("DNS Canary Domains — How It Works"))
         win.geometry("640x620")
-        win.transient(self.winfo_toplevel())
+        from netools.gui.wm import mark_dialog
+        mark_dialog(win, self.winfo_toplevel())
         win.after(120, win.lift)
 
         scroll = ctk.CTkScrollableFrame(win, fg_color=ThemeManager.surface())
@@ -561,18 +562,25 @@ class DNSView(ctk.CTkFrame):
             doh = provider.get("doh_url", "")
             if doh:
                 from netools.services import doh_service
+                from netools.config import DOH_PROXY_PORT
                 started = False
                 if provider_id:
                     try:
+                        # (Re)start the local UDP->DoH forwarder on 127.0.0.1:DOH_PROXY_PORT.
+                        # Restarting ensures switching providers from the GUI always
+                        # targets the newly selected upstream, not a stale one.
+                        doh_service.stop_doh_forwarder()
                         started = doh_service.start_doh_forwarder(provider=provider_id)
                     except Exception:
                         started = False
                 if started:
                     self.main_app.show_toast(
-                        f"🔒 DoH aktif via localhost:5353 -> {provider.get('name')}",
+                        f"🔒 DoH aktif via localhost:{DOH_PROXY_PORT} -> {provider.get('name')}",
                         level="success",
                     )
-                    return ["127.0.0.1"]
+                    # System resolvers are IP-only; point them at the local forwarder
+                    # with its real port so queries don't hit a dead port 53.
+                    return [f"127.0.0.1:{DOH_PROXY_PORT}"]
                 self.main_app.show_toast(
                     f"DoH forwarder gagal start untuk '{provider.get('name')}'. Pakai IPv4 fallback.",
                     level="warning",
@@ -998,7 +1006,8 @@ class DNSView(ctk.CTkFrame):
         win.title(tr("🔍 Universal DNS & Encryption Inspector"))
         win.geometry("540x400")
         win.configure(fg_color=ThemeManager.bg())
-        win.transient(self.winfo_toplevel())
+        from netools.gui.wm import mark_dialog
+        mark_dialog(win, self.winfo_toplevel())
         win.grab_set()
         win.protocol("WM_DELETE_WINDOW", self._close_verify)
 

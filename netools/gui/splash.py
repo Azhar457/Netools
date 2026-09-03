@@ -11,6 +11,10 @@ from typing import Any, Callable
 
 import customtkinter as ctk
 from netools.gui.i18n import tr
+from netools.gui.wm import mark_splash
+from netools.libs.logger import get_logger
+
+log = get_logger(__name__)
 
 
 class SplashScreen(ctk.CTkToplevel):
@@ -22,8 +26,14 @@ class SplashScreen(ctk.CTkToplevel):
         # Window configuration
         self.title("Netools Suite — Starting...")
         self.geometry("500x290")
+        try:
+            self.transient(main_app)
+        except Exception:
+            pass
+        mark_splash(self)
         self.overrideredirect(True)  # Borderless modern splash
         self.configure(fg_color="#181825")
+
 
         # Center on screen
         s_w = self.winfo_screenwidth()
@@ -122,47 +132,55 @@ class SplashScreen(ctk.CTkToplevel):
         self.update()
 
     def _run_preloader_sequence(self):
-        # Stage 1: Environment & Theme
-        self._set_step(15, tr("🔍 Inisialisasi Environment & Core Networking..."))
-        self.main_app.update_idletasks()
-        time.sleep(0.05)
+        try:
+            # Stage 1: Environment & Theme
+            self._set_step(15, tr("🔍 Inisialisasi Environment & Core Networking..."))
+            self.main_app.update_idletasks()
+            time.sleep(0.04)
 
-        # Stage 2: Database & Presets
-        self._set_step(35, tr("🗄️ Memuat Database Resolvers & Presets (97 DNS)..."))
-        self.main_app.update_idletasks()
-        time.sleep(0.05)
+            # Stage 2: Database & Presets
+            self._set_step(35, tr("🗄️ Memuat Database Resolvers & Presets (97 DNS)..."))
+            self.main_app.update_idletasks()
+            time.sleep(0.04)
 
-        # Stage 3: Pre-render all views in background
-        self._set_step(55, tr("📊 Menyiapkan Dashboard & Live Monitor..."))
-        self.main_app.select_tab(0)
-        self.main_app.update_idletasks()
-        time.sleep(0.05)
+            # Stage 3: Pre-render all views in background
+            self._set_step(55, tr("📊 Menyiapkan Dashboard & Live Monitor..."))
+            self.main_app.select_tab(0)
+            self.main_app.update_idletasks()
+            time.sleep(0.04)
 
-        self._set_step(70, tr("⚡ Menyiapkan DNS Suite & Switcher Engine..."))
-        self.main_app.select_tab(1)
-        self.main_app.update_idletasks()
-        time.sleep(0.05)
+            self._set_step(70, tr("⚡ Menyiapkan DNS Suite & Switcher Engine..."))
+            self.main_app.select_tab(1)
+            self.main_app.update_idletasks()
+            time.sleep(0.04)
 
-        self._set_step(85, tr("🌐 Menyiapkan Turbo Proxy Rotator & SOCKS5 Pool..."))
-        self.main_app.select_tab(2)
-        self.main_app.update_idletasks()
-        time.sleep(0.05)
+            self._set_step(85, tr("🌐 Menyiapkan Turbo Proxy Rotator & SOCKS5 Pool..."))
+            self.main_app.select_tab(2)
+            self.main_app.update_idletasks()
+            time.sleep(0.04)
 
-        self._set_step(92, tr("🔌 Menyiapkan 9Router AI Gateway Matrix..."))
-        self.main_app.select_tab(3)
-        self.main_app.update_idletasks()
-        time.sleep(0.05)
+            self._set_step(92, tr("🔌 Menyiapkan AI Gateway Matrix..."))
+            self.main_app.select_tab(3)
+            self.main_app.update_idletasks()
+            time.sleep(0.04)
 
-        self._set_step(98, tr("⚙️ Menyiapkan Settings & System Diagnostics..."))
-        self.main_app.select_tab(4)
-        self.main_app.update_idletasks()
-        time.sleep(0.05)
+            self._set_step(98, tr("⚙️ Menyiapkan Settings & System Diagnostics..."))
+            self.main_app.select_tab(4)
+            self.main_app.update_idletasks()
+            time.sleep(0.04)
 
-        # Return to Dashboard ready
-        self._set_step(100, tr("✓ Sistem Siap! Membuka Netools Suite..."))
-        self.main_app.select_tab(0)
-        self.main_app.update_idletasks()
-        time.sleep(0.08)
+            # Return to Dashboard ready
+            self._set_step(100, tr("✓ Sistem Siap! Membuka Netools Suite..."))
+            self.main_app.select_tab(0)
+            self.main_app.update_idletasks()
+            time.sleep(0.05)
+        except Exception as e:
+            log.warning(f"Splash preloader caught non-fatal exception: {e}")
+        finally:
+            try:
+                self.destroy()
+            except Exception:
+                pass
+            if callable(self.on_complete):
+                self.on_complete()
 
-        self.destroy()
-        self.on_complete()

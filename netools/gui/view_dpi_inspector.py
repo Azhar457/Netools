@@ -13,6 +13,7 @@ from netools.gui.theme import (
     Fonts,
     ThemeManager,
 )
+from netools.gui.wm import mark_dialog
 from netools.libs import dpi_detector
 
 
@@ -30,6 +31,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
         self.default_domain = default_domain
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        mark_dialog(self, parent_app)
         self._build_ui()
 
     def on_close(self):

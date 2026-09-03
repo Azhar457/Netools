@@ -116,7 +116,8 @@ def cmd_web(args):
 def cmd_gui(args):
     """Launch Desktop GUI All-In-One."""
     from netools.gui.app import main as run_gui
-    run_gui()
+    run_gui(no_splash=getattr(args, "no_splash", False))
+
 
 def cmd_tray_test(args):
     """Test System Tray initialization and print diagnostics."""
@@ -198,9 +199,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_web.add_argument("--port", type=int, default=WEB_APP_PORT)
 
     # gui subcommand
-    subparsers.add_parser("gui", help="Launch Desktop GUI All-In-One")
+    p_gui = subparsers.add_parser("gui", help="Launch Desktop GUI All-In-One")
+    p_gui.add_argument("--no-splash", action="store_true", help="Launch GUI directly without splash preloader")
     subparsers.add_parser("tray-test", help="Test System Tray Diagnostics")
     return parser
+
 
 def main():
     from netools.libs.dns_async import init_async_loop

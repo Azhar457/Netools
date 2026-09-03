@@ -3,8 +3,10 @@ Local DoH Forwarder Service: UDP DNS -> DoH (RFC 8484) proxy on 127.0.0.1.
 """
 
 import socketserver
+import ssl
 import threading
 import urllib.request
+
 from typing import Optional
 
 from netools.config import DOH_PROXY_PORT
@@ -34,6 +36,8 @@ class _DoHHandler(socketserver.BaseRequestHandler):
             sock.sendto(resp, self.client_address)
 
 
+_ssl_ctx = ssl._create_unverified_context()
+
 def _forward_doh(raw_packet: bytes, timeout: float = 5.0) -> Optional[bytes]:
     if not _doh_url:
         return None
@@ -47,9 +51,10 @@ def _forward_doh(raw_packet: bytes, timeout: float = 5.0) -> Optional[bytes]:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout, context=_ssl_ctx) as resp:
             if resp.status == 200:
                 return resp.read()
+
     except Exception as e:
         log.warning(f"DoH forward error: {e}")
     return None

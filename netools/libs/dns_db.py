@@ -209,6 +209,7 @@ def import_from_dnsjumper_ini(filepath: str) -> Tuple[int, str]:
 # Target Domain Presets for 3-Tier GRC Benchmark (Including Wide Note Dataset)
 TLD_PRESETS = {
     "indonesia": {
+        "country": "ID",
         "name": "🇮🇩 Indonesia (.id, .my.id, .go.id, .co.id - IIX/OpenIXP)",
         "domains": [
             # Perbankan
@@ -315,6 +316,87 @@ TLD_PRESETS = {
             "copilot.github.com",
         ]
     },
+    # --- Country ccTLD presets (auto-selected via netools.libs.geo) ---
+    "united_states": {
+        "country": "US",
+        "name": "🇺🇸 United States (.gov, .edu, .us)",
+        "domains": [
+            "usa.gov", "irs.gov", "nih.gov", "weather.gov",
+            "mit.edu", "stanford.edu", "craigslist.org", "nytimes.com",
+        ],
+    },
+    "india": {
+        "country": "IN",
+        "name": "🇮🇳 India (.in, .gov.in, .co.in)",
+        "domains": [
+            "india.gov.in", "irctc.co.in", "sbi.co.in", "nic.in",
+            "flipkart.com", "hotstar.com", "ndtv.com", "timesofindia.indiatimes.com",
+        ],
+    },
+    "japan": {
+        "country": "JP",
+        "name": "🇯🇵 Japan (.jp, .co.jp, .go.jp)",
+        "domains": [
+            "japan.go.jp", "rakuten.co.jp", "yahoo.co.jp", "nhk.or.jp",
+            "u-tokyo.ac.jp", "jreast.co.jp", "mufg.jp", "nikkei.com",
+        ],
+    },
+    "germany": {
+        "country": "DE",
+        "name": "🇩🇪 Germany (.de)",
+        "domains": [
+            "bund.de", "deutschebahn.com", "spiegel.de", "zdf.de",
+            "otto.de", "web.de", "gmx.de", "tu-muenchen.de",
+        ],
+    },
+    "brazil": {
+        "country": "BR",
+        "name": "🇧🇷 Brazil (.br, .com.br, .gov.br)",
+        "domains": [
+            "gov.br", "uol.com.br", "globo.com", "mercadolivre.com.br",
+            "itau.com.br", "bb.com.br", "usp.br", "registro.br",
+        ],
+    },
+    "united_kingdom": {
+        "country": "GB",
+        "name": "🇬🇧 United Kingdom (.uk, .co.uk, .gov.uk)",
+        "domains": [
+            "gov.uk", "bbc.co.uk", "nhs.uk", "barclays.co.uk",
+            "rightmove.co.uk", "ox.ac.uk", "theguardian.com", "argos.co.uk",
+        ],
+    },
+    "singapore": {
+        "country": "SG",
+        "name": "🇸🇬 Singapore (.sg, .gov.sg, .com.sg)",
+        "domains": [
+            "gov.sg", "singpass.gov.sg", "dbs.com.sg", "nus.edu.sg",
+            "straitstimes.com", "carousell.sg", "singtel.com", "sgx.com",
+        ],
+    },
+    "china": {
+        "country": "CN",
+        "name": "🇨🇳 China (.cn, .com.cn)",
+        "domains": [
+            "gov.cn", "baidu.com", "qq.com", "taobao.com",
+            "jd.com", "bilibili.com", "tsinghua.edu.cn", "sina.com.cn",
+        ],
+    },
+    "south_korea": {
+        "country": "KR",
+        "name": "🇰🇷 South Korea (.kr, .co.kr, .go.kr)",
+        "domains": [
+            "korea.kr", "naver.com", "daum.net", "kakaocorp.com",
+            "coupang.com", "snu.ac.kr", "kbstar.com", "yna.co.kr",
+        ],
+    },
+    "australia": {
+        "country": "AU",
+        "name": "🇦🇺 Australia (.au, .com.au, .gov.au)",
+        "domains": [
+            "australia.gov.au", "abc.net.au", "commbank.com.au", "seek.com.au",
+            "realestate.com.au", "unimelb.edu.au", "telstra.com.au", "woolworths.com.au",
+        ],
+    },
 }
 
 # ---------------------------------------------------------------------------
@@ -336,6 +418,7 @@ def load_tld_presets() -> Dict[str, Dict[str, Any]]:
         effective[k] = {
             "name": v["name"],
             "domains": list(v["domains"]),
+            "country": v.get("country", ""),
             "builtin": True,
             "modified": False,
         }
@@ -351,10 +434,22 @@ def load_tld_presets() -> Dict[str, Dict[str, Any]]:
         effective[k] = {
             "name": v.get("name", base.get("name", k)),
             "domains": list(v.get("domains", [])),
+            "country": v.get("country", base.get("country", "")),
             "builtin": k in TLD_PRESETS,
             "modified": True,
         }
     return effective
+
+
+def preset_key_for_country(country_code: str, presets: Optional[Dict[str, Dict[str, Any]]] = None) -> str:
+    """Preset key matching an ISO country code, or '' if none."""
+    if not country_code:
+        return ""
+    cc = country_code.upper()
+    for k, v in (presets or load_tld_presets()).items():
+        if v.get("country", "").upper() == cc:
+            return k
+    return ""
 
 
 def _read_user_tld_config() -> Dict[str, Any]:

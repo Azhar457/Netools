@@ -361,19 +361,41 @@ class NetoolsApp(ctk.CTk):
         sys.exit(0)
 
 
-def main():
+def main(no_splash: bool = False):
+    import os
     from netools.config import ensure_runtime_dirs
     ensure_runtime_dirs()
     app = NetoolsApp()
 
-    def on_splash_done():
-        app.deiconify()
-        app.lift()
-        app.focus_force()
+    skip_splash = (
+        no_splash
+        or "--no-splash" in sys.argv
+        or os.getenv("NETOOLS_NO_SPLASH") == "1"
+    )
 
-    SplashScreen(main_app=app, on_complete=on_splash_done)
+    def on_splash_done():
+        try:
+            app.deiconify()
+            app.update_idletasks()
+            app.lift()
+            app.focus_force()
+        except Exception:
+            pass
+
+    if skip_splash:
+        on_splash_done()
+    else:
+        # Failsafe watchdog timer: ensure window deiconifies even if splash fails or on slow XWayland
+        app.after(1800, lambda: on_splash_done() if not app.winfo_viewable() else None)
+        try:
+            SplashScreen(main_app=app, on_complete=on_splash_done)
+        except Exception:
+            on_splash_done()
+
     app.mainloop()
+
 
 
 if __name__ == "__main__":
     main()
+

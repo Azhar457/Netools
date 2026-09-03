@@ -204,6 +204,8 @@ def query_udp_dns(ip: str, domain: str, timeout: float = 2.0) -> Tuple[Optional[
             pass
 
 
+_doh_ssl_ctx = ssl._create_unverified_context()
+
 def query_doh_dns(doh_url: str, domain: str, timeout: float = 2.5) -> Tuple[Optional[float], List[str], bool, bool]:
     """Execute DNS-over-HTTPS (RFC 8484 wireformat) query using standard urllib."""
     pkt = build_dns_packet(domain, want_dnssec=True)
@@ -218,9 +220,10 @@ def query_doh_dns(doh_url: str, domain: str, timeout: float = 2.5) -> Tuple[Opti
     )
     t0 = time.perf_counter()
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout, context=_doh_ssl_ctx) as resp:
             if resp.status == 200:
                 data = resp.read()
+
                 lat = (time.perf_counter() - t0) * 1000.0
                 ips, rrsig, edns = parse_dns_response(data)
                 return lat, ips, rrsig, edns

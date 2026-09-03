@@ -10,10 +10,12 @@ from tkinter import ttk
 
 import customtkinter as ctk
 
+from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,
     ThemeManager,
 )
+from netools.gui.wm import mark_dialog
 from netools.libs import dns_benchmark as bm
 from netools.libs import dns_db as db
 
@@ -36,9 +38,9 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         self.providers = db.load_providers()
         self.target_tlds = db.load_tld_presets()
-        self.target_tlds = getattr(db, "TLD_PRESETS", getattr(db, "TARGET_TLD_DOMAINS", {}))
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        mark_dialog(self, parent_app)
         self._build_widgets()
 
     def on_close(self):
@@ -109,6 +111,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             width=240, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
         )
         self.tld_cb.pack(side="left", padx=4)
+        self._auto_select_country_preset()
 
         # Manage TLD Categories (CRUD)
         ctk.CTkButton(
@@ -243,6 +246,23 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         )
         self.btn_apply_fastest.pack(side="left", padx=6)
 
+        # Per-metric apply buttons (best Cached / Uncached / TLD)
+        self.metric_buttons = []
+        for label, metric in (
+            ("🚀 Best Cached", "cached_ms"),
+            ("🌐 Best Uncached", "uncached_ms"),
+            ("🎯 Best TLD", "dotcom_ms"),
+        ):
+            b = ctk.CTkButton(
+                btn_row, text=label, font=Fonts.bold(11),
+                fg_color=ThemeManager.surface_alt(), text_color=ThemeManager.primary(),
+                hover_color=ThemeManager.border(), border_width=1, border_color=ThemeManager.border(),
+                height=36, width=120, state="disabled",
+                command=lambda m=metric, l=label: self.apply_best_metric(m, l),
+            )
+            b.pack(side="left", padx=4)
+            self.metric_buttons.append(b)
+
         ctk.CTkButton(
             btn_row, text="Tutup", font=Fonts.bold(11),
             fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(),
@@ -257,15 +277,19 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         items = [(self.tree.set(k, col), k) for k in self.tree.get_children("")]
 
         def _val_key(v):
-            if not v or v in ("Timeout", "Failed", "—"):
-                return 999999.0
-            clean = str(v).replace(" ms", "").replace("#", "").strip()
+            if v is None:
+                return (1, 999999.0, "")
+            v_str = str(v).strip()
+            clean = v_str.replace(" ms", "").replace("#", "").strip()
+            if clean in ("", "—", "Timeout", "Failed", "Cutoff", "N/A", "null", "None", "-"):
+                return (1, 999999.0, v_str.lower())
             try:
-                return float(clean)
+                return (0, float(clean), "")
             except ValueError:
-                return str(v).lower()
+                return (2, 0.0, v_str.lower())
 
         items.sort(key=lambda t: _val_key(t[0]), reverse=reverse)
+
 
         for index, (_, k) in enumerate(items):
             self.tree.move(k, "", index)
@@ -280,12 +304,30 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
     def _tld_choices(self):
         return [f"{v['name']} ({k})" for k, v in self.target_tlds.items()]
 
+    def _auto_select_country_preset(self):
+        """Default the TLD combobox to the preset matching the detected country.
+
+        Detection runs off the UI thread (first run does one HTTPS request);
+        result is cached in config.json so subsequent opens are instant.
+        """
+        def worker():
+            try:
+                from netools.libs.geo import detect_country
+                key = db.preset_key_for_country(detect_country(), self.target_tlds)
+                if key:
+                    label = f"{self.target_tlds[key]['name']} ({key})"
+                    self.after(0, lambda: self.winfo_exists() and self.tld_var.set(label))
+            except Exception:
+                pass  # keep default preset on any failure
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def open_tld_manager(self):
         """CRUD manager for GRC Tier-3 TLD categories."""
         win = ctk.CTkToplevel(self)
         win.title("TLD Category Manager")
         win.geometry("560x560")
-        win.transient(self.winfo_toplevel())
+        mark_dialog(win, self.winfo_toplevel())
         win.after(120, win.lift)
 
         ctk.CTkLabel(win, text="Categories:", font=Fonts.bold(12),
@@ -435,6 +477,8 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.btn_stop.configure(state="normal")
         self.btn_apply_smart.configure(state="disabled")
         self.btn_apply_fastest.configure(state="disabled")
+        for b in self.metric_buttons:
+            b.configure(state="disabled")
 
         for item in self.tree.get_children():
             self.tree.delete(item)
@@ -523,8 +567,18 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         threading.Thread(target=_worker, daemon=True).start()
 
     def _stream_row(self, res: dict, progress: float, idx: int, total: int):
-        self.prog_bar.set(progress)
-        self.lbl_status.configure(text=f"Testing [{idx}/{total}]: {res.get('country', '')} {res.get('name', '')}...")
+        try:
+            if not self.winfo_exists():
+                return
+        except Exception:
+            return
+
+        try:
+            self.prog_bar.set(progress)
+            self.lbl_status.configure(text=f"Testing [{idx}/{total}]: {res.get('country', '')} {res.get('name', '')}...")
+        except Exception:
+            return
+
 
         c_ms = f"{res['cached_ms']:.1f} ms" if res.get('cached_ms') is not None else "Timeout"
         u_ms = f"{res['uncached_ms']:.1f} ms" if res.get('uncached_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
@@ -552,13 +606,26 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         ))
 
     def _finalize_benchmark(self):
+        try:
+            if not self.winfo_exists():
+                return
+        except Exception:
+            return
+
         self.benchmark_running = False
-        self.btn_start.configure(state="normal")
-        self.btn_stop.configure(state="disabled")
+        try:
+            self.btn_start.configure(state="normal")
+            self.btn_stop.configure(state="disabled")
+        except Exception:
+            return
 
         if not self.results_map:
-            self.lbl_status.configure(text="Benchmark selesai (0 hasil).")
+            try:
+                self.lbl_status.configure(text="Benchmark selesai (0 hasil).")
+            except Exception:
+                pass
             return
+
 
         sorted_res = sorted(
             [r for r in self.results_map.values() if r.get("score") is not None],
@@ -603,6 +670,8 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         if sorted_res:
             self.btn_apply_smart.configure(state="normal")
             self.btn_apply_fastest.configure(state="normal")
+            for b in self.metric_buttons:
+                b.configure(state="normal")
 
             smart = bm.calculate_smart_mix(self.results_map)
             c_name = smart.get('cached', {}).get('name', 'None')
@@ -675,9 +744,20 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         }.get(mode_key, "IPv4 (Standard)")
 
     def apply_fastest_single(self):
-        ranked = [r for r in self.results_map.values() if r.get("score") is not None]
-        ranked.sort(key=lambda x: x.get("score", 9999))
+        self._apply_ranked("score", "#1 Fastest")
+
+    def apply_best_metric(self, metric: str, label: str):
+        """Fill slots 1-3 with the top providers ranked by one benchmark tier."""
+        self._apply_ranked(metric, label)
+
+    def _apply_ranked(self, metric: str, label: str):
+        ranked = [r for r in self.results_map.values() if r.get(metric) is not None]
+        ranked.sort(key=lambda x: x.get(metric, 9999))
         if not ranked:
+            self.lbl_status.configure(
+                text=f"Tidak ada hasil untuk metrik '{label}'.",
+                text_color=ThemeManager.warning(),
+            )
             return
 
         mode_key = self._get_benchmark_mode_key()
@@ -710,14 +790,14 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             mode_key=mode_key,
         )
 
-        fastest = ranked[0]
-        self.lbl_status.configure(text=f"⚡ Menerapkan #{fastest['name']} ke sistem jaringan...", text_color=ThemeManager.warning())
+        best = ranked[0]
+        self.lbl_status.configure(text=f"⚡ Menerapkan {label}: {best['name']} ...", text_color=ThemeManager.warning())
 
         def _bg():
             self.dns_view.apply_dns()
             try:
                 self.after(0, lambda: self.lbl_status.configure(
-                    text=f"✓ Berhasil! DNS '{fastest['name']}' aktif di sistem.",
+                    text=f"✓ Berhasil! {label} '{best['name']}' aktif di sistem.",
                     text_color=ThemeManager.success()
                 ))
             except Exception:
