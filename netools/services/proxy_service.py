@@ -12,7 +12,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from netools.adapters import ninerouter as nr_adapt
+from netools.adapters import omniroute as or_adapt
 from netools.adapters import singbox as sb_drv
+
 from netools.config import (
     CONFIGS_DIR,
     HTTP_PORT_OFFSET,
@@ -153,34 +155,49 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
         pool_str = f" → pool {pool_name}" if pool_id else (" (standalone)" if standalone else "")
         log.info(f"{name}: {proxy['type']} → {proxy['server']}:{proxy.get('server_port', '')} → port {port}{pool_str}")
 
-    # Assign proxy to 9Router connections
-    if not standalone and active_count > 0 and nr_adapt.is_healthy():
-        conns = nr_adapt.get_connections()
-        for idx, c in enumerate(conns):
-            p_idx = idx % active_count
-            p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
-            res = nr_adapt.assign_proxy_to_connection(c["id"], p_url)
-            if res:
-                log.info(f"Connection {c['id'][:12]}: proxy → {p_url}")
+    # Assign proxy to 9Router / OmniRoute connections
+    if not standalone and active_count > 0:
+        if nr_adapt.is_healthy():
+            conns = nr_adapt.get_connections()
+            for idx, c in enumerate(conns):
+                p_idx = idx % active_count
+                p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
+                res = nr_adapt.assign_proxy_to_connection(c["id"], p_url)
+                if res:
+                    log.info(f"9Router connection {c['id'][:12]}: proxy → {p_url}")
+
+        if or_adapt.is_healthy():
+            conns = or_adapt.get_connections()
+            for idx, c in enumerate(conns):
+                p_idx = idx % active_count
+                p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
+                res = or_adapt.assign_proxy_to_connection(c["id"], p_url)
+                if res:
+                    log.info(f"OmniRoute connection {c['id'][:12]}: proxy → {p_url}")
 
     save_state(state)
-    mode_str = " (Standalone Mode)" if standalone else " → 9Router proxy pool"
+    mode_str = " (Standalone Mode)" if standalone else " → Active Gateway Proxy Pool"
     log.info(f"{active_count} proxies active{mode_str}")
     return state
 
 def stop_proxy_pool(standalone: bool = False) -> None:
-    """Stop all instances, wipe state and scratch files, and cleanly unlink 9Router pools."""
+    """Stop all instances, wipe state and scratch files, and cleanly unlink gateway pools."""
     sb_drv.stop_all_singbox_instances()
 
-    if not standalone and nr_adapt.is_healthy():
-        log.info("Clearing proxy from all 9Router connections...")
-        nr_adapt.clear_all_connection_proxies()
+    if not standalone:
+        if nr_adapt.is_healthy():
+            log.info("Clearing proxy from all 9Router connections...")
+            nr_adapt.clear_all_connection_proxies()
+            pools = nr_adapt.get_existing_pools()
+            for name, pool_id in pools.items():
+                if name.startswith("free-proxy-"):
+                    nr_adapt.delete_proxy_pool(pool_id)
+                    print(f"Deleted pool: {name}")
 
-        pools = nr_adapt.get_existing_pools()
-        for name, pool_id in pools.items():
-            if name.startswith("free-proxy-"):
-                nr_adapt.delete_proxy_pool(pool_id)
-                print(f"Deleted pool: {name}")
+        if or_adapt.is_healthy():
+            log.info("Clearing proxy from all OmniRoute connections...")
+            or_adapt.clear_all_connection_proxies()
+
 
     # Wipe scratch files
     for f in CONFIGS_DIR.glob("*.json"):

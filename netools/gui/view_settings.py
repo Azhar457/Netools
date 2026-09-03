@@ -57,11 +57,25 @@ class SettingsView(ctk.CTkFrame):
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
-            width=110,
+            width=100,
             height=34,
             command=self.refresh
         )
-        self.btn_refresh.pack(side="right")
+        self.btn_refresh.pack(side="right", padx=(6, 0))
+
+        self.btn_extractor = ctk.CTkButton(
+            self.hdr,
+            text=tr("🍪 Ambil Token Browser"),
+            font=Fonts.bold(12),
+            fg_color=ThemeManager.primary(),
+            text_color="#FFFFFF",
+            hover_color=ThemeManager.primary_hover(),
+            width=170,
+            height=34,
+            command=self._open_extractor_modal
+        )
+        self.btn_extractor.pack(side="right", padx=(0, 6))
+
 
 
         # Endpoint Config Card
@@ -275,3 +289,11 @@ class SettingsView(ctk.CTkFrame):
                 pass
 
         threading.Thread(target=_bg, daemon=True).start()
+
+    def _open_extractor_modal(self):
+        from netools.gui.view_extractor_modal import SessionExtractorModal
+        if hasattr(self.main_app, "extractor_modal") and self.main_app.extractor_modal and self.main_app.extractor_modal.winfo_exists():
+            self.main_app.extractor_modal.lift()
+            return
+        self.main_app.extractor_modal = SessionExtractorModal(self.main_app)
+

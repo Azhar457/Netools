@@ -93,8 +93,9 @@ def get_ninerouter_token() -> str:
         _ninerouter_token_cache = _user_cfg.get("ninerouter_token") or auto_detect_9router_token()
     return _ninerouter_token_cache
 
-OMNIROUTE_URL = os.getenv("OMNIROUTE_URL", _user_cfg.get("omniroute_url", "http://localhost:20129"))
+OMNIROUTE_URL = os.getenv("OMNIROUTE_URL", _user_cfg.get("omniroute_url", "http://localhost:20128"))
 OMNIROUTE_TOKEN = os.getenv("OMNIROUTE_TOKEN", _user_cfg.get("omniroute_token", ""))
+
 
 # Upstream Proxy Subscriptions
 DEFAULT_PROXY_SOURCES = [
