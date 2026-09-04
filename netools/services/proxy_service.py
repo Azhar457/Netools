@@ -102,7 +102,7 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
 
     # Wait for instances to start listening (poll-based, max 3s)
     for _, port, _, _ in started:
-        wait_for_port(port, timeout=3.0)  # noqa: B007 — port is the only variable needed here
+        wait_for_port(port, timeout=3.0)
 
     # Parallel Upstream Testing (All 20 instances tested concurrently)
     alive = []

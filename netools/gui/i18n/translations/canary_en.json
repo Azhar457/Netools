@@ -1,12 +1,12 @@
 [
   "What are canary domains?",
-  "Canary domains are special hostnames that must NEVER resolve to an IP address. They are published by Mozilla and Apple as tripwires: if your network operator (ISP) tampers with DNS, these domains suddenly 'resolve' to a forged answer.",
+  "Canary domains are test hostnames that should never return an IP address. Mozilla and Apple run them as tripwires. When an ISP hijacks DNS, these domains return an address instead of failing.",
   "How the check works:",
-  "1. Netools queries each canary hostname through your system resolver (and any custom upstream you configured).",
-  "2. A correct resolver answers NXDOMAIN ('this domain does not exist'). That means your DNS path is clean.",
-  "3. If an answer comes back anyway (an IP, CNAME, or SOA record), someone on the path forged it -> DNS interception detected. Your plain-DNS queries are being watched or redirected.",
-  "4. Before judging, a pre-check resolves firefox.com / mozilla.org to make sure you are actually online - otherwise results would be false positives.",
+  "1. Netools sends a lookup for each canary domain to your active DNS resolver.",
+  "2. An unmodified resolver returns NXDOMAIN (domain does not exist), confirming clean resolution.",
+  "3. If the query returns an IP, CNAME, or SOA record, an intermediary modified the response. The local network is intercepting or redirecting lookups.",
+  "4. Netools checks firefox.com and mozilla.org first to confirm internet access before evaluating canaries.",
   "Why this matters:",
-  "If interception is detected, websites may be blocked or redirected by your provider even before you connect. Encrypted DNS (DoH via Netools' forwarder, or DoT) bypasses this tampering because the ISP can no longer read or forge your DNS responses.",
-  "You can add your own canary domains or even whole TLDs (like .co.id) below. A good custom canary is a domain that is guaranteed not to exist."
+  "DNS interception lets an operator block sites or record queries before requests leave the local network. Encrypted protocols like DoH or DoT prevent this tampering.",
+  "Add custom test domains or regional TLDs below. Pick hostnames that do not exist."
 ]

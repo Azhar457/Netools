@@ -204,17 +204,11 @@ def tr(key: str, lang: Optional[str] = None, **kwargs: Any) -> str:
     """
     loc = (lang or get_locale()).lower()
 
-    # English is the canonical / source language — return key directly
-    if loc == "en":
-        text = key
-    else:
-        # Try JSON file
-        translations = _load_translations_file(loc)
-        entry = translations.get(key)
-        if entry is None:
-            # Try fallback dict
-            entry = _FALLBACK_TRANSLATIONS.get(key, {}).get(loc)
-        text = entry if entry is not None else key
+    translations = _load_translations_file(loc)
+    entry = translations.get(key)
+    if entry is None and loc != "en":
+        entry = _FALLBACK_TRANSLATIONS.get(key, {}).get(loc)
+    text = entry if entry is not None else key
 
     if kwargs:
         try:

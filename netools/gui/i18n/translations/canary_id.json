@@ -1,12 +1,12 @@
 [
   "Apa itu domain canary?",
-  "Domain canary adalah hostname khusus yang TIDAK PERNAH boleh resolve ke alamat IP. Domain ini diterbitkan oleh Mozilla dan Apple sebagai tripwire/alarm: jika operator jaringan (ISP) mengintervensi DNS, domain ini tiba-tiba 'ter-resolve' ke jawaban palsu.",
+  "Domain canary adalah hostname uji yang tidak boleh menghasilkan alamat IP. Mozilla dan Apple menggunakannya sebagai tripwire untuk mendeteksi pembajakan DNS oleh operator jaringan.",
   "Cara kerja pemeriksaan:",
-  "1. Netools menanyakan setiap hostname canary melalui resolver sistem (dan upstream kustom yang Anda konfigurasi).",
-  "2. Resolver yang benar menjawab NXDOMAIN ('domain ini tidak ada'). Artinya jalur DNS Anda bersih tanpa gangguan.",
-  "3. Jika jawaban tetap muncul (rekaman IP, CNAME, atau SOA), ada pihak yang memalsukannya -> intersepsi DNS terdeteksi. Kueri DNS biasa Anda sedang dipantau atau dialihkan oleh ISP/Middlebox.",
-  "4. Sebelum menilai, pra-cek me-resolve firefox.com / mozilla.org untuk memastikan Anda benar-benar online - jika tidak, hasil bisa salah.",
+  "1. Netools mengirim kueri domain canary ke resolver sistem yang aktif.",
+  "2. Resolver normal mengembalikan NXDOMAIN (domain tidak terdaftar), menandakan jalur DNS bersih.",
+  "3. Jika kueri mengembalikan alamat IP, CNAME, atau rekaman SOA, pihak perantara telah mengubah respons tersebut. Kueri DNS Anda dialihkan.",
+  "4. Pemeriksaan menguji akses ke firefox.com dan mozilla.org lebih dulu untuk memastikan perangkat terhubung ke internet.",
   "Mengapa ini penting:",
-  "Jika intersepsi terdeteksi, situs web dapat diblokir atau dialihkan oleh penyedia Anda bahkan sebelum Anda terhubung. DNS terenkripsi (DoH via forwarder Netools, atau DoT) melewati gangguan ini karena ISP tidak lagi dapat membaca atau memalsukan respons DNS Anda.",
-  "Anda dapat menambahkan domain canary sendiri, bahkan seluruh TLD (seperti .co.id) di bawah. Canary kustom yang baik adalah domain yang dijamin tidak ada."
+  "Manipulasi DNS memungkinkan operator memblokir situs atau mencatat kueri di jaringan lokal. Protokol terenkripsi seperti DoH atau DoT mencegah modifikasi ini.",
+  "Tambahkan domain uji atau TLD regional di bawah. Pilih domain yang dipastikan tidak terdaftar."
 ]
