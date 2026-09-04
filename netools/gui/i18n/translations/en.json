@@ -399,5 +399,15 @@
   "🟢 PASS": "🟢 PASS",
   "🟢 Start PAC": "🟢 Start PAC",
   "🥇 Apply #1 Fastest Only": "🥇 Apply #1 Fastest Only",
-  "🧹 Clear Dead Nodes": "🧹 Clear Dead Nodes"
+  "🧹 Clear Dead Nodes": "🧹 Clear Dead Nodes",
+  "⚠️ Konfirmasi Aktivasi PAC Server": "⚠️ Confirm PAC Server Activation",
+  "⚠️ Peringatan Keamanan & Perimeter Jaringan": "⚠️ Security & Network Perimeter Notice",
+  "Mengaktifkan Server PAC Lokal akan mengarahkan lalu lintas jaringan browser atau sistem melalui proxy lokal Netools.\n\nPastikan Anda mempercayai proxy upstream yang sedang aktif sebelum melanjutkan.\n\nApakah Anda yakin ingin menyalakan PAC Server?": "Activating the Local PAC Server will route your browser or system network traffic through the local Netools proxy.\n\nEnsure you trust the active upstream proxies before proceeding.\n\nAre you sure you want to enable the PAC Server?",
+  "Batal": "Cancel",
+  "Aktifkan PAC": "Enable PAC",
+  "⚠️ Peringatan Perimeter Ekstraktor": "⚠️ Extractor Perimeter Notice",
+  "⚠️ Peringatan Koneksi Keluar": "⚠️ Outbound Connection Warning",
+  "Membuka browser eksternal akan menghubungkan perangkat Anda ke server web AI eksternal melalui koneksi/proxy saat ini.\n\nUntuk isolasi perimeter maksimal (100% offline), disarankan menggunakan tombol 'Pindai Tersimpan' yang hanya membaca file lokal di disk.\n\nTetap buka browser?": "Launching an external browser establishes outbound connections to AI web servers through the active network or proxy.\n\nFor perimeter isolation (100% offline), use 'Scan Saved' to read local files on disk without network traffic.\n\nProceed with opening browser?",
+  "Batal (Gunakan Mode Offline)": "Cancel (Stay Offline)",
+  "Lanjutkan Buka": "Open Browser"
 }

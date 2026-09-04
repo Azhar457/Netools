@@ -391,6 +391,67 @@ class SessionExtractorView(ctk.CTkFrame):
                 break
         target_url = self.entry_url.get().strip() or "https://chat.z.ai/"
 
+        # Perimeter safety check: confirm before initiating any outbound browser interaction
+        win = ctk.CTkToplevel(self)
+        win.title(tr("⚠️ Peringatan Perimeter Ekstraktor"))
+        win.geometry("500x240")
+        win.resizable(False, False)
+        win.configure(fg_color=ThemeManager.bg())
+        from netools.gui.wm import mark_dialog
+
+        mark_dialog(win, self.winfo_toplevel())
+        win.grab_set()
+
+        card = ctk.CTkFrame(
+            win, fg_color=ThemeManager.surface(), corner_radius=10, border_width=1, border_color=ThemeManager.warning()
+        )
+        card.pack(fill="both", expand=True, padx=16, pady=16)
+
+        ctk.CTkLabel(
+            card, text=tr("⚠️ Peringatan Koneksi Keluar"), font=Fonts.title(13), text_color=ThemeManager.warning()
+        ).pack(anchor="w", padx=16, pady=(12, 6))
+
+        msg = tr(
+            "Membuka browser eksternal akan menghubungkan perangkat Anda ke server web AI eksternal melalui koneksi/proxy saat ini.\n\n"
+            "Untuk isolasi perimeter maksimal (100% offline), disarankan menggunakan tombol 'Pindai Tersimpan' yang hanya membaca file lokal di disk.\n\n"
+            "Tetap buka browser?"
+        )
+        ctk.CTkLabel(
+            card, text=msg, font=Fonts.regular(11), text_color=ThemeManager.text(), justify="left", wraplength=440
+        ).pack(anchor="w", padx=16, pady=(0, 12))
+
+        btn_row = ctk.CTkFrame(card, fg_color="transparent")
+        btn_row.pack(fill="x", padx=16, pady=(0, 10))
+
+        def _proceed():
+            win.destroy()
+            self._do_launch_browser(b_name, p_key, target_url)
+
+        ctk.CTkButton(
+            btn_row,
+            text=tr("Batal (Gunakan Mode Offline)"),
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.primary(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            width=190,
+            height=32,
+            command=win.destroy,
+        ).pack(side="right", padx=(8, 0))
+
+        ctk.CTkButton(
+            btn_row,
+            text=tr("Lanjutkan Buka"),
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            width=110,
+            height=32,
+            command=_proceed,
+        ).pack(side="right")
+
+    def _do_launch_browser(self, b_name: str, p_key: str, target_url: str):
         self.btn_launch.configure(state="disabled")
         self.lbl_capture_status.configure(
             text=tr(f"⏳ Meluncurkan {b_name}... Silakan login pada jendela popup."), text_color=ThemeManager.warning()

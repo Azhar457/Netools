@@ -405,7 +405,13 @@ class DashboardView(ctk.CTkFrame):
         if pac_service.is_pac_server_running():
             pac_service.stop_pac_server()
             self.main_app.show_toast(tr("PAC Server dihentikan."), level="warning")
+            self.refresh()
         else:
-            pac_service.start_pac_server()
-            self.main_app.show_toast(tr("✓ PAC Server aktif di ") + pac_service.get_pac_url(), level="success")
-        self.refresh()
+            from netools.gui.dialog_pac import show_pac_confirmation
+
+            def _start():
+                pac_service.start_pac_server()
+                self.main_app.show_toast(tr("✓ PAC Server aktif di ") + pac_service.get_pac_url(), level="success")
+                self.refresh()
+
+            show_pac_confirmation(self, _start)
