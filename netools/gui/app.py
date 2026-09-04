@@ -33,7 +33,7 @@ def center_window(window: ctk.CTk, width: int = 920, height: int = 720):
 class NetoolsApp(ctk.CTk):
     def __init__(self):
         super().__init__(className="netools")
-        self.title("Netools Suite")
+        self.title(tr("Netools Suite"))
         self.minsize(850, 650)
         self.withdraw()  # Hidden initially during preloader sequence
 
@@ -111,11 +111,11 @@ class NetoolsApp(ctk.CTk):
         if self._last_canary_verdict is not None and self._last_canary_verdict != verdict:
             if verdict == canary_service.VERDICT_INTERCEPTED:
                 self.show_toast(
-                    "⚠️ DNS Interception terdeteksi! DoH mungkin diblokir.",
+                    tr("⚠️ DNS Interception terdeteksi! DoH mungkin diblokir."),
                     level="warning",
                 )
             elif verdict == canary_service.VERDICT_CLEAN:
-                self.show_toast("✅ DNS bersih (no interception).", level="success")
+                self.show_toast(tr("✅ DNS bersih (no interception)."), level="success")
         self._last_canary_verdict = verdict
 
         # 3) Optional auto-toggle DoH forwarder

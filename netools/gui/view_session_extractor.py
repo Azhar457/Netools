@@ -159,7 +159,7 @@ class SessionExtractorView(ctk.CTkFrame):
             width=180,
             height=32,
             font=Fonts.regular(11),
-            placeholder_text="Domain / Kata Kunci...",
+            placeholder_text=tr("Domain / Kata Kunci..."),
             fg_color=ThemeManager.surface_alt(),
             border_color=ThemeManager.border(),
             text_color=ThemeManager.text(),

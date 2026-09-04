@@ -171,7 +171,7 @@ class DashboardView(ctk.CTkFrame):
 
         self.lbl_dns_stat = ctk.CTkLabel(
             self.card_dns,
-            text="Interface: Auto-Detecting\nServers  : DHCP Default",
+            text=tr("Interface: Auto-Detecting\nServers  : DHCP Default"),
             font=Fonts.regular(12),
             text_color=ThemeManager.text_muted(),
             justify="left",
@@ -197,7 +197,7 @@ class DashboardView(ctk.CTkFrame):
 
         self.lbl_9r_stat = ctk.CTkLabel(
             self.card_9r,
-            text="Gateway: ⚪ Standalone / Offline\nBound Connections: 0",
+            text=tr("Gateway: ⚪ Standalone / Offline\nBound Connections: 0"),
             font=Fonts.regular(12),
             text_color=ThemeManager.text_muted(),
             justify="left",

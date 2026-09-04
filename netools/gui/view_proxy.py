@@ -135,7 +135,7 @@ class ProxyView(ctk.CTkFrame):
 
         self.lbl_summary = ctk.CTkLabel(
             self.summary_card,
-            text="Instances: 0 active | SOCKS: 11080–11099 | HTTP: 21080–21099 | Upstream: gstatic 204",
+            text=tr("Instances: 0 active | SOCKS: 11080–11099 | HTTP: 21080–21099 | Upstream: gstatic 204"),
             font=Fonts.mono(12),
             text_color=ThemeManager.text_muted(),
         )

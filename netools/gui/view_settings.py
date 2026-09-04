@@ -155,7 +155,7 @@ class SettingsView(ctk.CTkFrame):
         # Live Status Badges
         self.lbl_stat_or = ctk.CTkLabel(
             f_mode,
-            text="🚀 OmniRoute: ⚪ Checking...",
+            text=tr("🚀 OmniRoute: ⚪ Checking..."),
             font=Fonts.bold(11),
             text_color=ThemeManager.text_muted(),
         )
@@ -163,7 +163,7 @@ class SettingsView(ctk.CTkFrame):
 
         self.lbl_stat_nr = ctk.CTkLabel(
             f_mode,
-            text="⚡ 9Router: ⚪ Checking...",
+            text=tr("⚡ 9Router: ⚪ Checking..."),
             font=Fonts.bold(11),
             text_color=ThemeManager.text_muted(),
         )

@@ -25,7 +25,7 @@ class SplashScreen(ctk.CTkToplevel):
         self.on_complete = on_complete
 
         # Window configuration
-        self.title("Netools Suite — Starting...")
+        self.title(tr("Netools Suite — Starting..."))
         self.geometry("500x290")
         try:
             self.transient(main_app)
@@ -61,7 +61,7 @@ class SplashScreen(ctk.CTkToplevel):
         # Header Title
         lbl_title = ctk.CTkLabel(
             main_card,
-            text="⚡ Netools Suite v2.0",
+            text=tr("⚡ Netools Suite v2.0"),
             font=ctk.CTkFont(family="sans-serif", size=18, weight="bold"),
             text_color="#89b4fa",
         )
@@ -70,7 +70,7 @@ class SplashScreen(ctk.CTkToplevel):
         # Subtitle
         lbl_sub = ctk.CTkLabel(
             main_card,
-            text="Unified Sing-box Rotator, GRC DNS Benchmark & AI Gateway",
+            text=tr("Unified Sing-box Rotator, GRC DNS Benchmark & AI Gateway"),
             font=ctk.CTkFont(family="sans-serif", size=11),
             text_color="#a6adc8",
         )

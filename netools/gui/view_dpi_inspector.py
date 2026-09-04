@@ -22,7 +22,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
         super().__init__(parent_app)
         self.parent_app = parent_app
 
-        self.title("🔍 Multi-Layer Censorship & DPI Flow Inspector — Netools")
+        self.title(tr("🔍 Multi-Layer Censorship & DPI Flow Inspector — Netools"))
         self.geometry("980x700")
         self.minsize(860, 580)
         self.configure(fg_color=ThemeManager.bg())
@@ -77,7 +77,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
             fg_color=ThemeManager.surface_alt(),
             border_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
-            placeholder_text="e.g. dashboard.ngrok.com",
+            placeholder_text=tr("e.g. dashboard.ngrok.com"),
         )
         self.entry_domain.insert(0, self.default_domain)
         self.entry_domain.pack(side="left", padx=4)
@@ -161,7 +161,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
             badge = ctk.CTkLabel(
                 card,
-                text="⚪ READY",
+                text=tr("⚪ READY"),
                 font=Fonts.bold(9),
                 fg_color=ThemeManager.border(),
                 corner_radius=4,
@@ -283,15 +283,15 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         domain = self.entry_domain.get().strip()
         if not domain:
-            self.parent_app.show_toast("Masukkan nama domain yang valid!", level="warning")
+            self.parent_app.show_toast(tr("Masukkan nama domain yang valid!"), level="warning")
             return
 
         self.is_running = True
-        self.btn_run.configure(state="disabled", text="⏳ Analyzing...")
+        self.btn_run.configure(state="disabled", text=tr("⏳ Analyzing..."))
 
         # Reset node badges
         for nid in ("A", "B", "C", "D"):
-            self.node_widgets[nid]["badge"].configure(text="⏳ TESTING...", fg_color=ThemeManager.warning())
+            self.node_widgets[nid]["badge"].configure(text=tr("⏳ TESTING..."), fg_color=ThemeManager.warning())
 
         # Clear details frame
         for child in self.details_scroll.winfo_children():

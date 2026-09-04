@@ -167,7 +167,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
         self.lbl_env_summary = ctk.CTkLabel(
             self.sec_env,
-            text="Detecting system capabilities...",
+            text=tr("Detecting system capabilities..."),
             font=Fonts.mono(11),
             text_color=ThemeManager.text(),
             justify="left",
@@ -383,10 +383,10 @@ class PreferencesView(ctk.CTkScrollableFrame):
         self.main_app.minimize_to_tray_enabled = enabled
         if enabled:
             self.main_app.show_toast(
-                "✓ Netools akan diminimalkan ke System Tray saat tombol close diklik.", level="info"
+                tr("✓ Netools akan diminimalkan ke System Tray saat tombol close diklik."), level="info"
             )
         else:
-            self.main_app.show_toast("Netools akan langsung keluar saat tombol close diklik.", level="warning")
+            self.main_app.show_toast(tr("Netools akan langsung keluar saat tombol close diklik."), level="warning")
 
     def import_dns_list(self):
         file_path = filedialog.askopenfilename(
@@ -457,7 +457,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
 
     def sync_cloud_db(self):
         def _bg():
-            self.main_app.show_toast("Sinkronisasi DNS dari cloud...", level="info")
+            self.main_app.show_toast(tr("Sinkronisasi DNS dari cloud..."), level="info")
             succ, msg, _count = db.sync_cloud_providers()
             try:
                 self.after(0, lambda: self.main_app.show_toast(msg, level="success" if succ else "error"))
@@ -470,13 +470,13 @@ class PreferencesView(ctk.CTkScrollableFrame):
     def reset_dns_db(self):
         try:
             db.reset_to_default_providers()
-            self.main_app.show_toast("✓ Database DNS di-reset ke preset default resmi.", level="info")
+            self.main_app.show_toast(tr("✓ Database DNS di-reset ke preset default resmi."), level="info")
             self.main_app.dns_view.refresh_presets()
         except Exception as e:
             self.main_app.show_toast(f"Gagal reset DB: {e}", level="error")
 
     def check_for_updates(self):
-        self.main_app.show_toast("Memeriksa pembaruan versi Netools...", level="info")
+        self.main_app.show_toast(tr("Memeriksa pembaruan versi Netools..."), level="info")
 
         def _bg():
             import urllib.request
@@ -499,7 +499,7 @@ class PreferencesView(ctk.CTkScrollableFrame):
                     self.after(
                         0,
                         lambda: self.main_app.show_toast(
-                            "✓ Netools Suite v2.0.0 aktif dan siap digunakan.", level="info"
+                            tr("✓ Netools Suite v2.0.0 aktif dan siap digunakan."), level="info"
                         ),
                     )
                 except Exception:

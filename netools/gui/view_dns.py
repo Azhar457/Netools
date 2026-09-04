@@ -718,7 +718,9 @@ class DNSView(ctk.CTkFrame):
                     self.after(
                         0,
                         lambda: self.main_app.show_toast(
-                            "⚠️ Perhatian: Jaringan/ISP Anda tidak memiliki rute IPv6 aktif. DNS IPv6 mungkin timeout.",
+                            tr(
+                                "⚠️ Perhatian: Jaringan/ISP Anda tidak memiliki rute IPv6 aktif. DNS IPv6 mungkin timeout."
+                            ),
                             level="warning",
                         ),
                     )
@@ -809,7 +811,7 @@ class DNSView(ctk.CTkFrame):
         """Protocol/IP switch must NOT wipe externally-applied slots."""
         if getattr(self, "applied_source_kind", "preset") == "external":
             self.main_app.show_toast(
-                "⚡ DNS hasil Benchmark tetap dipakai — ganti Preset bila ingin mengganti otomatis.",
+                tr("⚡ DNS hasil Benchmark tetap dipakai — ganti Preset bila ingin mengganti otomatis."),
                 level="info",
             )
             return
@@ -970,7 +972,7 @@ class DNSView(ctk.CTkFrame):
         ips = [self.dns1_entry.get().strip(), self.dns2_entry.get().strip(), self.dns3_entry.get().strip()]
         valid = [ip for ip in ips if ip]
         if not valid:
-            self.main_app.show_toast("Isi minimal 1 IP DNS valid!", level="warning")
+            self.main_app.show_toast(tr("Isi minimal 1 IP DNS valid!"), level="warning")
             return
 
         selected_label = self.iface_var.get()
@@ -1011,7 +1013,7 @@ class DNSView(ctk.CTkFrame):
         def _bg():
             sys_dns.flush_dns_cache()
             try:
-                self.after(0, lambda: self.main_app.show_toast("✓ DNS Cache berhasil di-flush!", level="success"))
+                self.after(0, lambda: self.main_app.show_toast(tr("✓ DNS Cache berhasil di-flush!"), level="success"))
             except Exception:
                 pass
 
