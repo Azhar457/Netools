@@ -133,9 +133,13 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
 
         pool_name = f"free-proxy-{active_count}"
         pool_id = None
+        omni_pool_id = None
 
-        if not standalone and nr_adapt.is_healthy():
-            pool_id = nr_adapt.add_proxy_pool(pool_name, socks_url)
+        if not standalone:
+            if nr_adapt.is_healthy():
+                pool_id = nr_adapt.add_proxy_pool(pool_name, socks_url)
+            if or_adapt.is_healthy():
+                omni_pool_id = or_adapt.add_proxy_pool(pool_name, socks_url)
 
         state["instances"][name] = {
             "name": name,
@@ -148,11 +152,12 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
             "socks_url": socks_url,
             "http_url": http_url,
             "pool_id": pool_id,
+            "omni_pool_id": omni_pool_id,
             "pool_name": pool_name,
             "started_at": now_str,
         }
         active_count += 1
-        pool_str = f" → pool {pool_name}" if pool_id else (" (standalone)" if standalone else "")
+        pool_str = f" → pool {pool_name}" if (pool_id or omni_pool_id) else (" (standalone)" if standalone else "")
         log.info(f"{name}: {proxy['type']} → {proxy['server']}:{proxy.get('server_port', '')} → port {port}{pool_str}")
 
     # Assign proxy to 9Router / OmniRoute connections
@@ -193,11 +198,16 @@ def stop_proxy_pool(standalone: bool = False) -> None:
             for name, pool_id in pools.items():
                 if name.startswith("free-proxy-"):
                     nr_adapt.delete_proxy_pool(pool_id)
-                    print(f"Deleted pool: {name}")
+                    print(f"Deleted 9Router pool: {name}")
 
         if or_adapt.is_healthy():
-            log.info("Clearing proxy from all OmniRoute connections...")
+            log.info("Clearing proxy from all OmniRoute connections and pools...")
             or_adapt.clear_all_connection_proxies()
+            pools = or_adapt.get_existing_pools()
+            for name, pool_id in pools.items():
+                if name.startswith("free-proxy-"):
+                    or_adapt.delete_proxy_pool(pool_id)
+                    print(f"Deleted OmniRoute pool: {name}")
 
     # Wipe scratch files
     for f in CONFIGS_DIR.glob("*.json"):
@@ -259,8 +269,12 @@ def start_single_instance(
     socks_url = f"socks5://127.0.0.1:{port}"
     http_url = f"http://127.0.0.1:{port + HTTP_PORT_OFFSET}"
     pool_id = None
-    if not standalone and pool_name and nr_adapt.is_healthy():
-        pool_id = nr_adapt.add_proxy_pool(pool_name, socks_url)
+    omni_pool_id = None
+    if not standalone and pool_name:
+        if nr_adapt.is_healthy():
+            pool_id = nr_adapt.add_proxy_pool(pool_name, socks_url)
+        if or_adapt.is_healthy():
+            omni_pool_id = or_adapt.add_proxy_pool(pool_name, socks_url)
 
     now_str = time.strftime("%Y-%m-%d %H:%M:%S")
     return {
@@ -274,6 +288,7 @@ def start_single_instance(
         "socks_url": socks_url,
         "http_url": http_url,
         "pool_id": pool_id,
+        "omni_pool_id": omni_pool_id,
         "pool_name": pool_name,
         "started_at": now_str,
     }

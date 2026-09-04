@@ -146,8 +146,23 @@ def get_existing_pools() -> Dict[str, str]:
     """Retrieve existing OmniRoute proxy pools: {name: id}."""
     res = api_request("GET", "/api/settings/proxies")
     proxies = res.get("proxies", res.get("items", []))
-    if isinstance(proxies, list):
+    if isinstance(proxies, list) and len(proxies) > 0:
         return {p.get("name", p.get("id", "")): p.get("id", "") for p in proxies if isinstance(p, dict)}
+
+    # Fallback to local SQLite read if server requires dashboard session login
+    try:
+        import sqlite3
+
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
+        if _DEFAULT_DB_PATH.exists():
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                db.row_factory = sqlite3.Row
+                rows = db.execute("SELECT id, name FROM proxy_registry").fetchall()
+                return {r["name"]: r["id"] for r in rows if r["name"]}
+    except Exception:
+        pass
+
     return {}
 
 
@@ -285,25 +300,99 @@ def assign_round_robin(proxies_or_pools: List[str]) -> int:
 
 @safe_backend_call(fallback_return=None)
 def add_proxy_pool(name: str, proxy_url: str) -> Optional[str]:
-    """Register a new proxy entry in OmniRoute."""
+    """Register a new proxy entry in OmniRoute's Proxy Registry."""
+    import urllib.parse
+
+    parsed = urllib.parse.urlparse(proxy_url)
+    scheme = parsed.scheme.lower() or "socks5"
+    if scheme not in ("http", "https", "socks5"):
+        scheme = "socks5"
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or 11080
+    username = parsed.username or ""
+    password = parsed.password or ""
+
+    # 1. Try REST API with schema matching createProxyRegistrySchema
     res = api_request(
         "POST",
         "/api/settings/proxies",
         {
             "name": name,
-            "url": proxy_url,
-            "type": "custom",
-            "active": True,
+            "type": scheme,
+            "host": host,
+            "port": port,
+            "username": username,
+            "password": password,
+            "status": "active",
+            "source": "manual",
+            "family": "auto",
+            "notes": "Netools Sing-box Proxy Pool",
         },
     )
-    return res.get("id") or res.get("proxy", {}).get("id")
+    proxy_id = res.get("id") or res.get("proxy", {}).get("id")
+    if proxy_id:
+        return str(proxy_id)
+
+    # 2. Fallback to direct SQLite insertion into proxy_registry
+    try:
+        import datetime
+        import sqlite3
+        import uuid
+
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
+        if _DEFAULT_DB_PATH.exists():
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                row = db.execute(
+                    "SELECT id FROM proxy_registry WHERE host = ? AND port = ? AND username = ? LIMIT 1",
+                    (host, port, username),
+                ).fetchone()
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+                if row:
+                    proxy_id = row[0]
+                    db.execute(
+                        "UPDATE proxy_registry SET name = ?, status = 'active', updated_at = ? WHERE id = ?",
+                        (name, now, proxy_id),
+                    )
+                else:
+                    proxy_id = str(uuid.uuid4())
+                    db.execute(
+                        """INSERT INTO proxy_registry
+                        (id, name, type, host, port, username, password, status, source, notes, family, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 'manual', 'Netools Sing-box Proxy Pool', 'auto', ?, ?)""",
+                        (proxy_id, name, scheme, host, port, username, password, now, now),
+                    )
+                db.commit()
+                return proxy_id
+    except Exception as e:
+        log.debug("Failed SQLite fallback for add_proxy_pool: %s", e)
+
+    return None
 
 
 @safe_backend_call(fallback_return=False)
 def delete_proxy_pool(pool_id: str) -> bool:
-    """Delete a proxy entry from OmniRoute."""
-    res = api_request("DELETE", f"/api/settings/proxies/{pool_id}")
-    return res.get("success", False) or "error" not in res
+    """Delete a proxy entry from OmniRoute's Proxy Registry."""
+    # 1. Try REST API
+    res = api_request("DELETE", f"/api/settings/proxies?id={pool_id}&force=1")
+    if res.get("success", False) or ("error" not in res and res):
+        return True
+
+    # 2. Fallback to direct SQLite deletion
+    try:
+        import sqlite3
+
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
+        if _DEFAULT_DB_PATH.exists():
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                db.execute("DELETE FROM proxy_registry WHERE id = ?", (pool_id,))
+                db.commit()
+                return True
+    except Exception as e:
+        log.debug("Failed SQLite fallback for delete_proxy_pool: %s", e)
+
+    return False
 
 
 def benchmark_api_dns(
