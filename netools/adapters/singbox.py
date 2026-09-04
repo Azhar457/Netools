@@ -25,7 +25,6 @@ def build_singbox_config(proxy: Dict[str, Any], local_port: int) -> Dict[str, An
         "server": proxy["server"],
         "server_port": proxy["server_port"],
         "connect_timeout": "4s",
-        "tcp_keepalive_interval": "10s",
     }
 
     if proxy["type"] == "shadowsocks":

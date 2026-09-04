@@ -110,7 +110,9 @@ OMNIROUTE_TOKEN = os.getenv("OMNIROUTE_TOKEN", _user_cfg.get("omniroute_token", 
 # Upstream Proxy Subscriptions
 DEFAULT_PROXY_SOURCES = [
     "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/sub/sub_merge.txt",
-    "https://raw.githubusercontent.com/mfuu/v2ray/master/v2ray",
+    "https://raw.githubusercontent.com/ebrasha/free-v2ray-public-list/main/V2Ray-Config-By-EbraSha-All-Type.txt",
+    "https://raw.githubusercontent.com/mheidari98/.proxy/main/all",
+    "https://raw.githubusercontent.com/ALIILAPRO/v2rayNG-Config/main/server.txt",
 ]
 PROXY_SOURCES = _user_cfg.get("proxy_sources", DEFAULT_PROXY_SOURCES)
 

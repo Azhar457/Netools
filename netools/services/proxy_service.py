@@ -115,11 +115,11 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
             break
         time.sleep(0.03)
 
-    # Parallel Upstream Testing (All instances tested concurrently with 2.5s timeout)
+    # Parallel Upstream Testing (All instances tested concurrently with 4s timeout)
     alive = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(len(started), 1)) as ex:
         futures = {
-            ex.submit(probe_socks_upstream, port, timeout=2.5): (name, port, proxy, proc)
+            ex.submit(probe_socks_upstream, port, timeout=4.0): (name, port, proxy, proc)
             for name, port, proxy, proc in started
         }
         for future in concurrent.futures.as_completed(futures):
