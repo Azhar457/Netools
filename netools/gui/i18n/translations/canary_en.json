@@ -1,0 +1,12 @@
+[
+  "What are canary domains?",
+  "Canary domains are special hostnames that must NEVER resolve to an IP address. They are published by Mozilla and Apple as tripwires: if your network operator (ISP) tampers with DNS, these domains suddenly 'resolve' to a forged answer.",
+  "How the check works:",
+  "1. Netools queries each canary hostname through your system resolver (and any custom upstream you configured).",
+  "2. A correct resolver answers NXDOMAIN ('this domain does not exist'). That means your DNS path is clean.",
+  "3. If an answer comes back anyway (an IP, CNAME, or SOA record), someone on the path forged it -> DNS interception detected. Your plain-DNS queries are being watched or redirected.",
+  "4. Before judging, a pre-check resolves firefox.com / mozilla.org to make sure you are actually online - otherwise results would be false positives.",
+  "Why this matters:",
+  "If interception is detected, websites may be blocked or redirected by your provider even before you connect. Encrypted DNS (DoH via Netools' forwarder, or DoT) bypasses this tampering because the ISP can no longer read or forge your DNS responses.",
+  "You can add your own canary domains or even whole TLDs (like .co.id) below. A good custom canary is a domain that is guaranteed not to exist."
+]
