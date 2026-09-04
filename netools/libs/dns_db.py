@@ -19,6 +19,7 @@ APP_DIR = Path.home() / ".local" / "share" / "dns-jumper"
 APP_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_FILE = APP_DIR / "providers.json"
 
+
 # Core Curated Database of 50+ Major DNS & DoH Providers
 def _load_builtin_providers() -> Dict[str, Dict[str, Any]]:
     """Built-in resolver catalog lives in assets/dns_providers.json so it can
@@ -72,7 +73,7 @@ def filter_providers(
     providers: Dict[str, Dict[str, Any]],
     region: Optional[str] = None,
     category: Optional[str] = None,
-    only_doh: bool = False
+    only_doh: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """Filter provider dictionary based on region, category, and DoH availability."""
     filtered = {}
@@ -80,13 +81,12 @@ def filter_providers(
         if only_doh and not p.get("doh_url"):
             continue
         if region and region != "all":
-            if region == "asia" and p.get("region") not in ("asia", "global"):
-                continue
-            elif region == "europe" and p.get("region") not in ("europe", "global"):
-                continue
-            elif region == "north_america" and p.get("region") not in ("north_america", "global"):
-                continue
-            elif region == "global" and p.get("region") != "global":
+            if (
+                (region == "asia" and p.get("region") not in ("asia", "global"))
+                or (region == "europe" and p.get("region") not in ("europe", "global"))
+                or (region == "north_america" and p.get("region") not in ("north_america", "global"))
+                or (region == "global" and p.get("region") != "global")
+            ):
                 continue
         if category and category != "all":
             if p.get("category") != category:
@@ -109,13 +109,13 @@ def sync_cloud_providers() -> Tuple[bool, str, int]:
         for name, body in blocks:
             name_clean = name.strip()
             key_clean = re.sub(r"[^a-zA-Z0-9_-]", "_", name_clean.lower())
-            
+
             doh_m = re.search(r"https://[a-zA-Z0-9.-]+/[a-zA-Z0-9_/?=-]+", body)
             doh_url = doh_m.group(0) if doh_m else ""
-            
+
             country_m = re.search(r"country\s*=\s*([^\n]+)", body)
             country = country_m.group(1).strip().upper() if country_m else "Global"
-            
+
             ips = re.findall(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b", body)
             valid_ips = [ip for ip in ips if not ip.startswith(("127.", "10.", "192.168.", "0."))]
 
@@ -132,7 +132,11 @@ def sync_cloud_providers() -> Tuple[bool, str, int]:
                 added += 1
 
         save_providers(current)
-        return True, f"Successfully synchronized database! Added {added} new verified resolvers (Total: {len(current)}).", len(current)
+        return (
+            True,
+            f"Successfully synchronized database! Added {added} new verified resolvers (Total: {len(current)}).",
+            len(current),
+        )
     except Exception as e:
         return False, f"Sync error: {e}", len(BUILTIN_PROVIDERS)
 
@@ -165,7 +169,7 @@ def import_from_dnsjumper_ini(filepath: str) -> Tuple[int, str]:
                 if not parts:
                     continue
 
-                slug = re.sub(r'[^a-zA-Z0-9_-]', '_', k).lower().strip('_')
+                slug = re.sub(r"[^a-zA-Z0-9_-]", "_", k).lower().strip("_")
                 country_code = k[:2].upper() if (len(k) >= 3 and k[2:4] in (" -", "- ")) else "🌐"
 
                 if "ipv6" in current_sec.lower():
@@ -180,14 +184,18 @@ def import_from_dnsjumper_ini(filepath: str) -> Tuple[int, str]:
                             "ipv6": parts,
                             "doh_url": "",
                             "category": "general",
-                            "description": f"Imported from DnsJumper.ini ({k})"
+                            "description": f"Imported from DnsJumper.ini ({k})",
                         }
                     imported += 1
                 else:
                     if slug in current_providers:
                         current_providers[slug]["ipv4"] = parts
                     else:
-                        cat = "family" if "family" in current_sec.lower() else ("security" if "secure" in current_sec.lower() else "general")
+                        cat = (
+                            "family"
+                            if "family" in current_sec.lower()
+                            else ("security" if "secure" in current_sec.lower() else "general")
+                        )
                         current_providers[slug] = {
                             "name": k,
                             "country": f"🌐 {country_code}",
@@ -196,12 +204,15 @@ def import_from_dnsjumper_ini(filepath: str) -> Tuple[int, str]:
                             "ipv6": [],
                             "doh_url": "",
                             "category": cat,
-                            "description": f"Imported from DnsJumper.ini ({k})"
+                            "description": f"Imported from DnsJumper.ini ({k})",
                         }
                     imported += 1
 
         save_providers(current_providers)
-        return imported, f"Berhasil mengimpor {imported} resolver dari DnsJumper.ini (Total Database: {len(current_providers)})!"
+        return (
+            imported,
+            f"Berhasil mengimpor {imported} resolver dari DnsJumper.ini (Total Database: {len(current_providers)})!",
+        )
     except Exception as e:
         return 0, f"Gagal mengimpor DnsJumper.ini: {e}"
 
@@ -240,7 +251,7 @@ TLD_PRESETS = {
             "itb.ac.id",
             "ugm.ac.id",
             "pandi.id",
-        ]
+        ],
     },
     "global_com": {
         "name": "🌐 Global Commercial (.com, .net)",
@@ -253,7 +264,7 @@ TLD_PRESETS = {
             "reddit.com",
             "amazon.com",
             "netflix.com",
-        ]
+        ],
     },
     "non_profit_org": {
         "name": "🏛️ Non-Profit & Tech (.org, .io, .dev)",
@@ -266,7 +277,7 @@ TLD_PRESETS = {
             "python.org",
             "eff.org",
             "debian.org",
-        ]
+        ],
     },
     "ai_gateways": {
         "name": "🤖 AI Gateways & LLM Providers (.ai, .com, .io)",
@@ -314,87 +325,147 @@ TLD_PRESETS = {
             "huggingface.co",
             "cursor.com",
             "copilot.github.com",
-        ]
+        ],
     },
     # --- Country ccTLD presets (auto-selected via netools.libs.geo) ---
     "united_states": {
         "country": "US",
         "name": "🇺🇸 United States (.gov, .edu, .us)",
         "domains": [
-            "usa.gov", "irs.gov", "nih.gov", "weather.gov",
-            "mit.edu", "stanford.edu", "craigslist.org", "nytimes.com",
+            "usa.gov",
+            "irs.gov",
+            "nih.gov",
+            "weather.gov",
+            "mit.edu",
+            "stanford.edu",
+            "craigslist.org",
+            "nytimes.com",
         ],
     },
     "india": {
         "country": "IN",
         "name": "🇮🇳 India (.in, .gov.in, .co.in)",
         "domains": [
-            "india.gov.in", "irctc.co.in", "sbi.co.in", "nic.in",
-            "flipkart.com", "hotstar.com", "ndtv.com", "timesofindia.indiatimes.com",
+            "india.gov.in",
+            "irctc.co.in",
+            "sbi.co.in",
+            "nic.in",
+            "flipkart.com",
+            "hotstar.com",
+            "ndtv.com",
+            "timesofindia.indiatimes.com",
         ],
     },
     "japan": {
         "country": "JP",
         "name": "🇯🇵 Japan (.jp, .co.jp, .go.jp)",
         "domains": [
-            "japan.go.jp", "rakuten.co.jp", "yahoo.co.jp", "nhk.or.jp",
-            "u-tokyo.ac.jp", "jreast.co.jp", "mufg.jp", "nikkei.com",
+            "japan.go.jp",
+            "rakuten.co.jp",
+            "yahoo.co.jp",
+            "nhk.or.jp",
+            "u-tokyo.ac.jp",
+            "jreast.co.jp",
+            "mufg.jp",
+            "nikkei.com",
         ],
     },
     "germany": {
         "country": "DE",
         "name": "🇩🇪 Germany (.de)",
         "domains": [
-            "bund.de", "deutschebahn.com", "spiegel.de", "zdf.de",
-            "otto.de", "web.de", "gmx.de", "tu-muenchen.de",
+            "bund.de",
+            "deutschebahn.com",
+            "spiegel.de",
+            "zdf.de",
+            "otto.de",
+            "web.de",
+            "gmx.de",
+            "tu-muenchen.de",
         ],
     },
     "brazil": {
         "country": "BR",
         "name": "🇧🇷 Brazil (.br, .com.br, .gov.br)",
         "domains": [
-            "gov.br", "uol.com.br", "globo.com", "mercadolivre.com.br",
-            "itau.com.br", "bb.com.br", "usp.br", "registro.br",
+            "gov.br",
+            "uol.com.br",
+            "globo.com",
+            "mercadolivre.com.br",
+            "itau.com.br",
+            "bb.com.br",
+            "usp.br",
+            "registro.br",
         ],
     },
     "united_kingdom": {
         "country": "GB",
         "name": "🇬🇧 United Kingdom (.uk, .co.uk, .gov.uk)",
         "domains": [
-            "gov.uk", "bbc.co.uk", "nhs.uk", "barclays.co.uk",
-            "rightmove.co.uk", "ox.ac.uk", "theguardian.com", "argos.co.uk",
+            "gov.uk",
+            "bbc.co.uk",
+            "nhs.uk",
+            "barclays.co.uk",
+            "rightmove.co.uk",
+            "ox.ac.uk",
+            "theguardian.com",
+            "argos.co.uk",
         ],
     },
     "singapore": {
         "country": "SG",
         "name": "🇸🇬 Singapore (.sg, .gov.sg, .com.sg)",
         "domains": [
-            "gov.sg", "singpass.gov.sg", "dbs.com.sg", "nus.edu.sg",
-            "straitstimes.com", "carousell.sg", "singtel.com", "sgx.com",
+            "gov.sg",
+            "singpass.gov.sg",
+            "dbs.com.sg",
+            "nus.edu.sg",
+            "straitstimes.com",
+            "carousell.sg",
+            "singtel.com",
+            "sgx.com",
         ],
     },
     "china": {
         "country": "CN",
         "name": "🇨🇳 China (.cn, .com.cn)",
         "domains": [
-            "gov.cn", "baidu.com", "qq.com", "taobao.com",
-            "jd.com", "bilibili.com", "tsinghua.edu.cn", "sina.com.cn",
+            "gov.cn",
+            "baidu.com",
+            "qq.com",
+            "taobao.com",
+            "jd.com",
+            "bilibili.com",
+            "tsinghua.edu.cn",
+            "sina.com.cn",
         ],
     },
     "south_korea": {
         "country": "KR",
         "name": "🇰🇷 South Korea (.kr, .co.kr, .go.kr)",
         "domains": [
-            "korea.kr", "naver.com", "daum.net", "kakaocorp.com",
-            "coupang.com", "snu.ac.kr", "kbstar.com", "yna.co.kr",
+            "korea.kr",
+            "naver.com",
+            "daum.net",
+            "kakaocorp.com",
+            "coupang.com",
+            "snu.ac.kr",
+            "kbstar.com",
+            "yna.co.kr",
         ],
     },
     "australia": {
         "country": "AU",
         "name": "🇦🇺 Australia (.au, .com.au, .gov.au)",
         "domains": [
-            "australia.gov.au", "abc.net.au", "commbank.com.au", "seek.com.au",
-            "realestate.com.au", "unimelb.edu.au", "telstra.com.au", "woolworths.com.au",
+            "australia.gov.au",
+            "abc.net.au",
+            "commbank.com.au",
+            "seek.com.au",
+            "realestate.com.au",
+            "unimelb.edu.au",
+            "telstra.com.au",
+            "woolworths.com.au",
         ],
     },
 }

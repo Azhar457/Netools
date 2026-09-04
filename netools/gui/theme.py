@@ -86,8 +86,10 @@ THEMES: Dict[str, Dict[str, str]] = {
     },
 }
 
+
 class ThemeManager:
     """Singleton Theme Manager for dynamic runtime skinning."""
+
     _current_theme = "dark"
 
     @classmethod
@@ -107,31 +109,56 @@ class ThemeManager:
         return cls.get_tokens().get(token, "#ffffff")
 
     @classmethod
-    def bg(cls) -> str: return cls.get("bg")
+    def bg(cls) -> str:
+        return cls.get("bg")
+
     @classmethod
-    def surface(cls) -> str: return cls.get("surface")
+    def surface(cls) -> str:
+        return cls.get("surface")
+
     @classmethod
-    def surface_alt(cls) -> str: return cls.get("surface_alt")
+    def surface_alt(cls) -> str:
+        return cls.get("surface_alt")
+
     @classmethod
-    def border(cls) -> str: return cls.get("border")
+    def border(cls) -> str:
+        return cls.get("border")
+
     @classmethod
-    def text(cls) -> str: return cls.get("text")
+    def text(cls) -> str:
+        return cls.get("text")
+
     @classmethod
-    def text_muted(cls) -> str: return cls.get("text_muted")
+    def text_muted(cls) -> str:
+        return cls.get("text_muted")
+
     @classmethod
-    def primary(cls) -> str: return cls.get("primary")
+    def primary(cls) -> str:
+        return cls.get("primary")
+
     @classmethod
-    def primary_hover(cls) -> str: return cls.get("secondary")
+    def primary_hover(cls) -> str:
+        return cls.get("secondary")
+
     @classmethod
-    def secondary(cls) -> str: return cls.get("secondary")
+    def secondary(cls) -> str:
+        return cls.get("secondary")
+
     @classmethod
-    def accent(cls) -> str: return cls.get("accent")
+    def accent(cls) -> str:
+        return cls.get("accent")
+
     @classmethod
-    def success(cls) -> str: return cls.get("success")
+    def success(cls) -> str:
+        return cls.get("success")
+
     @classmethod
-    def warning(cls) -> str: return cls.get("warning")
+    def warning(cls) -> str:
+        return cls.get("warning")
+
     @classmethod
-    def danger(cls) -> str: return cls.get("danger")
+    def danger(cls) -> str:
+        return cls.get("danger")
 
     @classmethod
     def apply_theme(cls, theme_name: str, app_instance: Optional[Any] = None) -> None:
@@ -142,6 +169,7 @@ class ThemeManager:
         tokens = THEMES[key]
 
         from pathlib import Path
+
         theme_json = Path(__file__).resolve().parent.parent / "assets" / "themes" / f"{key}.json"
         if theme_json.exists():
             try:
@@ -152,6 +180,7 @@ class ThemeManager:
         ctk.set_appearance_mode(tokens["mode"])
 
         import sys
+
         mod = sys.modules.get(__name__)
         if mod:
             mod.COLOR_BG = tokens["bg"]
@@ -174,9 +203,6 @@ class ThemeManager:
                 pass
 
 
-
-
-
 # Backward-compatible global constants
 COLOR_BG = THEMES["dark"]["bg"]
 COLOR_BG_DARK = THEMES["dark"]["surface_alt"]
@@ -194,15 +220,16 @@ COLOR_ACCENT_PURPLE = THEMES["dark"]["secondary"]
 
 class Spacings:
     """Standard 4px base-grid layout constants."""
+
     PAD_CARD = 16
     PAD_ELEMENT = 12
     PAD_TIGHT = 8
     PAD_MICRO = 4
 
-    BTN_HEIGHT_LG = 38   # Primary / Major CTA
-    BTN_HEIGHT_MD = 34   # Standard action bar
-    BTN_HEIGHT_SM = 28   # Filter chip / mini tool
-    INPUT_HEIGHT = 34    # Inputs & ComboBoxes
+    BTN_HEIGHT_LG = 38  # Primary / Major CTA
+    BTN_HEIGHT_MD = 34  # Standard action bar
+    BTN_HEIGHT_SM = 28  # Filter chip / mini tool
+    INPUT_HEIGHT = 34  # Inputs & ComboBoxes
 
 
 class Fonts:
@@ -247,5 +274,3 @@ class Fonts:
     @staticmethod
     def mono_bold(size: int = 12):
         return ("monospace", size, "bold")
-
-

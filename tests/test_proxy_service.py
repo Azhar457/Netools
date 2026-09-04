@@ -5,7 +5,6 @@ from netools.services.proxy_service import fetch_and_parse_proxies, start_single
 
 
 class TestProxyService(unittest.TestCase):
-    
     @patch("netools.services.proxy_service.fetch_text")
     def test_fetch_and_parse_proxies_empty_sources(self, mock_fetch_text):
         mock_fetch_text.return_value = ""
@@ -23,7 +22,9 @@ class TestProxyService(unittest.TestCase):
     @patch("netools.services.proxy_service.fetch_text")
     def test_fetch_and_parse_proxies_dedup(self, mock_fetch_text):
         # Return two identical proxies to test dedup
-        mock_fetch_text.return_value = "ss://YWVzLTEyOC1nY206dGVzdA==@192.168.1.1:8388#test\nss://YWVzLTEyOC1nY206dGVzdA==@192.168.1.1:8388#test2"
+        mock_fetch_text.return_value = (
+            "ss://YWVzLTEyOC1nY206dGVzdA==@192.168.1.1:8388#test\nss://YWVzLTEyOC1nY206dGVzdA==@192.168.1.1:8388#test2"
+        )
         proxies = fetch_and_parse_proxies()
         self.assertEqual(len(proxies), 1)
 
@@ -34,11 +35,12 @@ class TestProxyService(unittest.TestCase):
         mock_proc = MagicMock()
         mock_start_instance.return_value = mock_proc
         mock_test_upstream.return_value = False
-        
+
         res = start_single_instance("test-01", 1080, {"type": "ss", "server": "1.1.1.1", "server_port": 1234})
-        
+
         self.assertIsNone(res)
         mock_proc.kill.assert_called_once()
-        
+
+
 if __name__ == "__main__":
     unittest.main()

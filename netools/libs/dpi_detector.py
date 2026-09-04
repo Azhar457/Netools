@@ -22,11 +22,12 @@ from netools.libs.dns_leak import build_dns_query_packet, parse_dns_response_ext
 # DATA STRUCTURES
 # ==============================================================================
 
+
 @dataclass
 class DiagnosticStage:
-    node_id: str             # "A", "B", "C", "D"
-    name: str                # e.g. "DNS Resolution"
-    status: str              # "PASS", "BLOCKED", "WARN", "SKIPPED"
+    node_id: str  # "A", "B", "C", "D"
+    name: str  # e.g. "DNS Resolution"
+    status: str  # "PASS", "BLOCKED", "WARN", "SKIPPED"
     latency_ms: Optional[float] = None
     summary: str = ""
     details: List[str] = field(default_factory=list)
@@ -61,10 +62,10 @@ class DomainDiagnosticReport:
                     "latency_ms": v.latency_ms,
                     "summary": v.summary,
                     "details": v.details,
-                    "technical_info": v.technical_info
+                    "technical_info": v.technical_info,
                 }
                 for k, v in self.stages.items()
-            }
+            },
         }
 
 
@@ -72,17 +73,18 @@ class DomainDiagnosticReport:
 # HELPER FUNCTIONS
 # ==============================================================================
 
+
 def is_bogon_or_private_ip(ip_str: str) -> bool:
     """Validate if an IP is a local/private/loopback/sinkhole address."""
     try:
         ip = ipaddress.ip_address(ip_str)
         return (
-            ip.is_private or
-            ip.is_loopback or
-            ip.is_reserved or
-            ip.is_unspecified or
-            str(ip) in ("0.0.0.0", "127.0.0.1") or
-            str(ip).startswith("100.64.")
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_reserved
+            or ip.is_unspecified
+            or str(ip) in ("0.0.0.0", "127.0.0.1")
+            or str(ip).startswith("100.64.")
         )
     except Exception:
         return False
@@ -98,8 +100,8 @@ def query_reference_doh(domain: str, timeout: float = 2.5) -> Tuple[Optional[flo
         headers={
             "Content-Type": "application/dns-message",
             "Accept": "application/dns-message",
-            "User-Agent": "Netools-DPI-Engine/2.0"
-        }
+            "User-Agent": "Netools-DPI-Engine/2.0",
+        },
     )
     t0 = time.perf_counter()
     try:
@@ -118,17 +120,14 @@ def query_reference_doh(domain: str, timeout: float = 2.5) -> Tuple[Optional[flo
 # 4-STAGE NETWORK REACHABILITY INSPECTOR
 # ==============================================================================
 
+
 def evaluate_stage_a_dns(domain: str, timeout: float = 2.5) -> Tuple[DiagnosticStage, List[str], List[str]]:
     """
     Node A: DNS Resolution (Layer 7).
     Compares System DNS vs Reference DoH (Cloudflare).
     Returns: (DiagnosticStage, system_ips, doh_ips)
     """
-    stage = DiagnosticStage(
-        node_id="A",
-        name="1. DNS Resolution (Layer 7)",
-        status="SKIPPED"
-    )
+    stage = DiagnosticStage(node_id="A", name="1. DNS Resolution (Layer 7)", status="SKIPPED")
 
     t0 = time.perf_counter()
     system_ips: List[str] = []
@@ -149,7 +148,7 @@ def evaluate_stage_a_dns(domain: str, timeout: float = 2.5) -> Tuple[DiagnosticS
         "system_ips": system_ips,
         "doh_ips": doh_ips,
         "system_error": sys_error,
-        "doh_latency_ms": doh_lat
+        "doh_latency_ms": doh_lat,
     }
 
     # Evaluate DNS results
@@ -161,7 +160,7 @@ def evaluate_stage_a_dns(domain: str, timeout: float = 2.5) -> Tuple[DiagnosticS
             stage.details = [
                 f"• System DNS returned private/sinkhole IP: {', '.join(system_ips)}",
                 f"• Reference DoH returned legitimate IP: {', '.join(doh_ips) if doh_ips else 'Clean'}",
-                "• Triggered by: ISP DNS Hijack, MikroTik static DNS entry, or TrustPositif."
+                "• Triggered by: ISP DNS Hijack, MikroTik static DNS entry, or TrustPositif.",
             ]
         elif doh_ips and not any(ip in doh_ips for ip in system_ips):
             # Divergent IP addresses
@@ -170,14 +169,16 @@ def evaluate_stage_a_dns(domain: str, timeout: float = 2.5) -> Tuple[DiagnosticS
             stage.details = [
                 f"• Local system resolved to: {', '.join(system_ips)}",
                 f"• Reference DoH resolved to: {', '.join(doh_ips)}",
-                "• Notice: IPs differ, could be Geo-DNS CDN or local transparent cache."
+                "• Notice: IPs differ, could be Geo-DNS CDN or local transparent cache.",
             ]
         else:
             stage.status = "PASS"
             stage.summary = f"🟢 Clean DNS Resolution ({system_ips[0]})"
             stage.details = [
                 f"• System resolved IP: {', '.join(system_ips)} ({sys_lat:.1f} ms)",
-                f"• Matches clean public DoH records ({', '.join(doh_ips)})" if doh_ips else "• Valid IP record returned."
+                f"• Matches clean public DoH records ({', '.join(doh_ips)})"
+                if doh_ips
+                else "• Valid IP record returned.",
             ]
     else:
         if doh_ips:
@@ -186,14 +187,14 @@ def evaluate_stage_a_dns(domain: str, timeout: float = 2.5) -> Tuple[DiagnosticS
             stage.details = [
                 f"• Local DNS resolution failed: {sys_error}",
                 f"• But reference DoH successfully found IPs: {', '.join(doh_ips)}",
-                "• Cause: ISP unencrypted DNS filtered or local resolver offline."
+                "• Cause: ISP unencrypted DNS filtered or local resolver offline.",
             ]
         else:
             stage.status = "BLOCKED"
             stage.summary = f"🔴 Domain NXDOMAIN / Unresolvable ({sys_error})"
             stage.details = [
                 f"• Domain {domain} failed to resolve on both local DNS and public DoH.",
-                "• Verify domain name spelling or DNS server connectivity."
+                "• Verify domain name spelling or DNS server connectivity.",
             ]
 
     return stage, system_ips, doh_ips
@@ -204,11 +205,7 @@ def evaluate_stage_b_tcp(target_ip: str, timeout: float = 2.5) -> DiagnosticStag
     Node B: TCP Layer 4 Handshake.
     Tests raw TCP connect to IP:443 without sending TLS payload.
     """
-    stage = DiagnosticStage(
-        node_id="B",
-        name="2. TCP Connection (Layer 4)",
-        status="SKIPPED"
-    )
+    stage = DiagnosticStage(node_id="B", name="2. TCP Connection (Layer 4)", status="SKIPPED")
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(timeout)
@@ -222,7 +219,7 @@ def evaluate_stage_b_tcp(target_ip: str, timeout: float = 2.5) -> DiagnosticStag
         stage.summary = f"🟢 TCP Port 443 Connected ({lat:.1f} ms)"
         stage.details = [
             f"• Successfully established raw TCP 3-way handshake with {target_ip}:443.",
-            "• Layer 3/4 routing is clean. IP is NOT blacklisted or dropped at router firewall."
+            "• Layer 3/4 routing is clean. IP is NOT blacklisted or dropped at router firewall.",
         ]
         stage.technical_info = {"target_ip": target_ip, "port": 443, "tcp_connected": True}
         return stage
@@ -231,7 +228,7 @@ def evaluate_stage_b_tcp(target_ip: str, timeout: float = 2.5) -> DiagnosticStag
         stage.summary = "🔴 TCP Port 443 Timeout (Layer 4 Drop)"
         stage.details = [
             f"• Connection to {target_ip}:443 timed out after {timeout:.1f}s.",
-            "• Cause: MikroTik firewall filter, router port block, or ISP IP blackholing/null-route."
+            "• Cause: MikroTik firewall filter, router port block, or ISP IP blackholing/null-route.",
         ]
         stage.technical_info = {"target_ip": target_ip, "port": 443, "error": "timeout"}
     except ConnectionRefusedError:
@@ -239,35 +236,32 @@ def evaluate_stage_b_tcp(target_ip: str, timeout: float = 2.5) -> DiagnosticStag
         stage.summary = "🔴 TCP Connection Refused"
         stage.details = [
             f"• Server or middlebox at {target_ip} actively refused connection on port 443.",
-            "• Middlebox injected TCP RST or port 443 is closed."
+            "• Middlebox injected TCP RST or port 443 is closed.",
         ]
         stage.technical_info = {"target_ip": target_ip, "port": 443, "error": "ConnectionRefused"}
     except Exception as e:
         stage.status = "BLOCKED"
         stage.summary = f"🔴 TCP Connection Error ({str(e)[:35]})"
-        stage.details = [
-            f"• Failed to connect to {target_ip}:443: {e}",
-            "• Network unreachable or firewall drop."
-        ]
+        stage.details = [f"• Failed to connect to {target_ip}:443: {e}", "• Network unreachable or firewall drop."]
         stage.technical_info = {"target_ip": target_ip, "port": 443, "error": str(e)}
     finally:
-        try: sock.close()
-        except Exception: pass
+        try:
+            sock.close()
+        except Exception:
+            pass
 
     return stage
 
 
-def evaluate_stage_c_sni_dpi(target_ip: str, domain: str, timeout: float = 3.0) -> Tuple[DiagnosticStage, Optional[Any]]:
+def evaluate_stage_c_sni_dpi(
+    target_ip: str, domain: str, timeout: float = 3.0
+) -> Tuple[DiagnosticStage, Optional[Any]]:
     """
     Node C: TLS Handshake & SNI Filtering (Layer 7 DPI).
     Sends TLS ClientHello with the exact target SNI, and compares with neutral SNI if reset.
     Returns: (DiagnosticStage, ssl_socket)
     """
-    stage = DiagnosticStage(
-        node_id="C",
-        name="3. TLS SNI Handshake (Layer 7 DPI)",
-        status="SKIPPED"
-    )
+    stage = DiagnosticStage(node_id="C", name="3. TLS SNI Handshake (Layer 7 DPI)", status="SKIPPED")
 
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -287,16 +281,12 @@ def evaluate_stage_c_sni_dpi(target_ip: str, domain: str, timeout: float = 3.0) 
         stage.details = [
             f"• TLS handshake completed with SNI '{domain}' without middlebox tampering.",
             f"• Protocol: {ssock.version()}, Cipher: {ssock.cipher()[0] if ssock.cipher() else 'Default'}.",
-            "• No Layer 7 SNI filtering or DPI interference detected."
+            "• No Layer 7 SNI filtering or DPI interference detected.",
         ]
-        stage.technical_info = {
-            "tls_version": ssock.version(),
-            "cipher": ssock.cipher(),
-            "sni_used": domain
-        }
+        stage.technical_info = {"tls_version": ssock.version(), "cipher": ssock.cipher(), "sni_used": domain}
         return stage, ssock
 
-    except (ConnectionResetError, ssl.SSLEOFError, socket.error) as e:
+    except (OSError, ConnectionResetError, ssl.SSLEOFError) as e:
         # Potential SNI Filtering / DPI Block! Let's verify with neutral SNI probe.
         neutral_domain = "www.google.com"
         neutral_passed = False
@@ -316,13 +306,13 @@ def evaluate_stage_c_sni_dpi(target_ip: str, domain: str, timeout: float = 3.0) 
             stage.details = [
                 f"• 🚨 100% Confirmed DPI Block: Connection was immediately RESET when sending SNI '{domain}'.",
                 f"• Neutral SNI '{neutral_domain}' to the same IP was accepted.",
-                "• Middlebox (MikroTik / Fortinet / ISP DPI) actively inspects TLS ClientHello and injects TCP RST."
+                "• Middlebox (MikroTik / Fortinet / ISP DPI) actively inspects TLS ClientHello and injects TCP RST.",
             ]
         else:
             stage.summary = f"🔴 TLS Handshake Reset ({type(e).__name__})"
             stage.details = [
                 f"• TLS handshake to {target_ip} was terminated: {e}",
-                "• Likely deep packet inspection or SSL handshake filter."
+                "• Likely deep packet inspection or SSL handshake filter.",
             ]
         stage.technical_info = {"error": str(e), "sni": domain, "neutral_test_passed": neutral_passed}
 
@@ -331,7 +321,7 @@ def evaluate_stage_c_sni_dpi(target_ip: str, domain: str, timeout: float = 3.0) 
         stage.summary = "🔴 TLS ClientHello Dropped (Silent DPI Drop)"
         stage.details = [
             f"• Server accepted TCP SYN, but packet containing SNI '{domain}' was silently dropped.",
-            "• Classic behavior of DPI firewall waiting for ClientHello before dropping traffic."
+            "• Classic behavior of DPI firewall waiting for ClientHello before dropping traffic.",
         ]
         stage.technical_info = {"error": "timeout_on_client_hello", "sni": domain}
 
@@ -349,11 +339,7 @@ def evaluate_stage_d_ssl_mitm(domain: str, ssock: Optional[Any], target_ip: str)
     Node D: SSL Certificate & Corporate MITM Inspection.
     Inspects server certificate issuer for proxy decryption (Zscaler, Fortinet, self-signed).
     """
-    stage = DiagnosticStage(
-        node_id="D",
-        name="4. SSL Certificate & MITM",
-        status="SKIPPED"
-    )
+    stage = DiagnosticStage(node_id="D", name="4. SSL Certificate & MITM", status="SKIPPED")
 
     if ssock is None:
         # Attempt dedicated connection for cert inspection
@@ -390,13 +376,23 @@ def evaluate_stage_d_ssl_mitm(domain: str, ssock: Optional[Any], target_ip: str)
                         subject_str += f"{v} "
 
         # Scan for Corporate MITM signatures
-        mitm_signatures = ["fortinet", "palo alto", "zscaler", "sophos", "bluecoat", "squid", "kaspersky", "interception", "proxy"]
+        mitm_signatures = [
+            "fortinet",
+            "palo alto",
+            "zscaler",
+            "sophos",
+            "bluecoat",
+            "squid",
+            "kaspersky",
+            "interception",
+            "proxy",
+        ]
         is_mitm = any(sig in issuer_str.lower() for sig in mitm_signatures)
 
         stage.technical_info = {
             "issuer": issuer_str.strip() or "Standard Public CA",
             "subject": subject_str.strip() or domain,
-            "is_mitm": is_mitm
+            "is_mitm": is_mitm,
         }
 
         if is_mitm:
@@ -405,7 +401,7 @@ def evaluate_stage_d_ssl_mitm(domain: str, ssock: Optional[Any], target_ip: str)
             stage.details = [
                 f"• 🚨 Corporate MITM Detected: Certificate issued by '{issuer_str.strip()}'.",
                 "• Your company's firewall is decrypting and inspecting all HTTPS traffic to this site.",
-                "• Privacy is NOT end-to-end encrypted."
+                "• Privacy is NOT end-to-end encrypted.",
             ]
         else:
             stage.status = "PASS"
@@ -413,15 +409,17 @@ def evaluate_stage_d_ssl_mitm(domain: str, ssock: Optional[Any], target_ip: str)
             stage.details = [
                 f"• Certificate Issuer: {issuer_str.strip() or 'Verified Global CA'}",
                 f"• Subject: {subject_str.strip() or domain}",
-                "• End-to-end encrypted. No SSL Decryption MITM detected."
+                "• End-to-end encrypted. No SSL Decryption MITM detected.",
             ]
     except Exception as e:
         stage.status = "WARN"
         stage.summary = f"🟡 Certificate Warning ({str(e)[:30]})"
         stage.details = [f"• Error parsing certificate: {e}"]
     finally:
-        try: ssock.close()
-        except Exception: pass
+        try:
+            ssock.close()
+        except Exception:
+            pass
 
     return stage
 
@@ -429,6 +427,7 @@ def evaluate_stage_d_ssl_mitm(domain: str, ssock: Optional[Any], target_ip: str)
 # ==============================================================================
 # MASTER DIAGNOSTIC RUNNER & RECOMMENDATION GENERATOR
 # ==============================================================================
+
 
 def diagnose_domain_reachability(domain: str, timeout: float = 3.0) -> DomainDiagnosticReport:
     """
@@ -465,7 +464,9 @@ def diagnose_domain_reachability(domain: str, timeout: float = 3.0) -> DomainDia
             "Solusi: Ganti DNS ke GRC Smart Mix atau aktifkan DoH Forwarder Netools."
         )
         report.recommended_action_type = "CHANGE_DNS"
-        report.stages["B"] = DiagnosticStage("B", "2. TCP Connection (Layer 4)", "SKIPPED", summary="⚪ Skipped (No Valid IP)")
+        report.stages["B"] = DiagnosticStage(
+            "B", "2. TCP Connection (Layer 4)", "SKIPPED", summary="⚪ Skipped (No Valid IP)"
+        )
         report.stages["C"] = DiagnosticStage("C", "3. TLS SNI Handshake", "SKIPPED", summary="⚪ Skipped")
         report.stages["D"] = DiagnosticStage("D", "4. SSL Certificate & MITM", "SKIPPED", summary="⚪ Skipped")
         return report
@@ -501,7 +502,9 @@ def diagnose_domain_reachability(domain: str, timeout: float = 3.0) -> DomainDia
             "Solusi: Aktifkan Sing-box Proxy Rotator (VLESS/Trojan) atau Cloudflare WARP untuk enkripsi total L3/L4."
         )
         report.recommended_action_type = "PROXY_VPN"
-        report.stages["D"] = DiagnosticStage("D", "4. SSL Certificate & MITM", "SKIPPED", summary="⚪ Skipped (Handshake Reset)")
+        report.stages["D"] = DiagnosticStage(
+            "D", "4. SSL Certificate & MITM", "SKIPPED", summary="⚪ Skipped (Handshake Reset)"
+        )
         return report
 
     # 4. Stage D: SSL MITM

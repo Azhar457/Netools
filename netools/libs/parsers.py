@@ -21,6 +21,7 @@ def decode_base64_if_needed(text: str) -> str:
         pass
     return stripped
 
+
 def parse_ss_uri(uri: str) -> Optional[Dict[str, Any]]:
     """Parse ss://... URI into config dict."""
     try:
@@ -53,6 +54,7 @@ def parse_ss_uri(uri: str) -> Optional[Dict[str, Any]]:
         }
     except Exception:
         return None
+
 
 def parse_trojan_uri(uri: str) -> Optional[Dict[str, Any]]:
     """Parse trojan://... URI."""
@@ -92,6 +94,7 @@ def parse_trojan_uri(uri: str) -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
+
 def parse_vmess_uri(uri: str) -> Optional[Dict[str, Any]]:
     """Parse vmess://... (base64 JSON) URI."""
     try:
@@ -109,15 +112,20 @@ def parse_vmess_uri(uri: str) -> Optional[Dict[str, Any]]:
                 "type": data.get("net", "tcp"),
                 "path": data.get("path", ""),
                 "headers": {"Host": data.get("host", "")} if data.get("host") else {},
-            } if data.get("net") in ("ws", "grpc") else None,
+            }
+            if data.get("net") in ("ws", "grpc")
+            else None,
             "tls": {
                 "enabled": data.get("tls") == "tls",
                 "server_name": data.get("sni", data.get("host", data["add"])),
                 "insecure": True,
-            } if data.get("tls") == "tls" else None,
+            }
+            if data.get("tls") == "tls"
+            else None,
         }
     except Exception:
         return None
+
 
 def parse_vless_uri(uri: str) -> Optional[Dict[str, Any]]:
     """Parse vless://uuid@host:port?query#tag URI."""
@@ -186,6 +194,7 @@ def parse_vless_uri(uri: str) -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
+
 def parse_proxy_uri(uri: str) -> Optional[Dict[str, Any]]:
     """Parse any supported proxy URI (ss, trojan, vmess, vless)."""
     uri = uri.strip()
@@ -198,6 +207,7 @@ def parse_proxy_uri(uri: str) -> Optional[Dict[str, Any]]:
     elif uri.startswith("vless://"):
         return parse_vless_uri(uri)
     return None
+
 
 def extract_all_proxies(raw_text: str, max_count: int = 20) -> List[Dict[str, Any]]:
     """Parse entire proxy subscription text and deduplicate by host:port."""

@@ -36,7 +36,9 @@ class TestThreatDetector(unittest.TestCase):
             threat_detector.ARPEntry(ip="192.168.1.150", mac="aa:bb:cc:dd:ee:ff"),  # Attacker sharing GW MAC
             threat_detector.ARPEntry(ip="192.168.1.20", mac="00:11:22:33:44:20"),
         ]
-        is_spoof, is_dup, gw_mac, reasons = threat_detector.detect_arp_spoofing(poisoned_table, gateway_ip="192.168.1.1")
+        is_spoof, is_dup, gw_mac, reasons = threat_detector.detect_arp_spoofing(
+            poisoned_table, gateway_ip="192.168.1.1"
+        )
         self.assertTrue(is_spoof)
         self.assertGreater(len(reasons), 0)
         self.assertIn("ARP Poisoning", reasons[0])
@@ -55,7 +57,7 @@ class TestThreatDetector(unittest.TestCase):
 
     def test_03_gateway_tracker_mac_flapping(self):
         tracker = threat_detector.GatewayTracker()
-        
+
         # Initial registration
         flapping1 = tracker.update_and_check_flapping("192.168.1.1", "00:11:22:33:44:55")
         self.assertFalse(flapping1)
@@ -100,12 +102,14 @@ class TestThreatDetector(unittest.TestCase):
 
         # Register callback
         received_reports = []
+
         def listener(r):
             received_reports.append(r)
 
         threat_service.register_threat_callback(listener)
         threat_service.start_threat_monitor(interval_sec=0.1)
         import time
+
         time.sleep(0.3)
         threat_service.stop_threat_monitor()
         threat_service.unregister_threat_callback(listener)

@@ -10,6 +10,7 @@ def uint8_to_base64url(data: bytes) -> str:
     """Convert bytes to URL-safe Base64 without padding."""
     return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
 
+
 def build_dns_query_packet(domain: str, tx_id: int = 0x1234, qtype: int = 1) -> bytes:
     """Construct a raw RFC 1035 / RFC 8484 DNS query packet (default Type 1 = A record)."""
     clean_domain = domain.strip().strip(".")

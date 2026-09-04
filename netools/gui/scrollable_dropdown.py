@@ -4,8 +4,8 @@ Uses a single native tk.Listbox (instant rendering for 90+ items, native
 scrolling/keyboard) instead of per-item CTkButtons, which froze the UI.
 """
 
-import tkinter as tk
 import time
+import tkinter as tk
 from typing import Any, Callable, List, Optional, Tuple
 
 import customtkinter as ctk
@@ -15,7 +15,6 @@ from netools.gui.theme import (
     ThemeManager,
 )
 from netools.gui.wm import mark_popup
-
 
 
 class CTkScrollableDropdown:
@@ -105,13 +104,12 @@ class CTkScrollableDropdown:
         self.toplevel.attributes("-topmost", True)
         self.toplevel.configure(fg_color=ThemeManager.surface())
 
-
         main_card = ctk.CTkFrame(
             self.toplevel,
             fg_color=ThemeManager.surface(),
             corner_radius=8,
             border_width=1,
-            border_color=ThemeManager.border()
+            border_color=ThemeManager.border(),
         )
         main_card.pack(fill="both", expand=True, padx=0, pady=0)
 
@@ -123,7 +121,7 @@ class CTkScrollableDropdown:
                 font=Fonts.regular(10),
                 fg_color=ThemeManager.surface_alt(),
                 border_color=ThemeManager.border(),
-                height=28
+                height=28,
             )
             self.search_entry.pack(fill="x", padx=8, pady=(8, 4))
             self.search_entry.bind("<KeyRelease>", self._on_search)
@@ -237,6 +235,7 @@ class CTkScrollableDropdown:
                 self.widget.set(val)
             except Exception as e:
                 from netools.libs.logger import get_logger
+
                 get_logger(__name__).warning(f"combobox.set failed: {e}")
         # Keep the combobox's value list in sync
         if hasattr(self.widget, "configure"):
@@ -247,12 +246,14 @@ class CTkScrollableDropdown:
                     self.widget.configure(values=current)
             except Exception as e:
                 from netools.libs.logger import get_logger
+
                 get_logger(__name__).warning(f"combobox values sync failed: {e}")
         if self.command:
             try:
                 self.command(val)
             except Exception as e:
                 from netools.libs.logger import get_logger
+
                 get_logger(__name__).error(f"Dropdown callback error: {e}", exc_info=True)
         self._close()
 
@@ -274,7 +275,12 @@ class CTkScrollableDropdown:
             gx, gy, gw, gh = self._geo
             if (gx <= x <= gx + gw) and (gy <= y <= gy + gh):
                 return
-            wx, wy, ww, wh = self.widget.winfo_rootx(), self.widget.winfo_rooty(), self.widget.winfo_width(), self.widget.winfo_height()
+            wx, wy, ww, wh = (
+                self.widget.winfo_rootx(),
+                self.widget.winfo_rooty(),
+                self.widget.winfo_width(),
+                self.widget.winfo_height(),
+            )
             if (wx <= x <= wx + ww) and (wy <= y <= wy + wh):
                 return
         except Exception:

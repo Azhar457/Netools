@@ -28,7 +28,7 @@ def audit_provider(provider_key: str, mode: str = "ipv4") -> Dict[str, Any]:
         return {
             "error": f"Provider '{provider_key}' not found in database.",
             "security_score": 0,
-            "overall_rating": "🔴 Unknown"
+            "overall_rating": "🔴 Unknown",
         }
 
     mode_clean = mode.lower()
@@ -47,7 +47,7 @@ def audit_provider(provider_key: str, mode: str = "ipv4") -> Dict[str, Any]:
         return {
             "error": f"Provider '{provider_key}' has no valid endpoint for mode '{mode}'.",
             "security_score": 0,
-            "overall_rating": "🔴 Unavailable"
+            "overall_rating": "🔴 Unavailable",
         }
 
     audit_res = dns_leak.run_comprehensive_dns_leak_audit(endpoint, mode=mode)
@@ -72,7 +72,7 @@ def audit_active_system_dns(device: Optional[str] = None) -> Dict[str, Any]:
             "resolvers_audited": [],
             "transparent_proxy": dns_leak.check_transparent_dns_proxy(),
             "overall_score": 50,
-            "overall_rating": "🟡 Unaudited (DHCP Default)"
+            "overall_rating": "🟡 Unaudited (DHCP Default)",
         }
 
     reports: List[Dict[str, Any]] = []
@@ -100,5 +100,5 @@ def audit_active_system_dns(device: Optional[str] = None) -> Dict[str, Any]:
         "active_dns": active_dns,
         "resolvers_audited": reports,
         "overall_score": avg_score,
-        "overall_rating": rating
+        "overall_rating": rating,
     }

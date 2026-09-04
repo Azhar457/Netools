@@ -36,8 +36,12 @@ def test_doh_forwarder_returns_ported_localhost():
     class FakeView:
         main_app = FakeApp()
         providers = {
-            "alidns": {"name": "AliDNS", "doh_url": "https://dns.alidns.com/dns-query",
-                       "ipv4": ["223.5.5.5"], "ipv6": []}
+            "alidns": {
+                "name": "AliDNS",
+                "doh_url": "https://dns.alidns.com/dns-query",
+                "ipv4": ["223.5.5.5"],
+                "ipv6": [],
+            }
         }
 
     v = FakeView()

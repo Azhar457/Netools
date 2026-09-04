@@ -24,6 +24,7 @@ from netools.libs.env import get_os_type
 # DATA STRUCTURES
 # ==============================================================================
 
+
 @dataclass
 class ARPEntry:
     ip: str
@@ -54,6 +55,7 @@ class NetworkThreatReport:
 # GATEWAY & ROUTE DISCOVERY
 # ==============================================================================
 
+
 def get_default_gateway() -> Tuple[Optional[str], Optional[str]]:
     """
     Retrieve default gateway IP address and interface name cross-platform.
@@ -65,7 +67,7 @@ def get_default_gateway() -> Tuple[Optional[str], Optional[str]]:
         # 1. Try /proc/net/route
         if os.path.exists("/proc/net/route"):
             try:
-                with open("/proc/net/route", "r") as f:
+                with open("/proc/net/route") as f:
                     for line in f:
                         fields = line.strip().split()
                         if len(fields) >= 3 and fields[1] == "00000000":
@@ -117,6 +119,7 @@ def get_default_gateway() -> Tuple[Optional[str], Optional[str]]:
 # ARP TABLE PARSING
 # ==============================================================================
 
+
 def parse_arp_table() -> List[ARPEntry]:
     """
     Parse operating system ARP cache into structured ARPEntry records.
@@ -129,7 +132,7 @@ def parse_arp_table() -> List[ARPEntry]:
         # Check /proc/net/arp first (fastest, no subshell)
         if os.path.exists("/proc/net/arp"):
             try:
-                with open("/proc/net/arp", "r") as f:
+                with open("/proc/net/arp") as f:
                     lines = f.readlines()
                 for line in lines[1:]:  # Skip header
                     parts = line.strip().split()
@@ -170,7 +173,10 @@ def parse_arp_table() -> List[ARPEntry]:
         for line in out.splitlines():
             # Match IP and MAC pattern
             ip_m = re.search(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", line)
-            mac_m = re.search(r"([0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2})", line)
+            mac_m = re.search(
+                r"([0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2}[:-][0-9a-fA-F]{1,2})",
+                line,
+            )
             if ip_m and mac_m:
                 ip = ip_m.group(1)
                 mac = mac_m.group(1).lower().replace("-", ":")
@@ -190,8 +196,10 @@ def parse_arp_table() -> List[ARPEntry]:
 # THREAT DETECTION HEURISTICS
 # ==============================================================================
 
+
 class GatewayTracker:
     """Tracks historical Gateway MAC addresses to detect ARP Poisoning / Flapping over time."""
+
     _instance: Optional["GatewayTracker"] = None
 
     def __init__(self):
@@ -213,9 +221,9 @@ class GatewayTracker:
         flapping = False
 
         if (
-            self.last_known_gateway_ip == current_gw_ip and
-            self.last_known_gateway_mac is not None and
-            self.last_known_gateway_mac != current_gw_mac
+            self.last_known_gateway_ip == current_gw_ip
+            and self.last_known_gateway_mac is not None
+            and self.last_known_gateway_mac != current_gw_mac
         ):
             flapping = True
 
@@ -229,8 +237,7 @@ class GatewayTracker:
 
 
 def detect_arp_spoofing(
-    arp_entries: List[ARPEntry],
-    gateway_ip: Optional[str] = None
+    arp_entries: List[ARPEntry], gateway_ip: Optional[str] = None
 ) -> Tuple[bool, bool, Optional[str], List[str]]:
     """
     Analyze ARP table for spoofing signatures:
@@ -272,10 +279,7 @@ def detect_arp_spoofing(
     return spoof_detected, duplicate_mac_detected, gw_mac, reasons
 
 
-def check_suspicious_local_dns(
-    gateway_ip: Optional[str],
-    active_dns_ips: List[str]
-) -> Tuple[bool, List[str]]:
+def check_suspicious_local_dns(gateway_ip: Optional[str], active_dns_ips: List[str]) -> Tuple[bool, List[str]]:
     """
     Check if configured DNS servers are local LAN private IPs that are NOT the Default Gateway.
     (Common Ettercap / Rogue DHCP / DNS spoofing technique).
@@ -288,9 +292,9 @@ def check_suspicious_local_dns(
             continue
         # Check if private IP (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
         is_private = (
-            dns_ip.startswith("192.168.") or
-            dns_ip.startswith("10.") or
-            (dns_ip.startswith("172.") and 16 <= int(dns_ip.split(".")[1]) <= 31)
+            dns_ip.startswith("192.168.")
+            or dns_ip.startswith("10.")
+            or (dns_ip.startswith("172.") and 16 <= int(dns_ip.split(".")[1]) <= 31)
         )
         if is_private:
             if gateway_ip and dns_ip != gateway_ip:
@@ -306,6 +310,7 @@ def check_suspicious_local_dns(
 # ==============================================================================
 # MASTER SCANNER & AUDIT RUNNER
 # ==============================================================================
+
 
 def scan_local_network_threats() -> NetworkThreatReport:
     """
@@ -342,7 +347,10 @@ def scan_local_network_threats() -> NetworkThreatReport:
 
     # 3. Suspicious Local DNS Check
     from netools.adapters import platform_dns
-    iface_dev = gw_iface or (platform_dns.get_network_interfaces()[0]["device"] if platform_dns.get_network_interfaces() else "default")
+
+    iface_dev = gw_iface or (
+        platform_dns.get_network_interfaces()[0]["device"] if platform_dns.get_network_interfaces() else "default"
+    )
     active_dns = platform_dns.get_interface_dns(iface_dev)
     report.details["active_dns"] = active_dns
 

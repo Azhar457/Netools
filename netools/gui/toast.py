@@ -55,11 +55,7 @@ class ToastManager:
 
         # Create floating pill with prominent 2px glowing border
         self.toast_frame = ctk.CTkFrame(
-            self.root,
-            fg_color=cfg["bg"],
-            corner_radius=12,
-            border_width=2,
-            border_color=cfg["border"]
+            self.root, fg_color=cfg["bg"], corner_radius=12, border_width=2, border_color=cfg["border"]
         )
 
         # Status badge pill
@@ -71,7 +67,7 @@ class ToastManager:
             fg_color=cfg["badge_bg"],
             corner_radius=6,
             padx=8,
-            pady=3
+            pady=3,
         )
         badge.pack(side="left", padx=(12, 10), pady=8)
 
@@ -83,7 +79,7 @@ class ToastManager:
             text_color="#cdd6f4",
             fg_color="transparent",
             wraplength=520,
-            justify="left"
+            justify="left",
         )
         lbl_msg.pack(side="left", padx=(0, 12), pady=8)
 
@@ -98,7 +94,7 @@ class ToastManager:
             width=24,
             height=24,
             corner_radius=12,
-            command=self.hide
+            command=self.hide,
         )
         btn_close.pack(side="right", padx=(4, 12), pady=8)
 

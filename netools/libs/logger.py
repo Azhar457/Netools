@@ -5,18 +5,20 @@ Provides formatted, colorized terminal output and persistent log file rotation.
 
 import logging
 import sys
+from typing import Dict
 
 from netools.config import LOGS_DIR
 
 
 class ColoredFormatter(logging.Formatter):
     """Custom ANSI colored formatter for CLI output."""
-    COLORS = {
-        logging.DEBUG: "\033[0;36m",    # Cyan
-        logging.INFO: "\033[0;32m",     # Green
+
+    COLORS: Dict[int, str] = {
+        logging.DEBUG: "\033[0;36m",  # Cyan
+        logging.INFO: "\033[0;32m",  # Green
         logging.WARNING: "\033[1;33m",  # Yellow
-        logging.ERROR: "\033[0;31m",    # Red
-        logging.CRITICAL: "\033[1;31m", # Bold Red
+        logging.ERROR: "\033[0;31m",  # Red
+        logging.CRITICAL: "\033[1;31m",  # Bold Red
     }
     NC = "\033[0m"
 
@@ -25,11 +27,14 @@ class ColoredFormatter(logging.Formatter):
         lvl = f"{color}[{record.levelname}]{self.NC}"
         return f"{lvl} {super().format(record)}"
 
+
 class JsonFormatter(logging.Formatter):
     """Structured JSON formatter for production log ingestion and metrics."""
+
     def format(self, record: logging.LogRecord) -> str:
         import json
         from datetime import datetime
+
         payload = {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
             "level": record.levelname,
@@ -40,9 +45,11 @@ class JsonFormatter(logging.Formatter):
             payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(payload)
 
+
 def get_logger(name: str = "netools") -> logging.Logger:
     """Obtain configured logger instance with optional structured JSON formatting."""
     import os
+
     logger = logging.getLogger(name)
     if logger.handlers:
         return logger

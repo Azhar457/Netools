@@ -1,6 +1,5 @@
 import threading
 from tkinter import ttk
-from typing import Any, Dict, List
 
 import customtkinter as ctk
 
@@ -8,7 +7,6 @@ from netools.adapters import ninerouter as nr_adapt
 from netools.adapters import omniroute as or_adapt
 from netools.config import (
     NINEROUTER_URL,
-    OMNIROUTE_TOKEN,
     OMNIROUTE_URL,
     auto_detect_9router_token,
     get_ninerouter_token,
@@ -445,7 +443,9 @@ class SettingsView(ctk.CTkFrame):
                             name = c.get("name", "Unknown")
                             c_type = c.get("provider", "web")
                             proxy_url = c.get("connectionProxyUrl") or "—"
-                            status = "🟢 Linked" if (c.get("connectionProxyEnabled") or proxy_url != "—") else "⚪ Direct"
+                            status = (
+                                "🟢 Linked" if (c.get("connectionProxyEnabled") or proxy_url != "—") else "⚪ Direct"
+                            )
                             items_to_show.append(("🚀 OmniRoute", name, c_type, str(proxy_url), status))
 
                     if show_nr and nr_conns:
@@ -457,7 +457,9 @@ class SettingsView(ctk.CTkFrame):
                                 or c.get("providerSpecificData", {}).get("connectionProxyUrl")
                                 or "—"
                             )
-                            status = "🟢 Linked" if (c.get("connectionProxyEnabled") or proxy_url != "—") else "⚪ Direct"
+                            status = (
+                                "🟢 Linked" if (c.get("connectionProxyEnabled") or proxy_url != "—") else "⚪ Direct"
+                            )
                             items_to_show.append(("⚡ 9Router", name, c_type, str(proxy_url), status))
 
                     for row in items_to_show:

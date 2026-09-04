@@ -20,6 +20,7 @@ _CURRENT_TOKEN = None  # lazy-loaded on first API call
 _HEALTH_TTL = 3.0
 _health_cache: Dict[str, Any] = {"val": None, "ts": 0.0}
 
+
 def set_credentials(url: Optional[str] = None, token: Optional[str] = None) -> None:
     """Dynamically update 9Router API endpoint and authentication token."""
     global _CURRENT_URL, _CURRENT_TOKEN
@@ -28,7 +29,10 @@ def set_credentials(url: Optional[str] = None, token: Optional[str] = None) -> N
     if token is not None:
         _CURRENT_TOKEN = token
 
-def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, timeout: float = 5.0, max_retries: int = 2) -> Dict[str, Any]:
+
+def api_request(
+    method: str, path: str, body: Optional[Dict[str, Any]] = None, timeout: float = 5.0, max_retries: int = 2
+) -> Dict[str, Any]:
     """Send authenticated HTTP request to 9Router REST API with retry on transient network error."""
     global _CURRENT_TOKEN
     if _CURRENT_TOKEN is None:
@@ -41,12 +45,7 @@ def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, t
 
     last_err = None
     for attempt in range(max_retries + 1):
-        req = urllib.request.Request(
-            url,
-            data=data,
-            method=method,
-            headers=headers
-        )
+        req = urllib.request.Request(url, data=data, method=method, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return json.loads(resp.read().decode("utf-8"))
@@ -54,7 +53,8 @@ def api_request(method: str, path: str, body: Optional[Dict[str, Any]] = None, t
             last_err = e
             if attempt < max_retries:
                 import time
-                time.sleep(0.3 * (2 ** attempt))
+
+                time.sleep(0.3 * (2**attempt))
 
     return {"error": str(last_err)}
 
@@ -71,11 +71,13 @@ def is_healthy() -> bool:
     _health_cache["ts"] = now
     return healthy
 
+
 @safe_backend_call(fallback_return=[])
 def get_connections() -> List[Dict[str, Any]]:
     """Retrieve all provider connections from 9Router."""
     res = api_request("GET", "/api/providers")
     return res.get("connections", [])
+
 
 @safe_backend_call(fallback_return={})
 def get_existing_pools() -> Dict[str, str]:
@@ -84,25 +86,36 @@ def get_existing_pools() -> Dict[str, str]:
     pools = res.get("proxyPools", res.get("proxy_pools", []))
     return {p["name"]: p["id"] for p in pools}
 
+
 @safe_backend_call(fallback_return=None)
 def assign_proxy_to_connection(conn_id: str, proxy_url: str) -> Optional[Dict[str, Any]]:
     """Assign a proxy URL to a connection."""
-    res = api_request("PUT", f"/api/providers/{conn_id}", {
-        "connectionProxyEnabled": True,
-        "connectionProxyUrl": proxy_url,
-        "connectionNoProxy": "localhost,127.0.0.1",
-    })
+    res = api_request(
+        "PUT",
+        f"/api/providers/{conn_id}",
+        {
+            "connectionProxyEnabled": True,
+            "connectionProxyUrl": proxy_url,
+            "connectionNoProxy": "localhost,127.0.0.1",
+        },
+    )
     return res.get("connection") if "connection" in res else None
+
 
 def remove_proxy_from_connection(conn_id: str) -> Optional[Dict[str, Any]]:
     """Disable proxy on a connection and completely clear proxy URL and proxyPoolId."""
-    res = api_request("PUT", f"/api/providers/{conn_id}", {
-        "connectionProxyEnabled": False,
-        "connectionProxyUrl": "",
-        "connectionNoProxy": "",
-        "proxyPoolId": None,
-    })
+    res = api_request(
+        "PUT",
+        f"/api/providers/{conn_id}",
+        {
+            "connectionProxyEnabled": False,
+            "connectionProxyUrl": "",
+            "connectionNoProxy": "",
+            "proxyPoolId": None,
+        },
+    )
     return res.get("connection") if "connection" in res else None
+
 
 def clear_all_connection_proxies() -> int:
     """Unlink and disable proxy on ALL connections in 9Router."""
@@ -122,7 +135,9 @@ def clear_all_connection_proxies() -> int:
             log.info(f"Proxy cleared: {name} ({conn['id'][:12]})")
     return cleared
 
+
 clear_all_proxies = clear_all_connection_proxies
+
 
 def assign_round_robin(proxies_or_pools: List[str]) -> int:
     """Distribute active proxies or pools round-robin across all 9Router connections."""
@@ -141,25 +156,32 @@ def assign_round_robin(proxies_or_pools: List[str]) -> int:
             assigned += 1
     return assigned
 
+
 @safe_backend_call(fallback_return=None)
 def add_proxy_pool(name: str, proxy_url: str) -> Optional[str]:
     """Register a new proxy pool in 9Router."""
     delete_pools_by_url(proxy_url)
-    res = api_request("POST", "/api/proxy-pools", {
-        "name": name,
-        "proxyUrl": proxy_url,
-        "noProxy": "localhost,127.0.0.1",
-        "strictProxy": False,
-        "isActive": True,
-    })
+    res = api_request(
+        "POST",
+        "/api/proxy-pools",
+        {
+            "name": name,
+            "proxyUrl": proxy_url,
+            "noProxy": "localhost,127.0.0.1",
+            "strictProxy": False,
+            "isActive": True,
+        },
+    )
     pool = res.get("proxyPool", {})
     return pool.get("id")
+
 
 @safe_backend_call(fallback_return=False)
 def delete_proxy_pool(pool_id: str) -> bool:
     """Delete proxy pool from 9Router."""
     res = api_request("DELETE", f"/api/proxy-pools/{pool_id}")
     return res.get("success", False) or "error" not in res
+
 
 def delete_pools_by_url(proxy_url: str) -> None:
     """Delete all pools with matching proxy URL."""

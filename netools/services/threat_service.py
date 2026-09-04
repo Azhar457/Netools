@@ -80,12 +80,7 @@ def start_threat_monitor(interval_sec: float = 15.0) -> bool:
         return True
 
     _stop_event.clear()
-    _monitor_thread = threading.Thread(
-        target=_monitor_loop,
-        args=(interval_sec,),
-        daemon=True,
-        name="threat-monitor"
-    )
+    _monitor_thread = threading.Thread(target=_monitor_loop, args=(interval_sec,), daemon=True, name="threat-monitor")
     _monitor_thread.start()
     return True
 

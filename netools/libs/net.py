@@ -44,7 +44,9 @@ def _socks5_connect(proxy_port: int, host: str, port: int, timeout: float = 5.0)
     return s
 
 
-def probe_socks_upstream_python(port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0) -> bool:
+def probe_socks_upstream_python(
+    port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0
+) -> bool:
     """Pure-Python SOCKS5h upstream probe (no curl): CONNECT then HTTPS GET."""
     if not is_port_open(port):
         return False
@@ -88,7 +90,9 @@ def probe_socks_upstream_python(port: int, test_url: str = "https://www.gstatic.
                 pass
 
 
-def probe_socks_upstream(port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0) -> bool:
+def probe_socks_upstream(
+    port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0
+) -> bool:
     """Validate that a local SOCKS5 proxy can route traffic upstream via curl socks5h (pure-Python fallback)."""
     if shutil.which("curl") is None:
         return probe_socks_upstream_python(port, test_url=test_url, timeout=timeout)
@@ -99,20 +103,26 @@ def probe_socks_upstream(port: int, test_url: str = "https://www.gstatic.com/gen
             [
                 "curl",
                 "-s",
-                "-o", "/dev/null",
-                "-w", "%{http_code}",
-                "--proxy", f"socks5h://127.0.0.1:{port}",
-                "--connect-timeout", str(int(timeout)),
-                "--max-time", str(int(timeout) + 2),
-                test_url
+                "-o",
+                "/dev/null",
+                "-w",
+                "%{http_code}",
+                "--proxy",
+                f"socks5h://127.0.0.1:{port}",
+                "--connect-timeout",
+                str(int(timeout)),
+                "--max-time",
+                str(int(timeout) + 2),
+                test_url,
             ],
             capture_output=True,
             text=True,
-            timeout=timeout + 3
+            timeout=timeout + 3,
         )
         return res.stdout.strip() in ("200", "204", "301", "302")
     except Exception:
         return False
+
 
 def check_ipv6_connectivity(timeout: float = 1.2) -> bool:
     """Check if the local network adapter and ISP have an active, routable IPv6 connection."""
@@ -128,15 +138,18 @@ def check_ipv6_connectivity(timeout: float = 1.2) -> bool:
         if sock:
             sock.close()
 
+
 def wait_for_port(port: int, host: str = "127.0.0.1", timeout: float = 3.0, interval: float = 0.1) -> bool:
     """Poll until a TCP port is listening or timeout expires."""
     import time
+
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if is_port_open(port, host, timeout=0.3):
             return True
         time.sleep(interval)
     return False
+
 
 def fetch_text(url: str, timeout: int = 15) -> str:
     """Fetch plain text via HTTP request."""
@@ -158,7 +171,7 @@ def ping_dns_udp(ip: str, domain: str = "google.com", timeout: float = 2.0) -> O
     t0 = time.perf_counter()
     try:
         sock.sendto(pkt, (ip, 53))
-        data, _ = sock.recvfrom(512)
+        _data, _ = sock.recvfrom(512)
         lat = (time.perf_counter() - t0) * 1000.0
         return lat
     except Exception:
@@ -175,6 +188,7 @@ def ping_ip(ip: str, count: int = 1, timeout: float = 1.5) -> Optional[float]:
     import time
 
     from netools.libs.env import get_os_type
+
     os_t = get_os_type()
 
     if not ip or ip.strip() == "":
@@ -200,6 +214,7 @@ def ping_ip(ip: str, count: int = 1, timeout: float = 1.5) -> Optional[float]:
                         return float(ms_str)
                 elif "Average =" in line or "avg" in line:
                     import re
+
                     m = re.search(r"(\d+(\.\d+)?)ms", line)
                     if m:
                         return float(m.group(1))

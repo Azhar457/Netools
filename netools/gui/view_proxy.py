@@ -26,16 +26,29 @@ class ProxyView(ctk.CTkFrame):
 
     def apply_theme(self):
         self.configure(fg_color=ThemeManager.bg())
-        if hasattr(self, "hdr"): self.hdr.configure(fg_color=ThemeManager.bg())
-        if hasattr(self, "lbl_title"): self.lbl_title.configure(text_color=ThemeManager.success())
-        if hasattr(self, "btn_refresh"): self.btn_refresh.configure(fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt())
-        if hasattr(self, "summary_card"): self.summary_card.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
-        if hasattr(self, "lbl_summary"): self.lbl_summary.configure(text_color=ThemeManager.text_muted())
-        if hasattr(self, "tbl_frame"): self.tbl_frame.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
-        
+        if hasattr(self, "hdr"):
+            self.hdr.configure(fg_color=ThemeManager.bg())
+        if hasattr(self, "lbl_title"):
+            self.lbl_title.configure(text_color=ThemeManager.success())
+        if hasattr(self, "btn_refresh"):
+            self.btn_refresh.configure(
+                fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt()
+            )
+        if hasattr(self, "summary_card"):
+            self.summary_card.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+        if hasattr(self, "lbl_summary"):
+            self.lbl_summary.configure(text_color=ThemeManager.text_muted())
+        if hasattr(self, "tbl_frame"):
+            self.tbl_frame.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+
         style = ttk.Style()
         style.theme_use("clam")
-        style.configure("Treeview", background=ThemeManager.surface(), foreground=ThemeManager.text(), fieldbackground=ThemeManager.surface())
+        style.configure(
+            "Treeview",
+            background=ThemeManager.surface(),
+            foreground=ThemeManager.text(),
+            fieldbackground=ThemeManager.surface(),
+        )
         style.configure("Treeview.Heading", background=ThemeManager.surface_alt(), foreground=ThemeManager.text())
         style.map("Treeview", background=[("selected", ThemeManager.border())])
 
@@ -48,7 +61,7 @@ class ProxyView(ctk.CTkFrame):
             self.hdr,
             text=tr("🌐 Turbo Sing-box Proxy Rotator"),
             font=Fonts.title(16),
-            text_color=ThemeManager.success()
+            text_color=ThemeManager.success(),
         )
         self.lbl_title.pack(side="left", padx=(0, 14))
 
@@ -61,7 +74,7 @@ class ProxyView(ctk.CTkFrame):
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
             height=36,
-            command=self.on_start
+            command=self.on_start,
         )
         self.btn_start.pack(side="left", padx=4)
 
@@ -73,7 +86,7 @@ class ProxyView(ctk.CTkFrame):
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.warning(),
             height=36,
-            command=self.on_stop
+            command=self.on_stop,
         )
         self.btn_stop.pack(side="left", padx=4)
 
@@ -85,7 +98,7 @@ class ProxyView(ctk.CTkFrame):
             text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
             height=36,
-            command=self.on_refresh
+            command=self.on_refresh,
         )
         self.btn_refresh.pack(side="left", padx=4)
 
@@ -97,7 +110,7 @@ class ProxyView(ctk.CTkFrame):
             font=Fonts.regular(12),
             text_color=ThemeManager.text(),
             fg_color=ThemeManager.success(),
-            command=self.toggle_watchdog
+            command=self.toggle_watchdog,
         )
         self.chk_watchdog.pack(side="left", padx=14)
 
@@ -110,35 +123,32 @@ class ProxyView(ctk.CTkFrame):
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
             height=36,
-            command=self.toggle_pac
+            command=self.toggle_pac,
         )
         self.btn_pac_toggle.pack(side="right", padx=(4, 0))
 
-
         # Status Summary Bar
-        self.summary_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.summary_card = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.summary_card.pack(fill="x", padx=16, pady=4)
 
         self.lbl_summary = ctk.CTkLabel(
             self.summary_card,
             text="Instances: 0 active | SOCKS: 11080–11099 | HTTP: 21080–21099 | Upstream: gstatic 204",
             font=Fonts.mono(12),
-            text_color=ThemeManager.text_muted()
+            text_color=ThemeManager.text_muted(),
         )
         self.lbl_summary.pack(padx=14, pady=8, anchor="w")
 
         # Treeview Table for Proxies
-        self.tbl_frame = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.tbl_frame = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.tbl_frame.pack(fill="both", expand=True, padx=16, pady=6)
 
         columns = ("slot", "protocol", "server", "socks", "http", "pool", "dns", "status", "age")
-        self.tree = ttk.Treeview(
-            self.tbl_frame,
-            columns=columns,
-            show="headings",
-            selectmode="browse"
-        )
-
+        self.tree = ttk.Treeview(self.tbl_frame, columns=columns, show="headings", selectmode="browse")
 
         style = ttk.Style()
         style.theme_use("clam")
@@ -148,16 +158,15 @@ class ProxyView(ctk.CTkFrame):
             foreground=ThemeManager.text(),
             fieldbackground=ThemeManager.surface(),
             rowheight=26,
-            font=("sans-serif", 10)
+            font=("sans-serif", 10),
         )
         style.configure(
             "Treeview.Heading",
             background=ThemeManager.surface_alt(),
             foreground=ThemeManager.text(),
-            font=("sans-serif", 10, "bold")
+            font=("sans-serif", 10, "bold"),
         )
         style.map("Treeview", background=[("selected", ThemeManager.border())])
-
 
         cols_config = [
             ("slot", tr("Slot ID"), 80, "center"),
@@ -178,7 +187,6 @@ class ProxyView(ctk.CTkFrame):
 
         vsb = ttk.Scrollbar(self.tbl_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
-
 
         self.tree.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
         vsb.pack(side="right", fill="y", padx=(0, 8), pady=8)
@@ -228,19 +236,21 @@ class ProxyView(ctk.CTkFrame):
             age = data.get("started_at", "Just now")
             status = "🟢 Alive"
 
-            self.tree.insert("", "end", values=(
-                name, proto, srv, port, http_p, pool, dns_engine, status, age
-            ))
+            self.tree.insert("", "end", values=(name, proto, srv, port, http_p, pool, dns_engine, status, age))
 
         cnt = len(insts)
         self.lbl_summary.configure(
-            text=f"Instances: {cnt} active | SOCKS: {SOCKS5_PORT_START}–{SOCKS5_PORT_START + max(0, cnt-1)} | HTTP: {SOCKS5_PORT_START + HTTP_PORT_OFFSET}–{SOCKS5_PORT_START + HTTP_PORT_OFFSET + max(0, cnt-1)} | Upstream: gstatic 204"
+            text=f"Instances: {cnt} active | SOCKS: {SOCKS5_PORT_START}–{SOCKS5_PORT_START + max(0, cnt - 1)} | HTTP: {SOCKS5_PORT_START + HTTP_PORT_OFFSET}–{SOCKS5_PORT_START + HTTP_PORT_OFFSET + max(0, cnt - 1)} | Upstream: gstatic 204"
         )
 
         if pac_running:
-            self.btn_pac_toggle.configure(text=tr("🛑 Stop PAC"), fg_color=ThemeManager.danger(), hover_color=ThemeManager.warning())
+            self.btn_pac_toggle.configure(
+                text=tr("🛑 Stop PAC"), fg_color=ThemeManager.danger(), hover_color=ThemeManager.warning()
+            )
         else:
-            self.btn_pac_toggle.configure(text=tr("🟢 Start PAC"), fg_color=ThemeManager.primary(), hover_color=ThemeManager.accent())
+            self.btn_pac_toggle.configure(
+                text=tr("🟢 Start PAC"), fg_color=ThemeManager.primary(), hover_color=ThemeManager.accent()
+            )
 
     def refresh(self):
         try:
@@ -250,6 +260,7 @@ class ProxyView(ctk.CTkFrame):
 
     def on_start(self):
         self.main_app.show_toast(tr("Memulai Turbo Proxy Pool..."), level="info")
+
         def _bg():
             proxy_service.start_proxy_pool(max_instances=20, standalone=False)
             try:
@@ -257,10 +268,12 @@ class ProxyView(ctk.CTkFrame):
                 self.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def on_stop(self):
         self.main_app.show_toast(tr("Menghentikan seluruh instance Proxy..."), level="warning")
+
         def _bg():
             proxy_service.stop_proxy_pool()
             try:
@@ -268,6 +281,7 @@ class ProxyView(ctk.CTkFrame):
                 self.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def on_refresh(self):

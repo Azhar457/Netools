@@ -13,9 +13,11 @@ def get_providers(region: str = "all", category: str = "all") -> Dict[str, Any]:
     all_provs = db.load_providers()
     return db.filter_providers(all_provs, region=region, category=category)
 
+
 def sync_cloud_database() -> Tuple[bool, str, int]:
     """Synchronize DNS resolvers database with cloud presets."""
     return db.sync_cloud_providers()
+
 
 def calculate_smart_mix(results: Any, mode: str = "ipv4") -> Dict[str, Any]:
     """Compute 1 Cached + 1 Uncached + 1 TLD Smart Mix trio with strict deduplication."""

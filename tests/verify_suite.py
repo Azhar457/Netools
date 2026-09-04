@@ -11,9 +11,11 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
+
 class TestNetoolsCore(unittest.TestCase):
     def test_01_config_and_paths(self):
         from netools import config
+
         self.assertTrue(config.BASE_DIR.exists())
         self.assertTrue(config.RUNTIME_DIR.exists())
         self.assertTrue(config.CONFIGS_DIR.exists())
@@ -24,9 +26,10 @@ class TestNetoolsCore(unittest.TestCase):
 
     def test_02_dns_database_and_providers(self):
         from netools.libs import dns_db as db
+
         provs = db.load_providers()
         self.assertGreater(len(provs), 30, "Database should have at least 30 DNS providers")
-        
+
         # Verify required keys in providers
         for k, p in provs.items():
             self.assertIn("name", p)
@@ -39,9 +42,33 @@ class TestNetoolsCore(unittest.TestCase):
 
         # Test Smart Mix calculation
         res_map = {
-            "p1": {"key": "p1", "name": "Fast Cached", "ipv4": ["1.1.1.1"], "cached_ms": 10.0, "uncached_ms": 50.0, "dotcom_ms": 40.0, "score": 25.0},
-            "p2": {"key": "p2", "name": "Fast Uncached", "ipv4": ["8.8.8.8"], "cached_ms": 40.0, "uncached_ms": 20.0, "dotcom_ms": 45.0, "score": 30.0},
-            "p3": {"key": "p3", "name": "Fast TLD", "ipv4": ["9.9.9.9"], "cached_ms": 45.0, "uncached_ms": 45.0, "dotcom_ms": 15.0, "score": 32.0}
+            "p1": {
+                "key": "p1",
+                "name": "Fast Cached",
+                "ipv4": ["1.1.1.1"],
+                "cached_ms": 10.0,
+                "uncached_ms": 50.0,
+                "dotcom_ms": 40.0,
+                "score": 25.0,
+            },
+            "p2": {
+                "key": "p2",
+                "name": "Fast Uncached",
+                "ipv4": ["8.8.8.8"],
+                "cached_ms": 40.0,
+                "uncached_ms": 20.0,
+                "dotcom_ms": 45.0,
+                "score": 30.0,
+            },
+            "p3": {
+                "key": "p3",
+                "name": "Fast TLD",
+                "ipv4": ["9.9.9.9"],
+                "cached_ms": 45.0,
+                "uncached_ms": 45.0,
+                "dotcom_ms": 15.0,
+                "score": 32.0,
+            },
         }
 
         mix = bm.calculate_smart_mix(res_map)
@@ -51,10 +78,11 @@ class TestNetoolsCore(unittest.TestCase):
 
     def test_04_network_interfaces_and_adapters(self):
         from netools.adapters import platform_dns
+
         ifaces = platform_dns.get_network_interfaces()
         self.assertIsInstance(ifaces, list)
         self.assertGreater(len(ifaces), 0, "Should detect at least 1 network interface")
-        
+
         # Verify interface dict structure
         for iface in ifaces:
             self.assertIn("device", iface)
@@ -65,13 +93,15 @@ class TestNetoolsCore(unittest.TestCase):
         from netools.libs.dns_benchmark import query_doh_dns, query_udp_dns
 
         # Live UDP DNS query test to Cloudflare 1.1.1.1
-        lat_udp, ips_udp, rrsig_udp, edns_udp = query_udp_dns("1.1.1.1", "google.com", timeout=3.0)
+        lat_udp, _ips_udp, _rrsig_udp, _edns_udp = query_udp_dns("1.1.1.1", "google.com", timeout=3.0)
         if lat_udp is not None:
             self.assertGreater(lat_udp, 0.0)
             self.assertLess(lat_udp, 2000.0)
 
         # Live DoH query test to Cloudflare
-        lat_doh, ips_doh, rrsig_doh, edns_doh = query_doh_dns("https://security.cloudflare-dns.com/dns-query", "google.com", timeout=3.0)
+        lat_doh, ips_doh, _rrsig_doh, edns_doh = query_doh_dns(
+            "https://security.cloudflare-dns.com/dns-query", "google.com", timeout=3.0
+        )
         if lat_doh is not None:
             self.assertGreater(lat_doh, 0.0)
             self.assertLess(lat_doh, 2000.0)
@@ -97,8 +127,9 @@ class TestNetoolsCore(unittest.TestCase):
 
     def test_07_cli_parser(self):
         from netools.cli import main
+
         parser = main.build_parser()
-        
+
         # Test CLI arguments
         args_gui = parser.parse_args(["gui"])
         self.assertEqual(args_gui.command, "gui")
@@ -111,6 +142,7 @@ class TestNetoolsCore(unittest.TestCase):
         self.assertEqual(args_proxy.command, "proxy")
         self.assertEqual(args_proxy.proxy_action, "start")
         self.assertTrue(args_proxy.no_9r)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -24,6 +24,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # DATA STRUCTURES
 # ==============================================================================
 
+
 @dataclass
 class DNSResponse:
     raw_bytes: bytes = b""
@@ -36,7 +37,7 @@ class DNSResponse:
     ra: bool = False
     ad: bool = False  # Authentic Data (DNSSEC validation succeeded upstream)
     cd: bool = False
-    rcode: int = 0    # 0=NOERROR, 2=SERVFAIL, 3=NXDOMAIN, etc.
+    rcode: int = 0  # 0=NOERROR, 2=SERVFAIL, 3=NXDOMAIN, etc.
     qdcount: int = 0
     ancount: int = 0
     nscount: int = 0
@@ -61,17 +62,20 @@ class DNSResponse:
 # WIREFORMAT BUILDER & EXTENDED PARSER
 # ==============================================================================
 
+
 def build_dns_query_packet(
     domain: str,
     tx_id: int = 0x5A5A,
     qtype: int = 1,
     want_dnssec: bool = True,
     with_ecs: bool = False,
-    with_padding_len: int = 0
+    with_padding_len: int = 0,
 ) -> bytes:
     """Build DNS wireformat query packet with configurable EDNS0, DO bit, ECS, or Padding."""
-    header = struct.pack(">HHHHHH", tx_id, 0x0100, 1, 0, 0, 1 if (want_dnssec or with_ecs or with_padding_len > 0) else 0)
-    
+    header = struct.pack(
+        ">HHHHHH", tx_id, 0x0100, 1, 0, 0, 1 if (want_dnssec or with_ecs or with_padding_len > 0) else 0
+    )
+
     qname = b""
     for part in domain.strip(".").split("."):
         if not part:
@@ -84,7 +88,7 @@ def build_dns_query_packet(
 
     if want_dnssec or with_ecs or with_padding_len > 0:
         rdata = bytearray()
-        
+
         # Option 8: EDNS Client Subnet (ECS) probe
         if with_ecs:
             # Example query prefix: family=1(IPv4), source=24, scope=0, addr=203.0.113.0
@@ -165,13 +169,13 @@ def parse_dns_response_extended(data: bytes) -> DNSResponse:
         offset = _parse_name(offset)
         if offset + 10 > len(data):
             break
-        rtype, rclass, ttl, rdlength = struct.unpack(">HHIH", data[offset:offset+10])
+        rtype, rclass, ttl, rdlength = struct.unpack(">HHIH", data[offset : offset + 10])
         offset += 10
         res.ttl_list.append(ttl)
         if rtype == 1 and rdlength == 4 and offset + 4 <= len(data):  # A record
-            res.ips.append(socket.inet_ntoa(data[offset:offset+4]))
+            res.ips.append(socket.inet_ntoa(data[offset : offset + 4]))
         elif rtype == 28 and rdlength == 16 and offset + 16 <= len(data):  # AAAA record
-            res.ips.append(socket.inet_ntop(socket.AF_INET6, data[offset:offset+16]))
+            res.ips.append(socket.inet_ntop(socket.AF_INET6, data[offset : offset + 16]))
         elif rtype == 46:  # RRSIG (DNSSEC)
             res.has_rrsig = True
         offset += rdlength
@@ -183,7 +187,7 @@ def parse_dns_response_extended(data: bytes) -> DNSResponse:
         offset = _parse_name(offset)
         if offset + 10 > len(data):
             break
-        rtype, rclass, ttl, rdlength = struct.unpack(">HHIH", data[offset:offset+10])
+        rtype, _rclass, ttl, rdlength = struct.unpack(">HHIH", data[offset : offset + 10])
         offset += 10
         if rtype == 46:
             res.has_rrsig = True
@@ -196,7 +200,7 @@ def parse_dns_response_extended(data: bytes) -> DNSResponse:
         offset = _parse_name(offset)
         if offset + 10 > len(data):
             break
-        rtype, udp_payload_size, ext_rcode_flags, rdlength = struct.unpack(">HHIH", data[offset:offset+10])
+        rtype, udp_payload_size, ext_rcode_flags, rdlength = struct.unpack(">HHIH", data[offset : offset + 10])
         offset += 10
         if rtype == 41:  # OPT RR
             res.has_edns = True
@@ -207,11 +211,11 @@ def parse_dns_response_extended(data: bytes) -> DNSResponse:
             opt_end = offset + rdlength
             opt_ptr = offset
             while opt_ptr + 4 <= opt_end and opt_ptr + 4 <= len(data):
-                opt_code, opt_len = struct.unpack(">HH", data[opt_ptr:opt_ptr+4])
+                opt_code, opt_len = struct.unpack(">HH", data[opt_ptr : opt_ptr + 4])
                 opt_ptr += 4
-                opt_val = data[opt_ptr:opt_ptr+opt_len]
+                opt_val = data[opt_ptr : opt_ptr + opt_len]
                 res.edns_options[opt_code] = opt_val
-                
+
                 if opt_code == 8 and len(opt_val) >= 4:  # ECS Option (RFC 7871)
                     res.has_ecs_leak = True
                     family, src_pfx, scp_pfx = struct.unpack(">HBB", opt_val[:4])
@@ -239,6 +243,7 @@ def parse_dns_response_extended(data: bytes) -> DNSResponse:
 # TRANSPORT QUERY EXECUTORS
 # ==============================================================================
 
+
 def execute_dns_query(
     endpoint: str,
     domain: str,
@@ -246,7 +251,7 @@ def execute_dns_query(
     qtype: int = 1,
     want_dnssec: bool = True,
     with_ecs: bool = False,
-    timeout: float = 2.5
+    timeout: float = 2.5,
 ) -> Tuple[Optional[float], Optional[DNSResponse]]:
     """Execute DNS query across UDP, DoH, or DoT and return latency and parsed DNSResponse."""
     mode_clean = mode.lower()
@@ -260,8 +265,8 @@ def execute_dns_query(
             headers={
                 "Content-Type": "application/dns-message",
                 "Accept": "application/dns-message",
-                "User-Agent": "Netools-DNS-Leak-Engine/2.0"
-            }
+                "User-Agent": "Netools-DNS-Leak-Engine/2.0",
+            },
         )
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -297,11 +302,15 @@ def execute_dns_query(
             return None, None
         finally:
             if ssock:
-                try: ssock.close()
-                except Exception: pass
+                try:
+                    ssock.close()
+                except Exception:
+                    pass
             elif sock:
-                try: sock.close()
-                except Exception: pass
+                try:
+                    sock.close()
+                except Exception:
+                    pass
 
     else:  # UDP 53
         family = socket.AF_INET6 if ":" in endpoint else socket.AF_INET
@@ -315,8 +324,10 @@ def execute_dns_query(
         except Exception:
             return None, None
         finally:
-            try: sock.close()
-            except Exception: pass
+            try:
+                sock.close()
+            except Exception:
+                pass
 
     return None, None
 
@@ -324,6 +335,7 @@ def execute_dns_query(
 # ==============================================================================
 # AUDIT & LEAK DETECTORS
 # ==============================================================================
+
 
 def is_private_or_sinkhole_ip(ip_str: str) -> bool:
     """Validate if an IP belongs to private/loopback/carrier-grade NAT sinkholes."""
@@ -353,30 +365,29 @@ def check_transparent_dns_proxy(test_ip: str = "192.0.2.53", timeout: float = 1.
                 "status": "🔴 Transparent DNS Proxy Interception Active",
                 "details": f"UDP 53 query to non-existent IP {test_ip} was answered by middlebox (Sender: {sender[0]}). ISP forces plaintext DNS redirection.",
                 "ips_returned": resp.ips,
-                "risk_level": "High"
+                "risk_level": "High",
             }
     except socket.timeout:
         pass
     except Exception:
         pass
     finally:
-        try: sock.close()
-        except Exception: pass
+        try:
+            sock.close()
+        except Exception:
+            pass
 
     return {
         "intercepted": False,
         "status": "🟢 Clean (No Transparent DNS Interception)",
         "details": "Port 53 UDP packets to non-DNS addresses are cleanly dropped without middlebox hijacking.",
         "ips_returned": [],
-        "risk_level": "None"
+        "risk_level": "None",
     }
 
 
 def check_nxdomain_hijack(
-    resolver: str,
-    mode: str = "ipv4",
-    sample_count: int = 3,
-    timeout: float = 2.5
+    resolver: str, mode: str = "ipv4", sample_count: int = 3, timeout: float = 2.5
 ) -> Dict[str, Any]:
     """
     Verify RFC 8020 / RFC 1035 NXDOMAIN compliance.
@@ -390,7 +401,7 @@ def check_nxdomain_hijack(
         _, resp = execute_dns_query(resolver, fake_domain, mode=mode, timeout=timeout)
         if resp is None:
             continue
-        
+
         # RCODE 3 is NXDOMAIN
         if resp.rcode == 3 and not resp.ips:
             clean_nxdomain_count += 1
@@ -406,7 +417,7 @@ def check_nxdomain_hijack(
             "details": f"Resolver redirected non-existent domains to {', '.join(hijacked_ips)} (ISP search portal/sinkhole).",
             "sinkhole_ips": hijacked_ips,
             "rcode_compliant": False,
-            "risk_level": "High"
+            "risk_level": "High",
         }
 
     return {
@@ -415,15 +426,11 @@ def check_nxdomain_hijack(
         "details": "Resolver correctly returns RCODE 3 (NXDOMAIN) for non-existent domains without injecting sinkhole IPs.",
         "sinkhole_ips": [],
         "rcode_compliant": (clean_nxdomain_count > 0),
-        "risk_level": "None"
+        "risk_level": "None",
     }
 
 
-def check_dnssec_enforcement(
-    resolver: str,
-    mode: str = "ipv4",
-    timeout: float = 2.5
-) -> Dict[str, Any]:
+def check_dnssec_enforcement(resolver: str, mode: str = "ipv4", timeout: float = 2.5) -> Dict[str, Any]:
     """
     Test DNSSEC validation and BOGUS signature rejection.
     - Tests `dnssec-failed.org` (Intentionally invalid signature): Resolver MUST return SERVFAIL (RCODE 2) and NO IPs.
@@ -455,7 +462,7 @@ def check_dnssec_enforcement(
             "details": "Resolver actively validates cryptographic signatures and strictly rejected the BOGUS DNSSEC domain (dnssec-failed.org).",
             "ad_flag": ad_flag_present,
             "rrsig_returned": rrsig_present,
-            "risk_level": "None"
+            "risk_level": "None",
         }
     else:
         return {
@@ -464,22 +471,15 @@ def check_dnssec_enforcement(
             "details": "Resolver did not reject forged BOGUS DNSSEC signatures (resolved dnssec-failed.org successfully). Vulnerable to upstream cache poisoning.",
             "ad_flag": ad_flag_present,
             "rrsig_returned": rrsig_present,
-            "risk_level": "Medium"
+            "risk_level": "Medium",
         }
 
 
-def check_edns0_ecs_and_padding_leak(
-    resolver: str,
-    mode: str = "ipv4",
-    timeout: float = 2.5
-) -> Dict[str, Any]:
+def check_edns0_ecs_and_padding_leak(resolver: str, mode: str = "ipv4", timeout: float = 2.5) -> Dict[str, Any]:
     """
     Analyze EDNS0 options for Client Subnet (ECS RFC 7871) privacy leak and Padding (RFC 7830).
     """
-    _, resp = execute_dns_query(
-        resolver, "google.com",
-        mode=mode, want_dnssec=True, with_ecs=True, timeout=timeout
-    )
+    _, resp = execute_dns_query(resolver, "google.com", mode=mode, want_dnssec=True, with_ecs=True, timeout=timeout)
 
     if resp is None:
         return {
@@ -487,7 +487,7 @@ def check_edns0_ecs_and_padding_leak(
             "ecs_leak": False,
             "ecs_details": "Resolver timed out or did not return EDNS response.",
             "padding_active": False,
-            "risk_level": "Low"
+            "risk_level": "Low",
         }
 
     ecs_leak = resp.has_ecs_leak
@@ -514,7 +514,7 @@ def check_edns0_ecs_and_padding_leak(
         "status": status,
         "padding_active": padding_active,
         "padding_len": resp.padding_len,
-        "risk_level": risk
+        "risk_level": risk,
     }
 
 
@@ -522,10 +522,9 @@ def check_edns0_ecs_and_padding_leak(
 # MASTER AUDIT & SCORING
 # ==============================================================================
 
+
 def run_comprehensive_dns_leak_audit(
-    resolver_endpoint: str,
-    mode: str = "ipv4",
-    timeout: float = 2.5
+    resolver_endpoint: str, mode: str = "ipv4", timeout: float = 2.5
 ) -> Dict[str, Any]:
     """
     Execute full multi-tier DNS leak, interception, and protocol integrity inspection.
@@ -573,5 +572,5 @@ def run_comprehensive_dns_leak_audit(
         "nxdomain_hijack": nx_check,
         "dnssec": dnssec_check,
         "edns_privacy": edns_check,
-        "timestamp": time.time()
+        "timestamp": time.time(),
     }

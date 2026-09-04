@@ -23,7 +23,14 @@ class TestCanaryServiceBasics(unittest.TestCase):
         self.assertNotIn("test.my.canary", [c["hostname"] for c in get_all_canary_hostnames()])
 
     def test_result_structs(self):
-        p = CanaryProbe(hostname="x.com", resolver="system", status=STATUS_INTERCEPTED, rcode="NOERROR", latency_ms=42.0, answer_summary="A=1.2.3.4")
+        p = CanaryProbe(
+            hostname="x.com",
+            resolver="system",
+            status=STATUS_INTERCEPTED,
+            rcode="NOERROR",
+            latency_ms=42.0,
+            answer_summary="A=1.2.3.4",
+        )
         self.assertEqual(p.status, STATUS_INTERCEPTED)
         d = p.to_dict()
         self.assertIn("hostname", d)

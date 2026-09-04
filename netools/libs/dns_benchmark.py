@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # DATA STRUCTURES
 # ==============================================================================
 
+
 @dataclass
 class TierResult:
     samples: List[float] = field(default_factory=list)
@@ -45,14 +46,11 @@ class TierResult:
     def compute(self):
         if not self.samples:
             return
-        
+
         # Outlier Rejection (> 2.5x median or > median + 120ms)
         raw_median = statistics.median(self.samples)
         if len(self.samples) >= 3:
-            self.clean_samples = [
-                s for s in self.samples 
-                if s <= max(raw_median * 2.5, raw_median + 120.0)
-            ]
+            self.clean_samples = [s for s in self.samples if s <= max(raw_median * 2.5, raw_median + 120.0)]
             if not self.clean_samples:
                 self.clean_samples = self.samples
         else:
@@ -76,11 +74,11 @@ class GRCBenchmarkResult:
     dot_host: Optional[str]
     protocol: str = "IPv4"
     target_endpoint: str = ""
-    
+
     cached: TierResult = field(default_factory=TierResult)
     uncached: TierResult = field(default_factory=TierResult)
     tld: TierResult = field(default_factory=TierResult)
-    
+
     cached_ms: Optional[float] = None
     uncached_ms: Optional[float] = None
     dotcom_ms: Optional[float] = None
@@ -95,6 +93,7 @@ class GRCBenchmarkResult:
 # ==============================================================================
 # LOW-LEVEL DNS WIREFORMAT PROTOCOL PROBES & PARSERS
 # ==============================================================================
+
 
 def build_dns_packet(domain: str, tx_id: int = 0x1234, qtype: int = 1, want_dnssec: bool = True) -> bytes:
     """Build standard DNS wireformat query packet with EDNS0 and DO (DNSSEC OK) bit."""
@@ -121,8 +120,8 @@ def parse_dns_response(data: bytes) -> Tuple[List[str], bool, bool]:
     """
     if len(data) < 12:
         return [], False, False
-    tx_id, flags, qdcount, ancount, nscount, arcount = struct.unpack(">HHHHHH", data[:12])
-    
+    _tx_id, _flags, qdcount, ancount, _nscount, arcount = struct.unpack(">HHHHHH", data[:12])
+
     offset = 12
     # Skip Question Section
     for _ in range(qdcount):
@@ -140,7 +139,7 @@ def parse_dns_response(data: bytes) -> Tuple[List[str], bool, bool]:
 
     ips = []
     has_rrsig = False
-    has_edns = (arcount > 0)
+    has_edns = arcount > 0
 
     # Parse Answer Section
     for _ in range(ancount):
@@ -162,10 +161,10 @@ def parse_dns_response(data: bytes) -> Tuple[List[str], bool, bool]:
                     offset += 1 + length
         if offset + 10 > len(data):
             break
-        rtype, rclass, ttl, rdlength = struct.unpack(">HHIH", data[offset:offset+10])
+        rtype, _rclass, _ttl, rdlength = struct.unpack(">HHIH", data[offset : offset + 10])
         offset += 10
         if rtype == 1 and rdlength == 4 and offset + 4 <= len(data):
-            ips.append(socket.inet_ntoa(data[offset:offset+4]))
+            ips.append(socket.inet_ntoa(data[offset : offset + 4]))
         elif rtype == 46:
             has_rrsig = True
         offset += rdlength
@@ -206,6 +205,7 @@ def query_udp_dns(ip: str, domain: str, timeout: float = 2.0) -> Tuple[Optional[
 
 _doh_ssl_ctx = ssl._create_unverified_context()
 
+
 def query_doh_dns(doh_url: str, domain: str, timeout: float = 2.5) -> Tuple[Optional[float], List[str], bool, bool]:
     """Execute DNS-over-HTTPS (RFC 8484 wireformat) query using standard urllib."""
     pkt = build_dns_packet(domain, want_dnssec=True)
@@ -215,8 +215,8 @@ def query_doh_dns(doh_url: str, domain: str, timeout: float = 2.5) -> Tuple[Opti
         headers={
             "Content-Type": "application/dns-message",
             "Accept": "application/dns-message",
-            "User-Agent": "Netools-GRC-Benchmark/2.0"
-        }
+            "User-Agent": "Netools-GRC-Benchmark/2.0",
+        },
     )
     t0 = time.perf_counter()
     try:
@@ -280,6 +280,7 @@ def query_dot_dns(host_or_ip: str, domain: str, timeout: float = 2.5) -> Tuple[O
 # GRC 3-TIER BENCHMARK ENGINE
 # ==============================================================================
 
+
 def calculate_grc_score(cached_ms: float, uncached_ms: float, tld_ms: float) -> float:
     """
     Weighted composite score (GRC formula approximation):
@@ -301,11 +302,11 @@ def benchmark_provider_full(
     mode: str = "ipv4",
     timeout: float = 2.5,
     turbo_mode: bool = False,
-    max_latency_threshold: float = 200.0
+    max_latency_threshold: float = 200.0,
 ) -> Dict[str, Any]:
     """
     Execute 3-Tier GRC Benchmark (Cached, Uncached, Regional TLD) for a single provider.
-    
+
     If turbo_mode is True:
     - Sets timeout to 1.0s
     - If initial cached query > max_latency_threshold (e.g. 200ms) or timeouts, immediately aborts
@@ -323,12 +324,12 @@ def benchmark_provider_full(
 
     cached_targets = ["google.com", "youtube.com", "facebook.com"]
     uncached_targets = [f"bench-{uuid.uuid4().hex[:10]}.uncached-test.local" for _ in range(3)]
-    dotcom_targets = tld_domains[:3] if len(tld_domains) >= 3 else (tld_domains + ["google.com"])[:3]
+    dotcom_targets = tld_domains[:3] if len(tld_domains) >= 3 else ([*tld_domains, "google.com"])[:3]
 
     mode_clean = mode.lower()
-    is_ipv6 = (mode_clean == "ipv6")
-    is_doh = (mode_clean == "doh")
-    is_dot = (mode_clean == "dot")
+    is_ipv6 = mode_clean == "ipv6"
+    is_doh = mode_clean == "doh"
+    is_dot = mode_clean == "dot"
 
     doh_url = provider.get("doh_url", "")
     ipv4_list = provider.get("ipv4", [])
@@ -338,22 +339,94 @@ def benchmark_provider_full(
     # Determine target address based on mode
     if is_ipv6:
         if not ipv6_list:
-            return {"key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"), "region": provider.get("region", "global"), "score": 9999.0, "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "protocol": "IPv6", "ipv4": ipv4_list, "ipv6": ipv6_list, "doh_url": doh_url, "status": "Failed", "reliability_pct": 0.0, "hijack_detected": False, "dnssec_supported": False, "edns_supported": False}
+            return {
+                "key": key,
+                "name": provider.get("name", key),
+                "country": provider.get("country", "🌐"),
+                "region": provider.get("region", "global"),
+                "score": 9999.0,
+                "cached_ms": None,
+                "uncached_ms": None,
+                "dotcom_ms": None,
+                "protocol": "IPv6",
+                "ipv4": ipv4_list,
+                "ipv6": ipv6_list,
+                "doh_url": doh_url,
+                "status": "Failed",
+                "reliability_pct": 0.0,
+                "hijack_detected": False,
+                "dnssec_supported": False,
+                "edns_supported": False,
+            }
         target_endpoint = ipv6_list[0]
         protocol_label = "IPv6"
     elif is_doh:
         if not doh_url:
-            return {"key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"), "region": provider.get("region", "global"), "score": 9999.0, "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "protocol": "DoH", "ipv4": ipv4_list, "ipv6": ipv6_list, "doh_url": doh_url, "status": "Failed", "reliability_pct": 0.0, "hijack_detected": False, "dnssec_supported": False, "edns_supported": False}
+            return {
+                "key": key,
+                "name": provider.get("name", key),
+                "country": provider.get("country", "🌐"),
+                "region": provider.get("region", "global"),
+                "score": 9999.0,
+                "cached_ms": None,
+                "uncached_ms": None,
+                "dotcom_ms": None,
+                "protocol": "DoH",
+                "ipv4": ipv4_list,
+                "ipv6": ipv6_list,
+                "doh_url": doh_url,
+                "status": "Failed",
+                "reliability_pct": 0.0,
+                "hijack_detected": False,
+                "dnssec_supported": False,
+                "edns_supported": False,
+            }
         target_endpoint = doh_url
         protocol_label = "DoH"
     elif is_dot:
         if not dot_host:
-            return {"key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"), "region": provider.get("region", "global"), "score": 9999.0, "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "protocol": "DoT", "ipv4": ipv4_list, "ipv6": ipv6_list, "doh_url": doh_url, "status": "Failed", "reliability_pct": 0.0, "hijack_detected": False, "dnssec_supported": False, "edns_supported": False}
+            return {
+                "key": key,
+                "name": provider.get("name", key),
+                "country": provider.get("country", "🌐"),
+                "region": provider.get("region", "global"),
+                "score": 9999.0,
+                "cached_ms": None,
+                "uncached_ms": None,
+                "dotcom_ms": None,
+                "protocol": "DoT",
+                "ipv4": ipv4_list,
+                "ipv6": ipv6_list,
+                "doh_url": doh_url,
+                "status": "Failed",
+                "reliability_pct": 0.0,
+                "hijack_detected": False,
+                "dnssec_supported": False,
+                "edns_supported": False,
+            }
         target_endpoint = dot_host
         protocol_label = "DoT"
     else:  # ipv4
         if not ipv4_list:
-            return {"key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"), "region": provider.get("region", "global"), "score": 9999.0, "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "protocol": "IPv4", "ipv4": ipv4_list, "ipv6": ipv6_list, "doh_url": doh_url, "status": "Failed", "reliability_pct": 0.0, "hijack_detected": False, "dnssec_supported": False, "edns_supported": False}
+            return {
+                "key": key,
+                "name": provider.get("name", key),
+                "country": provider.get("country", "🌐"),
+                "region": provider.get("region", "global"),
+                "score": 9999.0,
+                "cached_ms": None,
+                "uncached_ms": None,
+                "dotcom_ms": None,
+                "protocol": "IPv4",
+                "ipv4": ipv4_list,
+                "ipv6": ipv6_list,
+                "doh_url": doh_url,
+                "status": "Failed",
+                "reliability_pct": 0.0,
+                "hijack_detected": False,
+                "dnssec_supported": False,
+                "edns_supported": False,
+            }
         target_endpoint = ipv4_list[0]
         protocol_label = "IPv4"
 
@@ -386,19 +459,45 @@ def benchmark_provider_full(
     if turbo_mode:
         if warm_lat is None:
             return {
-                "key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"),
-                "region": provider.get("region", "global"), "doh_url": doh_url, "ipv4": ipv4_list, "ipv6": ipv6_list,
-                "cached_ms": None, "uncached_ms": None, "dotcom_ms": None, "score": 9999.0,
-                "protocol": protocol_label, "target_endpoint": target_endpoint, "reliability_pct": 0.0,
-                "status": "Timeout", "hijack_detected": False, "dnssec_supported": False, "edns_supported": False
+                "key": key,
+                "name": provider.get("name", key),
+                "country": provider.get("country", "🌐"),
+                "region": provider.get("region", "global"),
+                "doh_url": doh_url,
+                "ipv4": ipv4_list,
+                "ipv6": ipv6_list,
+                "cached_ms": None,
+                "uncached_ms": None,
+                "dotcom_ms": None,
+                "score": 9999.0,
+                "protocol": protocol_label,
+                "target_endpoint": target_endpoint,
+                "reliability_pct": 0.0,
+                "status": "Timeout",
+                "hijack_detected": False,
+                "dnssec_supported": False,
+                "edns_supported": False,
             }
         elif warm_lat > max_latency_threshold:
             return {
-                "key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"),
-                "region": provider.get("region", "global"), "doh_url": doh_url, "ipv4": ipv4_list, "ipv6": ipv6_list,
-                "cached_ms": warm_lat, "uncached_ms": None, "dotcom_ms": None, "score": 9999.0,
-                "protocol": protocol_label, "target_endpoint": target_endpoint, "reliability_pct": 10.0,
-                "status": "Slow / Cutoff (>200ms)", "hijack_detected": False, "dnssec_supported": False, "edns_supported": False
+                "key": key,
+                "name": provider.get("name", key),
+                "country": provider.get("country", "🌐"),
+                "region": provider.get("region", "global"),
+                "doh_url": doh_url,
+                "ipv4": ipv4_list,
+                "ipv6": ipv6_list,
+                "cached_ms": warm_lat,
+                "uncached_ms": None,
+                "dotcom_ms": None,
+                "score": 9999.0,
+                "protocol": protocol_label,
+                "target_endpoint": target_endpoint,
+                "reliability_pct": 10.0,
+                "status": "Slow / Cutoff (>200ms)",
+                "hijack_detected": False,
+                "dnssec_supported": False,
+                "edns_supported": False,
             }
 
     # 2. Tier 1: Cached Latency (3 samples)
@@ -421,12 +520,24 @@ def benchmark_provider_full(
     # Second Turbo Cutoff Check: after Tier 1 median
     if turbo_mode and tier_cached.median_ms and tier_cached.median_ms > max_latency_threshold:
         return {
-            "key": key, "name": provider.get("name", key), "country": provider.get("country", "🌐"),
-            "region": provider.get("region", "global"), "doh_url": doh_url, "ipv4": ipv4_list, "ipv6": ipv6_list,
-            "cached_ms": tier_cached.median_ms, "uncached_ms": None, "dotcom_ms": None, "score": 9999.0,
-            "protocol": protocol_label, "target_endpoint": target_endpoint, "reliability_pct": 33.0,
-            "status": "Slow / Cutoff (>200ms)", "hijack_detected": hijack_detected,
-            "dnssec_supported": dnssec_supported, "edns_supported": edns_supported
+            "key": key,
+            "name": provider.get("name", key),
+            "country": provider.get("country", "🌐"),
+            "region": provider.get("region", "global"),
+            "doh_url": doh_url,
+            "ipv4": ipv4_list,
+            "ipv6": ipv6_list,
+            "cached_ms": tier_cached.median_ms,
+            "uncached_ms": None,
+            "dotcom_ms": None,
+            "score": 9999.0,
+            "protocol": protocol_label,
+            "target_endpoint": target_endpoint,
+            "reliability_pct": 33.0,
+            "status": "Slow / Cutoff (>200ms)",
+            "hijack_detected": hijack_detected,
+            "dnssec_supported": dnssec_supported,
+            "edns_supported": edns_supported,
         }
 
     # 3. Tier 2: Uncached Latency (Forced Miss with Random UUID Subdomains)
@@ -468,10 +579,15 @@ def benchmark_provider_full(
         score = 9999.0
 
     # Reliability %
-    total_q = (tier_cached.success_count + tier_cached.fail_count +
-               tier_uncached.success_count + tier_uncached.fail_count +
-               tier_tld.success_count + tier_tld.fail_count)
-    total_ok = (tier_cached.success_count + tier_uncached.success_count + tier_tld.success_count)
+    total_q = (
+        tier_cached.success_count
+        + tier_cached.fail_count
+        + tier_uncached.success_count
+        + tier_uncached.fail_count
+        + tier_tld.success_count
+        + tier_tld.fail_count
+    )
+    total_ok = tier_cached.success_count + tier_uncached.success_count + tier_tld.success_count
     rel_pct = (total_ok / total_q * 100.0) if total_q > 0 else 0.0
 
     if hijack_detected:
@@ -503,13 +619,14 @@ def benchmark_provider_full(
         "uncached_cv": tier_uncached.cv,
         "hijack_detected": hijack_detected,
         "dnssec_supported": dnssec_supported,
-        "edns_supported": edns_supported
+        "edns_supported": edns_supported,
     }
 
 
 # ==============================================================================
 # ENHANCED SMART MIX V2 (STRICT 3-RESOLVER DEDUPLICATION)
 # ==============================================================================
+
 
 def calculate_smart_mix(results_map: Dict[str, Any], mode: str = "ipv4") -> Dict[str, Any]:
     """
@@ -535,8 +652,10 @@ def calculate_smart_mix(results_map: Dict[str, Any], mode: str = "ipv4") -> Dict
     # 3. Best TLD (DNS 3) - Strict constraint: ≠ DNS 1 and ≠ DNS 2
     chosen_keys = {best_cached.get("key"), best_uncached.get("key")}
     tld_cands = [r for r in stable if r.get("key") not in chosen_keys]
-    best_tld = min(tld_cands, key=lambda x: x.get("dotcom_ms") or 9999.0) if tld_cands else (
-        uncached_cands[0] if uncached_cands else best_cached
+    best_tld = (
+        min(tld_cands, key=lambda x: x.get("dotcom_ms") or 9999.0)
+        if tld_cands
+        else (uncached_cands[0] if uncached_cands else best_cached)
     )
 
     def _get_target(res: Dict[str, Any]) -> str:
@@ -556,14 +675,6 @@ def calculate_smart_mix(results_map: Dict[str, Any], mode: str = "ipv4") -> Dict
         "dns1_cached": best_cached,
         "dns2_uncached": best_uncached,
         "dns3_tld": best_tld,
-        "ips": [
-            _get_target(best_cached),
-            _get_target(best_uncached),
-            _get_target(best_tld)
-        ],
-        "names": [
-            best_cached.get("name", "None"),
-            best_uncached.get("name", "None"),
-            best_tld.get("name", "None")
-        ]
+        "ips": [_get_target(best_cached), _get_target(best_uncached), _get_target(best_tld)],
+        "names": [best_cached.get("name", "None"), best_uncached.get("name", "None"), best_tld.get("name", "None")],
     }

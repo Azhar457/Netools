@@ -42,4 +42,3 @@ def mark_popup(win, parent=None) -> None:
         win.attributes("-type", "popup_menu")
     except Exception:
         pass
-

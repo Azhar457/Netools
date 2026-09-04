@@ -1,15 +1,10 @@
 """Unit tests for netools.services.omniroute_bridge."""
 
 import sqlite3
-import tempfile
 import time
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
 
 from netools.services.omniroute_bridge import (
-    InjectionResult,
     TokenTTL,
     compute_token_ttl,
     get_db_path,
@@ -17,10 +12,10 @@ from netools.services.omniroute_bridge import (
     inject_session_to_omniroute,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_db(path: Path) -> Path:
     """Create a minimal OmniRoute-compatible SQLite DB."""
@@ -48,10 +43,12 @@ def _make_db(path: Path) -> Path:
 
 def _make_jwt(exp_offset: int = 3600) -> str:
     """Create a minimal fake JWT with the given exp offset from now."""
-    import base64, json
-    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').rstrip(b'=').decode()
+    import base64
+    import json
+
+    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').rstrip(b"=").decode()
     payload_data = {"sub": "user@test.com", "exp": int(time.time()) + exp_offset}
-    payload = base64.urlsafe_b64encode(json.dumps(payload_data).encode()).rstrip(b'=').decode()
+    payload = base64.urlsafe_b64encode(json.dumps(payload_data).encode()).rstrip(b"=").decode()
     sig = "fake_signature"
     return f"{header}.{payload}.{sig}"
 
@@ -59,6 +56,7 @@ def _make_jwt(exp_offset: int = 3600) -> str:
 # ---------------------------------------------------------------------------
 # TokenTTL Tests
 # ---------------------------------------------------------------------------
+
 
 class TestTokenTTL:
     def test_is_usable_active(self):
@@ -81,6 +79,7 @@ class TestTokenTTL:
 # ---------------------------------------------------------------------------
 # compute_token_ttl Tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputeTokenTTL:
     def test_none_payload(self):
@@ -133,6 +132,7 @@ class TestComputeTokenTTL:
 # inject_session_to_omniroute Tests
 # ---------------------------------------------------------------------------
 
+
 class TestInjectSession:
     def test_empty_provider(self):
         result = inject_session_to_omniroute("", "tok", "name")
@@ -157,15 +157,13 @@ class TestInjectSession:
 
     def test_db_not_found(self, tmp_path):
         fake_db = tmp_path / "nonexistent" / "storage.sqlite"
-        result = inject_session_to_omniroute("kimi-web", "valid_token", "name",
-                                              db_path=fake_db)
+        result = inject_session_to_omniroute("kimi-web", "valid_token", "name", db_path=fake_db)
         assert result.success is False
         assert "tidak ditemukan" in result.message
 
     def test_insert_new_provider(self, tmp_path):
         db = _make_db(tmp_path / "storage.sqlite")
-        result = inject_session_to_omniroute("kimi-web", "tok123", "User",
-                                              db_path=db)
+        result = inject_session_to_omniroute("kimi-web", "tok123", "User", db_path=db)
         assert result.success is True
         assert result.action == "inserted"
         assert "kimi-web" in result.message
@@ -206,6 +204,7 @@ class TestInjectSession:
 # ---------------------------------------------------------------------------
 # inject_bulk_sessions Tests
 # ---------------------------------------------------------------------------
+
 
 class TestBulkInject:
     def test_empty_list(self):
@@ -258,6 +257,7 @@ class TestBulkInject:
 # ---------------------------------------------------------------------------
 # get_db_path Tests
 # ---------------------------------------------------------------------------
+
 
 class TestGetDbPath:
     def test_returns_path(self):

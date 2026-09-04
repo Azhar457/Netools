@@ -20,10 +20,9 @@ from netools.services import canary_service
 
 
 class DNSView(ctk.CTkFrame):
-    _canary_items: list = []
-    _canary_selected: str = ""
-
     def __init__(self, parent, main_app=None):
+        self._canary_items: list = []
+        self._canary_selected: str = ""
         super().__init__(parent, fg_color=ThemeManager.bg(), corner_radius=0)
         self.main_app = main_app if main_app is not None else parent
         self.providers = db.load_providers()
@@ -39,8 +38,21 @@ class DNSView(ctk.CTkFrame):
 
     def apply_theme(self):
         self.configure(fg_color=ThemeManager.bg())
-        for name in ("hdr", "lbl_title", "card_iface", "f1", "card_preset", "f2",
-                     "slots_card", "s1", "s2", "s3", "opt_card", "opts", "actions"):
+        for name in (
+            "hdr",
+            "lbl_title",
+            "card_iface",
+            "f1",
+            "card_preset",
+            "f2",
+            "slots_card",
+            "s1",
+            "s2",
+            "s3",
+            "opt_card",
+            "opts",
+            "actions",
+        ):
             w = getattr(self, name, None)
             if w is not None:
                 try:
@@ -49,9 +61,11 @@ class DNSView(ctk.CTkFrame):
                     pass
         for e in (self.dns1_entry, self.dns2_entry, self.dns3_entry):
             try:
-                e.configure(fg_color=ThemeManager.surface_alt(),
-                            border_color=ThemeManager.border(),
-                            text_color=ThemeManager.text())
+                e.configure(
+                    fg_color=ThemeManager.surface_alt(),
+                    border_color=ThemeManager.border(),
+                    text_color=ThemeManager.text(),
+                )
             except Exception:
                 pass
 
@@ -61,28 +75,37 @@ class DNSView(ctk.CTkFrame):
         hdr.pack_propagate(False)
         self.hdr = hdr
         self.lbl_title = ctk.CTkLabel(
-            hdr, text=tr("⚡ Smart DNS Switcher & Latency Profiler"),
-            font=Fonts.title(15), text_color=ThemeManager.warning(),
+            hdr,
+            text=tr("⚡ Smart DNS Switcher & Latency Profiler"),
+            font=Fonts.title(15),
+            text_color=ThemeManager.warning(),
         )
         self.lbl_title.pack(side="left", padx=20, pady=8)
 
-        card_iface = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8,
-                                  border_width=1, border_color=ThemeManager.border())
+        card_iface = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         card_iface.pack(fill="x", padx=16, pady=4)
         self.card_iface = card_iface
 
         self.f1 = ctk.CTkFrame(card_iface, fg_color=ThemeManager.surface())
         self.f1.pack(fill="x", padx=14, pady=8)
 
-        ctk.CTkLabel(self.f1, text=tr("Network Interface:"), font=Fonts.bold(11),
-                     text_color=ThemeManager.text()).pack(side="left", padx=(0, 4))
+        ctk.CTkLabel(self.f1, text=tr("Network Interface:"), font=Fonts.bold(11), text_color=ThemeManager.text()).pack(
+            side="left", padx=(0, 4)
+        )
 
         self.iface_var = ctk.StringVar(value="Default")
         labels = [i["label"] for i in self.interfaces] or ["Default"]
-        self.iface_cb = ctk.CTkComboBox(self.f1, variable=self.iface_var, values=labels,
-                                        state="readonly", width=200,
-                                        font=Fonts.regular(11),
-                                        command=self.on_interface_change)
+        self.iface_cb = ctk.CTkComboBox(
+            self.f1,
+            variable=self.iface_var,
+            values=labels,
+            state="readonly",
+            width=200,
+            font=Fonts.regular(11),
+            command=self.on_interface_change,
+        )
         self.iface_cb.pack(side="left", padx=4)
 
         self.btn_refresh = ctk.CTkButton(
@@ -93,42 +116,46 @@ class DNSView(ctk.CTkFrame):
             fg_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
-            command=self.refresh_adapters
+            command=self.refresh_adapters,
         ).pack(side="left", padx=4)
 
         # Preset Provider Selector Card
-        self.card_preset = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.card_preset = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.card_preset.pack(fill="x", padx=16, pady=4)
 
         self.f2 = ctk.CTkFrame(self.card_preset, fg_color=ThemeManager.surface())
         self.f2.pack(fill="x", padx=14, pady=10)
 
-        ctk.CTkLabel(
-            self.f2,
-            text=tr("Category:"),
-            font=Fonts.bold(11),
-            text_color=ThemeManager.primary()
-        ).pack(side="left", padx=(0, 4))
+        ctk.CTkLabel(self.f2, text=tr("Category:"), font=Fonts.bold(11), text_color=ThemeManager.primary()).pack(
+            side="left", padx=(0, 4)
+        )
 
         self.category_var = ctk.StringVar(value="📁 All Categories")
         self.category_cb = ctk.CTkComboBox(
             self.f2,
             variable=self.category_var,
-            values=["📁 All Categories", "🛡️ Security & Privacy", "⚡ Gaming / Fast", "🚫 Ad-Blocking", "👨‍👩‍👧 Family Safe", "🌏 Asia-Pacific", "🌐 Global Anycast"],
+            values=[
+                "📁 All Categories",
+                "🛡️ Security & Privacy",
+                "⚡ Gaming / Fast",
+                "🚫 Ad-Blocking",
+                "👨‍👩‍👧 Family Safe",
+                "🌏 Asia-Pacific",
+                "🌐 Global Anycast",
+            ],
             state="readonly",
             font=Fonts.regular(11),
             width=150,
             dropdown_font=Fonts.regular(11),
-            command=self.on_category_filter_change
+            command=self.on_category_filter_change,
         )
         self.category_cb.pack(side="left", padx=(0, 8))
 
-        ctk.CTkLabel(
-            self.f2,
-            text=tr("Preset:"),
-            font=Fonts.bold(11),
-            text_color=ThemeManager.text()
-        ).pack(side="left", padx=(0, 4))
+        ctk.CTkLabel(self.f2, text=tr("Preset:"), font=Fonts.bold(11), text_color=ThemeManager.text()).pack(
+            side="left", padx=(0, 4)
+        )
 
         self.preset_var = ctk.StringVar(value="⚙️ Custom DNS Servers")
         preset_labels = [f"{p['country']} {p['name']}" for p in self.providers.values()]
@@ -141,7 +168,7 @@ class DNSView(ctk.CTkFrame):
             font=Fonts.regular(11),
             width=220,
             dropdown_font=Fonts.regular(11),
-            command=self.on_preset_change
+            command=self.on_preset_change,
         )
         self.preset_cb.pack(side="left", fill="x", expand=True, padx=4)
 
@@ -153,15 +180,12 @@ class DNSView(ctk.CTkFrame):
             variable=self.preset_var,
             max_height=280,
             searchable=True,
-            placeholder_text=f"🔍 Search {len(preset_labels)} DNS presets..."
+            placeholder_text=f"🔍 Search {len(preset_labels)} DNS presets...",
         )
 
-        ctk.CTkLabel(
-            self.f2,
-            text=tr("Protocol / IP:"),
-            font=Fonts.bold(11),
-            text_color=ThemeManager.text()
-        ).pack(side="left", padx=(8, 4))
+        ctk.CTkLabel(self.f2, text=tr("Protocol / IP:"), font=Fonts.bold(11), text_color=ThemeManager.text()).pack(
+            side="left", padx=(8, 4)
+        )
 
         self.ip_family_var = ctk.StringVar(value="IPv4 (Standard)")
         self.ip_family_cb = ctk.CTkComboBox(
@@ -172,49 +196,128 @@ class DNSView(ctk.CTkFrame):
             font=Fonts.regular(11),
             width=150,
             dropdown_font=Fonts.regular(11),
-            command=self.on_ip_family_change
+            command=self.on_ip_family_change,
         )
         self.ip_family_cb.pack(side="left", padx=4)
 
         # 3-Slots Card
-        self.slots_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.slots_card = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.slots_card.pack(fill="x", padx=16, pady=6)
 
         self.s1 = ctk.CTkFrame(self.slots_card, fg_color=ThemeManager.surface())
         self.s1.pack(fill="x", pady=6, padx=14)
-        ctk.CTkLabel(self.s1, text=tr("DNS 1 (Primary)   :"), font=Fonts.bold(12), width=140, anchor="w", text_color=ThemeManager.text()).pack(side="left")
-        self.dns1_entry = ctk.CTkEntry(self.s1, width=220, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
+        ctk.CTkLabel(
+            self.s1,
+            text=tr("DNS 1 (Primary)   :"),
+            font=Fonts.bold(12),
+            width=140,
+            anchor="w",
+            text_color=ThemeManager.text(),
+        ).pack(side="left")
+        self.dns1_entry = ctk.CTkEntry(
+            self.s1,
+            width=220,
+            height=34,
+            font=Fonts.mono(12),
+            fg_color=ThemeManager.surface_alt(),
+            border_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+        )
         self.dns1_entry.pack(side="left", padx=4)
 
-        self.btn_ping1 = ctk.CTkButton(self.s1, text=tr("Ping"), width=64, height=30, font=Fonts.bold(11), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(1))
+        self.btn_ping1 = ctk.CTkButton(
+            self.s1,
+            text=tr("Ping"),
+            width=64,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            command=lambda: self.ping_slot(1),
+        )
         self.btn_ping1.pack(side="left", padx=4)
         self.lbl_ping1 = ctk.CTkLabel(self.s1, text="", font=Fonts.bold(12), text_color=ThemeManager.success())
         self.lbl_ping1.pack(side="left", padx=6)
 
         self.s2 = ctk.CTkFrame(self.slots_card, fg_color=ThemeManager.surface())
         self.s2.pack(fill="x", pady=6, padx=14)
-        ctk.CTkLabel(self.s2, text=tr("DNS 2 (Secondary) :"), font=Fonts.bold(12), width=140, anchor="w", text_color=ThemeManager.text()).pack(side="left")
-        self.dns2_entry = ctk.CTkEntry(self.s2, width=220, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
+        ctk.CTkLabel(
+            self.s2,
+            text=tr("DNS 2 (Secondary) :"),
+            font=Fonts.bold(12),
+            width=140,
+            anchor="w",
+            text_color=ThemeManager.text(),
+        ).pack(side="left")
+        self.dns2_entry = ctk.CTkEntry(
+            self.s2,
+            width=220,
+            height=34,
+            font=Fonts.mono(12),
+            fg_color=ThemeManager.surface_alt(),
+            border_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+        )
         self.dns2_entry.pack(side="left", padx=4)
 
-        self.btn_ping2 = ctk.CTkButton(self.s2, text=tr("Ping"), width=64, height=30, font=Fonts.bold(11), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(2))
+        self.btn_ping2 = ctk.CTkButton(
+            self.s2,
+            text=tr("Ping"),
+            width=64,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            command=lambda: self.ping_slot(2),
+        )
         self.btn_ping2.pack(side="left", padx=4)
         self.lbl_ping2 = ctk.CTkLabel(self.s2, text="", font=Fonts.bold(12), text_color=ThemeManager.success())
         self.lbl_ping2.pack(side="left", padx=6)
 
         self.s3 = ctk.CTkFrame(self.slots_card, fg_color=ThemeManager.surface())
         self.s3.pack(fill="x", pady=6, padx=14)
-        ctk.CTkLabel(self.s3, text=tr("DNS 3 (Tertiary)  :"), font=Fonts.bold(12), width=140, anchor="w", text_color=ThemeManager.text()).pack(side="left")
-        self.dns3_entry = ctk.CTkEntry(self.s3, width=220, height=34, font=Fonts.mono(12), fg_color=ThemeManager.surface_alt(), border_color=ThemeManager.border(), text_color=ThemeManager.text())
+        ctk.CTkLabel(
+            self.s3,
+            text=tr("DNS 3 (Tertiary)  :"),
+            font=Fonts.bold(12),
+            width=140,
+            anchor="w",
+            text_color=ThemeManager.text(),
+        ).pack(side="left")
+        self.dns3_entry = ctk.CTkEntry(
+            self.s3,
+            width=220,
+            height=34,
+            font=Fonts.mono(12),
+            fg_color=ThemeManager.surface_alt(),
+            border_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+        )
         self.dns3_entry.pack(side="left", padx=4)
 
-        self.btn_ping3 = ctk.CTkButton(self.s3, text=tr("Ping"), width=64, height=30, font=Fonts.bold(11), fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(), command=lambda: self.ping_slot(3))
+        self.btn_ping3 = ctk.CTkButton(
+            self.s3,
+            text=tr("Ping"),
+            width=64,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            command=lambda: self.ping_slot(3),
+        )
         self.btn_ping3.pack(side="left", padx=4)
         self.lbl_ping3 = ctk.CTkLabel(self.s3, text="", font=Fonts.bold(12), text_color=ThemeManager.success())
         self.lbl_ping3.pack(side="left", padx=6)
 
         # Options Row
-        self.opt_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.opt_card = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.opt_card.pack(fill="x", padx=16, pady=4)
 
         self.opts = ctk.CTkFrame(self.opt_card, fg_color=ThemeManager.surface())
@@ -227,7 +330,7 @@ class DNSView(ctk.CTkFrame):
             variable=self.dot_var,
             font=Fonts.regular(12),
             text_color=ThemeManager.text(),
-            fg_color=ThemeManager.primary()
+            fg_color=ThemeManager.primary(),
         )
         self.dot_chk.pack(side="left", padx=4)
 
@@ -238,7 +341,7 @@ class DNSView(ctk.CTkFrame):
             variable=self.persist_var,
             font=Fonts.regular(12),
             text_color=ThemeManager.text(),
-            fg_color=ThemeManager.primary()
+            fg_color=ThemeManager.primary(),
         )
         self.persist_chk.pack(side="left", padx=16)
 
@@ -254,7 +357,7 @@ class DNSView(ctk.CTkFrame):
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
             height=36,
-            command=self.apply_dns
+            command=self.apply_dns,
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
@@ -265,7 +368,7 @@ class DNSView(ctk.CTkFrame):
             text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
             height=36,
-            command=self.flush_dns
+            command=self.flush_dns,
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
@@ -276,7 +379,7 @@ class DNSView(ctk.CTkFrame):
             text_color=ThemeManager.danger(),
             hover_color=ThemeManager.border(),
             height=36,
-            command=self.restore_dhcp
+            command=self.restore_dhcp,
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
@@ -287,7 +390,7 @@ class DNSView(ctk.CTkFrame):
             text_color=ThemeManager.primary(),
             hover_color=ThemeManager.surface_alt(),
             height=36,
-            command=self.verify_dns_status
+            command=self.verify_dns_status,
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
@@ -297,7 +400,7 @@ class DNSView(ctk.CTkFrame):
             fg_color=ThemeManager.warning(),
             hover_color=ThemeManager.surface_alt(),
             height=36,
-            command=self.open_dpi_inspector
+            command=self.open_dpi_inspector,
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
@@ -308,22 +411,25 @@ class DNSView(ctk.CTkFrame):
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
             height=36,
-            command=self.open_benchmark
+            command=self.open_benchmark,
         ).pack(side="right", padx=(6, 0))
 
         # ---- Canary Domain Interception Check Card ----
-        self.canary_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.canary_card = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.canary_card.pack(fill="x", padx=16, pady=(8, 4))
         self.canary_hdr = ctk.CTkFrame(self.canary_card, fg_color=ThemeManager.surface(), height=30)
         self.canary_hdr.pack(fill="x", padx=12, pady=(10, 2))
         self.canary_lbl = ctk.CTkLabel(
-            self.canary_hdr, text=tr("🛡️ DNS Canary (Interception Check)"),
-            font=Fonts.subtitle(13), text_color=ThemeManager.text()
+            self.canary_hdr,
+            text=tr("🛡️ DNS Canary (Interception Check)"),
+            font=Fonts.subtitle(13),
+            text_color=ThemeManager.text(),
         )
         self.canary_lbl.pack(side="left")
         self.canary_badge = ctk.CTkLabel(
-            self.canary_hdr, text=tr("● Not Checked"),
-            font=Fonts.badge(10), text_color=ThemeManager.text_muted()
+            self.canary_hdr, text=tr("● Not Checked"), font=Fonts.badge(10), text_color=ThemeManager.text_muted()
         )
         self.canary_badge.pack(side="right", padx=4)
         self.canary_body = ctk.CTkFrame(self.canary_card, fg_color=ThemeManager.surface())
@@ -331,21 +437,31 @@ class DNSView(ctk.CTkFrame):
         self.canary_stat = ctk.CTkLabel(
             self.canary_body,
             text=tr("Click 'Check Now' to test Mozilla + Apple + Custom canary domains (system + custom resolver)."),
-            font=Fonts.regular(11), text_color=ThemeManager.text_muted(), justify="left"
+            font=Fonts.regular(11),
+            text_color=ThemeManager.text_muted(),
+            justify="left",
         )
         self.canary_stat.pack(anchor="w", pady=2)
         self.canary_btn = ctk.CTkButton(
-            self.canary_body, text=tr("🔄 Check Now"),
-            font=Fonts.bold(11), fg_color=ThemeManager.accent(), text_color=ThemeManager.get("on_primary"),
-            hover_color=ThemeManager.accent(), height=30,
+            self.canary_body,
+            text=tr("🔄 Check Now"),
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.accent(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            height=30,
             command=self._run_canary_check,
         )
         self.canary_btn.pack(anchor="e", pady=(2, 0))
 
         self.canary_info_btn = ctk.CTkButton(
-            self.canary_body, text=tr("ℹ️ What is this?"),
-            font=Fonts.bold(11), fg_color=ThemeManager.border(), text_color=ThemeManager.text(),
-            hover_color=ThemeManager.surface_alt(), height=30,
+            self.canary_body,
+            text=tr("ℹ️ What is this?"),
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            height=30,
             command=self._open_canary_info,
         )
         self.canary_info_btn.pack(anchor="e", pady=(4, 0))
@@ -355,7 +471,9 @@ class DNSView(ctk.CTkFrame):
 
     def _run_canary_check(self):
         self.canary_badge.configure(text="● Checking...", text_color=ThemeManager.warning())
-        self.canary_stat.configure(text="Running canary sweep... (please wait ~2-5s)", text_color=ThemeManager.text_muted())
+        self.canary_stat.configure(
+            text="Running canary sweep... (please wait ~2-5s)", text_color=ThemeManager.text_muted()
+        )
 
         def _on_done(result: canary_service.CanaryRunResult):
             def _update():
@@ -383,21 +501,22 @@ class DNSView(ctk.CTkFrame):
                         self.main_app._handle_canary_result(result)
                 except Exception:
                     pass
+
             try:
                 self.after(0, _update)
             except Exception:
                 pass
+
         canary_service.run_canary_sweep_async(on_done=_on_done, timeout=2.0)
 
     def _open_canary_info(self):
         """User-friendly explainer + custom canary (domain/TLD) manager."""
-        from netools.gui.i18n import get_locale
-
         loc = get_locale()
         win = ctk.CTkToplevel(self)
         win.title(tr("DNS Canary Domains — How It Works"))
         win.geometry("640x620")
         from netools.gui.wm import mark_dialog
+
         mark_dialog(win, self.winfo_toplevel())
         win.after(120, win.lift)
 
@@ -405,9 +524,10 @@ class DNSView(ctk.CTkFrame):
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
         for para in canary_info_paragraphs(loc):
-            is_heading = not para[:1].isdigit() and para == para.rstrip() and (
-                para.startswith(("What are", "How the", "Why this", "Apa itu",
-                                 "Cara kerja", "Mengapa ini"))
+            is_heading = (
+                not para[:1].isdigit()
+                and para == para.rstrip()
+                and (para.startswith(("What are", "How the", "Why this", "Apa itu", "Cara kerja", "Mengapa ini")))
             )
             ctk.CTkLabel(
                 scroll,
@@ -423,8 +543,10 @@ class DNSView(ctk.CTkFrame):
         mgr.pack(fill="x", padx=4, pady=(16, 8))
 
         ctk.CTkLabel(
-            mgr, text=tr("Add Custom Canary Domain or TLD"),
-            font=Fonts.subtitle(13), text_color=ThemeManager.warning(),
+            mgr,
+            text=tr("Add Custom Canary Domain or TLD"),
+            font=Fonts.subtitle(13),
+            text_color=ThemeManager.warning(),
         ).pack(anchor="w", padx=10, pady=(10, 4))
 
         entry_row = ctk.CTkFrame(mgr, fg_color="transparent")
@@ -432,20 +554,28 @@ class DNSView(ctk.CTkFrame):
         self._canary_entry = ctk.CTkEntry(
             entry_row,
             placeholder_text=tr("e.g. use-application-dns.net  or  .co.id  or  example.com"),
-            font=Fonts.mono(11), height=32,
-            fg_color=ThemeManager.surface(), border_color=ThemeManager.border(),
+            font=Fonts.mono(11),
+            height=32,
+            fg_color=ThemeManager.surface(),
+            border_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
         )
         self._canary_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
         self._canary_list_lbl = ctk.CTkLabel(
-            mgr, text=tr("Your Canaries ({n})").format(n=0), font=Fonts.regular(11),
-            text_color=ThemeManager.text(), justify="left",
+            mgr,
+            text=tr("Your Canaries ({n})").format(n=0),
+            font=Fonts.regular(11),
+            text_color=ThemeManager.text(),
+            justify="left",
         )
         self._canary_list_lbl.pack(anchor="w", padx=10, pady=(6, 0))
         list_box = ctk.CTkTextbox(
-            mgr, height=110, font=Fonts.mono(11),
-            fg_color=ThemeManager.surface(), text_color=ThemeManager.text(),
+            mgr,
+            height=110,
+            font=Fonts.mono(11),
+            fg_color=ThemeManager.surface(),
+            text_color=ThemeManager.text(),
         )
         list_box.pack(fill="x", padx=10, pady=(6, 4))
 
@@ -463,8 +593,7 @@ class DNSView(ctk.CTkFrame):
                 list_box.insert("end", tr("(no custom canaries yet)") + "\n")
             list_box.configure(state="disabled")
             try:
-                self._canary_list_lbl.configure(
-                    text=tr("Your Canaries ({n})").format(n=len(items)))
+                self._canary_list_lbl.configure(text=tr("Your Canaries ({n})").format(n=len(items)))
             except Exception:
                 pass
 
@@ -499,21 +628,53 @@ class DNSView(ctk.CTkFrame):
                     self._canary_selected = host
             except Exception:
                 pass
+
         list_box.bind("<ButtonRelease-1>", _use_selected)
 
-        ctk.CTkButton(btn_row, text=tr("➕ Add"), width=80, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.primary(), text_color=ThemeManager.get("on_primary"),
-                      hover_color=ThemeManager.accent(), command=_add).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(btn_row, text=tr("🗑 Remove Selected"), width=140, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.danger(), text_color=ThemeManager.get("on_primary"),
-                      hover_color=ThemeManager.accent(), command=_remove).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(btn_row, text=tr("Use in Slot"), width=110, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.border(), text_color=ThemeManager.text(),
-                      hover_color=ThemeManager.surface_alt(),
-                      command=lambda: _use_selected()).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(btn_row, text=tr("Close"), width=80, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.border(), text_color=ThemeManager.text(),
-                      hover_color=ThemeManager.surface_alt(), command=win.destroy).pack(side="right")
+        ctk.CTkButton(
+            btn_row,
+            text=tr("➕ Add"),
+            width=80,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.primary(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            command=_add,
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            btn_row,
+            text=tr("🗑 Remove Selected"),
+            width=140,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.danger(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            command=_remove,
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            btn_row,
+            text=tr("Use in Slot"),
+            width=110,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            command=lambda: _use_selected(),
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            btn_row,
+            text=tr("Close"),
+            width=80,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            command=win.destroy,
+        ).pack(side="right")
 
         _refresh_list()
 
@@ -545,24 +706,32 @@ class DNSView(ctk.CTkFrame):
         if "IPv6" in family:
             ips = provider.get("ipv6", [])
             if not ips:
-                self.main_app.show_toast(f"Provider '{provider.get('name')}' tidak menyediakan DNS IPv6 publik.", level="warning")
+                self.main_app.show_toast(
+                    f"Provider '{provider.get('name')}' tidak menyediakan DNS IPv6 publik.", level="warning"
+                )
                 return provider.get("ipv4", [])
 
             def _check_v6():
                 from netools.libs.net import check_ipv6_connectivity
+
                 if not check_ipv6_connectivity():
-                    self.after(0, lambda: self.main_app.show_toast(
-                        "⚠️ Perhatian: Jaringan/ISP Anda tidak memiliki rute IPv6 aktif. DNS IPv6 mungkin timeout.",
-                        level="warning",
-                    ))
+                    self.after(
+                        0,
+                        lambda: self.main_app.show_toast(
+                            "⚠️ Perhatian: Jaringan/ISP Anda tidak memiliki rute IPv6 aktif. DNS IPv6 mungkin timeout.",
+                            level="warning",
+                        ),
+                    )
+
             threading.Thread(target=_check_v6, daemon=True).start()
             return ips
 
         if "DoH" in family:
             doh = provider.get("doh_url", "")
             if doh:
-                from netools.services import doh_service
                 from netools.config import DOH_PROXY_PORT
+                from netools.services import doh_service
+
                 started = False
                 if provider_id:
                     try:
@@ -597,6 +766,7 @@ class DNSView(ctk.CTkFrame):
             ips = []
             if dot_host:
                 import socket as _socket
+
                 try:
                     infos = _socket.getaddrinfo(dot_host, 853, _socket.AF_INET, _socket.SOCK_STREAM)
                     seen = []
@@ -667,6 +837,7 @@ class DNSView(ctk.CTkFrame):
             dot_active = False
             try:
                 import subprocess
+
                 out = subprocess.check_output(["resolvectl", "status", dev], text=True, stderr=subprocess.DEVNULL)
                 if "+DNSOverTLS" in out or "DNSOverTLS=yes" in out or "DNSOverTLS=opportunistic" in out:
                     dot_active = True
@@ -676,9 +847,12 @@ class DNSView(ctk.CTkFrame):
             def _update_ui():
                 try:
                     if current_dns:
-                        if len(current_dns) > 0: self.dns1_entry.insert(0, current_dns[0])
-                        if len(current_dns) > 1: self.dns2_entry.insert(0, current_dns[1])
-                        if len(current_dns) > 2: self.dns3_entry.insert(0, current_dns[2])
+                        if len(current_dns) > 0:
+                            self.dns1_entry.insert(0, current_dns[0])
+                        if len(current_dns) > 1:
+                            self.dns2_entry.insert(0, current_dns[1])
+                        if len(current_dns) > 2:
+                            self.dns3_entry.insert(0, current_dns[2])
 
                         matched = False
                         for p in self.providers.values():
@@ -696,6 +870,7 @@ class DNSView(ctk.CTkFrame):
                             if first == "127.0.0.1":
                                 try:
                                     from netools.services import doh_service as _doh_svc
+
                                     pid = _doh_svc.get_active_provider()
                                     if pid and self.providers.get(pid) is p:
                                         self.set_preset_label(f"{p['country']} {p['name']}")
@@ -710,9 +885,12 @@ class DNSView(ctk.CTkFrame):
                         else:
                             self.applied_source_kind = "preset"
 
-                        if len(current_dns) > 0: self.ping_slot(1)
-                        if len(current_dns) > 1: self.ping_slot(2)
-                        if len(current_dns) > 2: self.ping_slot(3)
+                        if len(current_dns) > 0:
+                            self.ping_slot(1)
+                        if len(current_dns) > 1:
+                            self.ping_slot(2)
+                        if len(current_dns) > 2:
+                            self.ping_slot(3)
                     else:
                         self.set_preset_label("⚙️ Custom DNS Servers")
 
@@ -740,9 +918,12 @@ class DNSView(ctk.CTkFrame):
                 self.dns1_entry.delete(0, "end")
                 self.dns2_entry.delete(0, "end")
                 self.dns3_entry.delete(0, "end")
-                if len(ips) > 0: self.dns1_entry.insert(0, ips[0])
-                if len(ips) > 1: self.dns2_entry.insert(0, ips[1])
-                if len(ips) > 2: self.dns3_entry.insert(0, ips[2])
+                if len(ips) > 0:
+                    self.dns1_entry.insert(0, ips[0])
+                if len(ips) > 1:
+                    self.dns2_entry.insert(0, ips[1])
+                if len(ips) > 2:
+                    self.dns3_entry.insert(0, ips[2])
                 self.applied_source_kind = "preset"
                 break
 
@@ -763,16 +944,22 @@ class DNSView(ctk.CTkFrame):
         if not ip:
             return
         lbl.configure(text="Pinging...", text_color=ThemeManager.text())
+
         def _bg():
             from netools.libs.net import ping_ip
+
             lat = ping_ip(ip, timeout=1.5)
             try:
-                self.after(0, lambda: lbl.configure(
-                    text=f"{lat:.1f} ms" if lat else "Timeout",
-                    text_color=ThemeManager.success() if lat else ThemeManager.danger()
-                ))
+                self.after(
+                    0,
+                    lambda: lbl.configure(
+                        text=f"{lat:.1f} ms" if lat else "Timeout",
+                        text_color=ThemeManager.success() if lat else ThemeManager.danger(),
+                    ),
+                )
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def apply_dns(self):
@@ -793,22 +980,27 @@ class DNSView(ctk.CTkFrame):
 
         def _bg():
             success = sys_dns.apply_system_dns(
-                dev,
-                valid,
-                connection_name=conn,
-                enable_dot=self.dot_var.get(),
-                persistent=self.persist_var.get()
+                dev, valid, connection_name=conn, enable_dot=self.dot_var.get(), persistent=self.persist_var.get()
             )
             try:
                 if success:
-                    self.after(0, lambda: self.main_app.show_toast(f"✓ DNS ({', '.join(valid)}) diterapkan ke '{dev}'!", level="success"))
+                    self.after(
+                        0,
+                        lambda: self.main_app.show_toast(
+                            f"✓ DNS ({', '.join(valid)}) diterapkan ke '{dev}'!", level="success"
+                        ),
+                    )
                     self.after(0, self.load_active_interface_dns)
                     if hasattr(self.main_app, "dashboard_view"):
                         self.after(0, self.main_app.dashboard_view.refresh)
                 else:
-                    self.after(0, lambda: self.main_app.show_toast(f"Gagal menerapkan DNS ke interface '{dev}'.", level="error"))
+                    self.after(
+                        0,
+                        lambda: self.main_app.show_toast(f"Gagal menerapkan DNS ke interface '{dev}'.", level="error"),
+                    )
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def flush_dns(self):
@@ -818,6 +1010,7 @@ class DNSView(ctk.CTkFrame):
                 self.after(0, lambda: self.main_app.show_toast("✓ DNS Cache berhasil di-flush!", level="success"))
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def restore_dhcp(self):
@@ -833,12 +1026,18 @@ class DNSView(ctk.CTkFrame):
         def _bg():
             sys_dns.restore_default_dns(dev, connection_name=conn)
             try:
-                self.after(0, lambda: self.main_app.show_toast(f"✓ Interface '{dev}' dikembalikan ke DHCP default.", level="info"))
+                self.after(
+                    0,
+                    lambda: self.main_app.show_toast(
+                        f"✓ Interface '{dev}' dikembalikan ke DHCP default.", level="info"
+                    ),
+                )
                 self.after(0, self.load_active_interface_dns)
                 if hasattr(self.main_app, "dashboard_view"):
                     self.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def on_category_filter_change(self, cat_name: str):
@@ -849,19 +1048,24 @@ class DNSView(ctk.CTkFrame):
             name = p.get("name", "").lower()
             desc = p.get("description", "").lower()
 
-            if "All" in cat_name:
-                filtered_labels.append(f"{p['country']} {p['name']}")
-            elif "Security" in cat_name and (cat == "security" or "security" in desc or "privacy" in desc or "no-log" in desc):
-                filtered_labels.append(f"{p['country']} {p['name']}")
-            elif "Gaming" in cat_name and (cat == "gaming" or "gaming" in desc or "game" in name or "fast" in desc or region == "asia"):
-                filtered_labels.append(f"{p['country']} {p['name']}")
-            elif "Ad-Blocking" in cat_name and (cat == "adblock" or "ad" in desc or "block" in desc):
-                filtered_labels.append(f"{p['country']} {p['name']}")
-            elif "Family" in cat_name and (cat == "family" or "family" in desc or "parental" in desc or "safe" in desc):
-                filtered_labels.append(f"{p['country']} {p['name']}")
-            elif "Asia" in cat_name and region == "asia":
-                filtered_labels.append(f"{p['country']} {p['name']}")
-            elif "Global" in cat_name and (region == "global" or "anycast" in desc):
+            if (
+                "All" in cat_name
+                or (
+                    "Security" in cat_name
+                    and (cat == "security" or "security" in desc or "privacy" in desc or "no-log" in desc)
+                )
+                or (
+                    "Gaming" in cat_name
+                    and (cat == "gaming" or "gaming" in desc or "game" in name or "fast" in desc or region == "asia")
+                )
+                or ("Ad-Blocking" in cat_name and (cat == "adblock" or "ad" in desc or "block" in desc))
+                or (
+                    "Family" in cat_name
+                    and (cat == "family" or "family" in desc or "parental" in desc or "safe" in desc)
+                )
+                or ("Asia" in cat_name and region == "asia")
+                or ("Global" in cat_name and (region == "global" or "anycast" in desc))
+            ):
                 filtered_labels.append(f"{p['country']} {p['name']}")
 
         if hasattr(self, "preset_dropdown") and self.preset_dropdown:
@@ -914,7 +1118,6 @@ class DNSView(ctk.CTkFrame):
     def verify_dns_status(self):
         """Probe active resolvers (UDP / DoT / DoH) + TLS capability, then
         render the universal inspector window."""
-        selected_label = self.iface_var.get()
         dev = self.active_interface
 
         def _bg():
@@ -924,9 +1127,11 @@ class DNSView(ctk.CTkFrame):
                 dot_state = "Disabled"
                 try:
                     import subprocess
+
                     out = subprocess.check_output(
                         ["resolvectl", "status", dev],
-                        text=True, stderr=subprocess.DEVNULL,
+                        text=True,
+                        stderr=subprocess.DEVNULL,
                     )
                     if "DNSOverTLS=yes" in out:
                         dot_state = "Strict (+DNSOverTLS)"
@@ -937,10 +1142,9 @@ class DNSView(ctk.CTkFrame):
 
                 from netools.libs import dns_benchmark as bm
 
-                for idx, ip in enumerate(current[:3], start=1):
+                for _idx, ip in enumerate(current[:3], start=1):
                     provider = next(
-                        (p for p in self.providers.values()
-                         if ip in p.get("ipv4", []) or ip in p.get("ipv6", [])),
+                        (p for p in self.providers.values() if ip in p.get("ipv4", []) or ip in p.get("ipv6", [])),
                         None,
                     )
                     pname = provider.get("name", "Unknown") if provider else "Custom"
@@ -954,6 +1158,7 @@ class DNSView(ctk.CTkFrame):
                     doh_url = (provider or {}).get("doh_url") if provider else ""
                     if not doh_url and ip == "127.0.0.1":
                         from netools.services import doh_service as _doh_svc
+
                         pid = _doh_svc.get_active_provider() if hasattr(_doh_svc, "get_active_provider") else None
                         prov = self.providers.get(pid) if pid else None
                         doh_url = prov.get("doh_url", "") if prov else ""
@@ -962,6 +1167,7 @@ class DNSView(ctk.CTkFrame):
                     if doh_url:
                         try:
                             import time as _time
+
                             t0 = _time.time()
                             bm.query_doh_dns(doh_url, "google.com")
                             ms = (__import__("time").time() - t0) * 1000
@@ -969,16 +1175,16 @@ class DNSView(ctk.CTkFrame):
                         except Exception:
                             pass
 
-                    line = (
-                        f"• {pname} ({ip}): UDP "
-                        f"{f'{lat:.1f}' if lat else 'Timeout'} | {tls_label}"
-                    )
+                    line = f"• {pname} ({ip}): UDP {f'{lat:.1f}' if lat else 'Timeout'} | {tls_label}"
                     results_lines.append(line)
                     if doh_url:
-                        results_lines.append(f"   • DoH ({doh_url.split('/')[2] if '/' in doh_url else doh_url}) : {doh_status}")
+                        results_lines.append(
+                            f"   • DoH ({doh_url.split('/')[2] if '/' in doh_url else doh_url}) : {doh_status}"
+                        )
 
                 if not results_lines:
                     results_lines.append("• No active DNS servers detected (DHCP Default)")
+                results_lines.append(f"• DoT (OS): {dot_state}")
             except Exception as e:
                 results_lines.append(f"• probe error: {e}")
 
@@ -1007,20 +1213,25 @@ class DNSView(ctk.CTkFrame):
         win.geometry("540x400")
         win.configure(fg_color=ThemeManager.bg())
         from netools.gui.wm import mark_dialog
+
         mark_dialog(win, self.winfo_toplevel())
         win.grab_set()
         win.protocol("WM_DELETE_WINDOW", self._close_verify)
 
         iface_line = tr("• Network Interface : ") + dev
-        transport = "🟢 Encrypted" if ("DoH" in self.ip_family_var.get() or "DoT" in self.ip_family_var.get() or self.dot_var.get()) else "⚪ Plain UDP 53"
-        ctk.CTkLabel(win, text=iface_line, font=Fonts.bold(12),
-                     text_color=ThemeManager.success()).pack(anchor="w", padx=14, pady=(12, 0))
-        ctk.CTkLabel(win, text="• OS Transport      : " + transport,
-                     font=Fonts.mono(11), text_color=ThemeManager.text()).pack(anchor="w", padx=14)
+        transport = (
+            "🟢 Encrypted"
+            if ("DoH" in self.ip_family_var.get() or "DoT" in self.ip_family_var.get() or self.dot_var.get())
+            else "⚪ Plain UDP 53"
+        )
+        ctk.CTkLabel(win, text=iface_line, font=Fonts.bold(12), text_color=ThemeManager.success()).pack(
+            anchor="w", padx=14, pady=(12, 0)
+        )
+        ctk.CTkLabel(
+            win, text="• OS Transport      : " + transport, font=Fonts.mono(11), text_color=ThemeManager.text()
+        ).pack(anchor="w", padx=14)
 
-        box = ctk.CTkTextbox(win, font=Fonts.mono(11),
-                             fg_color=ThemeManager.surface(),
-                             text_color=ThemeManager.text())
+        box = ctk.CTkTextbox(win, font=Fonts.mono(11), fg_color=ThemeManager.surface(), text_color=ThemeManager.text())
         box.pack(fill="both", expand=True, padx=12, pady=10)
         header = tr("── Active Resolvers Latency & TLS Capability ──")
         body = report if report.strip() else tr("• No active DNS servers detected (DHCP Default)")
@@ -1030,23 +1241,34 @@ class DNSView(ctk.CTkFrame):
         btn_row.pack(fill="x", padx=12, pady=(0, 10))
 
         ctk.CTkButton(
-            btn_row, text=tr("🌐 Universal Leak Test"),
-            font=Fonts.bold(11), fg_color=ThemeManager.primary(),
+            btn_row,
+            text=tr("🌐 Universal Leak Test"),
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.primary(),
             text_color=ThemeManager.get("on_primary"),
-            hover_color=ThemeManager.accent(), height=32,
+            hover_color=ThemeManager.accent(),
+            height=32,
             command=self._open_leak_test,
         ).pack(side="left", padx=(0, 6))
 
         ctk.CTkButton(
-            btn_row, text=tr("🌐 1.1.1.1/help"),
-            font=Fonts.regular(11), fg_color=ThemeManager.border(),
-            text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(),
-            height=32, command=self._open_cf_help,
+            btn_row,
+            text=tr("🌐 1.1.1.1/help"),
+            font=Fonts.regular(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            height=32,
+            command=self._open_cf_help,
         ).pack(side="left", padx=6)
 
         ctk.CTkButton(
-            btn_row, text=tr("Close"), width=90, height=32,
-            fg_color=ThemeManager.border(), text_color=ThemeManager.text(),
+            btn_row,
+            text=tr("Close"),
+            width=90,
+            height=32,
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
             hover_color=ThemeManager.surface_alt(),
             command=self._close_verify,
         ).pack(side="right")
@@ -1061,10 +1283,12 @@ class DNSView(ctk.CTkFrame):
 
     def _open_leak_test(self):
         import webbrowser
+
         webbrowser.open("https://browserleaks.com/dns")
 
     def _open_cf_help(self):
         import webbrowser
+
         webbrowser.open("https://one.one.one.one/help")
         # [reconstructed tail — original body beyond this point rebuilt from
         #  behaviour specs; report layout preserved via pyc string inventory]

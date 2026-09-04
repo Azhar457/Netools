@@ -11,7 +11,6 @@ from netools.libs import dpi_detector
 
 
 class TestDPIDetector(unittest.TestCase):
-
     def test_is_bogon_or_private_ip(self):
         self.assertTrue(dpi_detector.is_bogon_or_private_ip("127.0.0.1"))
         self.assertTrue(dpi_detector.is_bogon_or_private_ip("0.0.0.0"))
@@ -42,7 +41,7 @@ class TestDPIDetector(unittest.TestCase):
         mock_addr.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("104.16.2.3", 443))]
         mock_doh.return_value = (12.0, ["104.16.2.3"])
 
-        stage, sys_ips, doh_ips = dpi_detector.evaluate_stage_a_dns("clean-site.com")
+        stage, _sys_ips, _doh_ips = dpi_detector.evaluate_stage_a_dns("clean-site.com")
         self.assertEqual(stage.status, "PASS")
         self.assertIn("Clean", stage.summary)
 
@@ -76,10 +75,7 @@ class TestDPIDetector(unittest.TestCase):
         # First wrap (target SNI) raises ConnectionResetError (DPI RST)
         # Second wrap (neutral SNI) succeeds
         mock_ssock_neutral = MagicMock()
-        mock_ctx.wrap_socket.side_effect = [
-            ConnectionResetError("Connection reset by peer"),
-            mock_ssock_neutral
-        ]
+        mock_ctx.wrap_socket.side_effect = [ConnectionResetError("Connection reset by peer"), mock_ssock_neutral]
         mock_ssl_ctx.return_value = mock_ctx
 
         stage, ssock = dpi_detector.evaluate_stage_c_sni_dpi("104.16.2.3", "dashboard.ngrok.com")
@@ -92,7 +88,7 @@ class TestDPIDetector(unittest.TestCase):
         mock_ssock = MagicMock()
         mock_ssock.getpeercert.return_value = {
             "issuer": ((("organizationName", "Fortinet Enterprise CA"),),),
-            "subject": ((("commonName", "dashboard.ngrok.com"),),)
+            "subject": ((("commonName", "dashboard.ngrok.com"),),),
         }
 
         stage = dpi_detector.evaluate_stage_d_ssl_mitm("dashboard.ngrok.com", mock_ssock, "104.16.2.3")
@@ -104,7 +100,7 @@ class TestDPIDetector(unittest.TestCase):
         mock_ssock = MagicMock()
         mock_ssock.getpeercert.return_value = {
             "issuer": ((("organizationName", "Let's Encrypt Authority X3"),),),
-            "subject": ((("commonName", "dashboard.ngrok.com"),),)
+            "subject": ((("commonName", "dashboard.ngrok.com"),),),
         }
 
         stage = dpi_detector.evaluate_stage_d_ssl_mitm("dashboard.ngrok.com", mock_ssock, "104.16.2.3")
@@ -120,15 +116,12 @@ class TestDPIDetector(unittest.TestCase):
         mock_a.return_value = (
             dpi_detector.DiagnosticStage("A", "DNS", "PASS", 10.0, "Clean"),
             ["104.16.2.3"],
-            ["104.16.2.3"]
+            ["104.16.2.3"],
         )
         # Stage B: Clean TCP
         mock_b.return_value = dpi_detector.DiagnosticStage("B", "TCP", "PASS", 20.0, "Connected")
         # Stage C: Blocked SNI DPI
-        mock_c.return_value = (
-            dpi_detector.DiagnosticStage("C", "TLS SNI", "BLOCKED", 25.0, "SNI Reset"),
-            None
-        )
+        mock_c.return_value = (dpi_detector.DiagnosticStage("C", "TLS SNI", "BLOCKED", 25.0, "SNI Reset"), None)
 
         report = dpi_detector.diagnose_domain_reachability("dashboard.ngrok.com")
         self.assertEqual(report.verdict, "BLOCKED_SNI_DPI")

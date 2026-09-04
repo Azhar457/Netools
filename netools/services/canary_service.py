@@ -77,25 +77,26 @@ PRECHECK_HOSTNAMES: tuple[str, ...] = (
 # Status / result data classes
 # ---------------------------------------------------------------------------
 
-STATUS_CLEAN = "clean"            # NXDOMAIN or NODATA -> not intercepted
+STATUS_CLEAN = "clean"  # NXDOMAIN or NODATA -> not intercepted
 STATUS_INTERCEPTED = "intercepted"  # Got A/AAAA / SOA / CNAME -> forged
-STATUS_TIMEOUT = "timeout"          # No response within timeout
-STATUS_SERVFAIL = "servfail"        # Upstream reported SERVFAIL
-STATUS_OFFLINE = "offline"          # Pre-check failed -> network likely down
+STATUS_TIMEOUT = "timeout"  # No response within timeout
+STATUS_SERVFAIL = "servfail"  # Upstream reported SERVFAIL
+STATUS_OFFLINE = "offline"  # Pre-check failed -> network likely down
 
-VERDICT_CLEAN = "clean"             # All domains clean across all resolvers
+VERDICT_CLEAN = "clean"  # All domains clean across all resolvers
 VERDICT_INTERCEPTED = "intercepted"  # At least one domain intercepted
 VERDICT_INDETERMINATE = "indeterminate"  # Offline / timeout / mixed errors
-VERDICT_PARTIAL = "partial"          # Some clean, some intercepted (rare)
+VERDICT_PARTIAL = "partial"  # Some clean, some intercepted (rare)
 
 
 @dataclass
 class CanaryProbe:
     """Single (hostname x resolver) probe result."""
+
     hostname: str
-    resolver: str        # "system", "custom:1.1.1.1", "custom:9.9.9.9", ...
-    status: str          # one of STATUS_*
-    rcode: str = ""      # raw DNS RCODE if available
+    resolver: str  # "system", "custom:1.1.1.1", "custom:9.9.9.9", ...
+    status: str  # one of STATUS_*
+    rcode: str = ""  # raw DNS RCODE if available
     latency_ms: float = 0.0
     answer_summary: str = ""  # e.g. "NXDOMAIN", "A=1.2.3.4", "SOA=ns1..."
 
@@ -106,6 +107,7 @@ class CanaryProbe:
 @dataclass
 class CanaryRunResult:
     """Result of one full canary sweep."""
+
     timestamp: float
     precheck_ok: bool
     probes: list[CanaryProbe] = field(default_factory=list)
@@ -183,19 +185,22 @@ def get_all_canary_hostnames(include_custom: bool = True) -> list[dict[str, str]
         out.append({"id": cid, **info, "kind": "builtin"})
     if include_custom:
         for hostname in _load_custom_canaries():
-            out.append({
-                "id": f"custom:{hostname}",
-                "hostname": hostname,
-                "owner": "Custom",
-                "purpose": "User-defined canary domain.",
-                "kind": "custom",
-            })
+            out.append(
+                {
+                    "id": f"custom:{hostname}",
+                    "hostname": hostname,
+                    "owner": "Custom",
+                    "purpose": "User-defined canary domain.",
+                    "kind": "custom",
+                }
+            )
     return out
 
 
 # ---------------------------------------------------------------------------
 # Resolver factory
 # ---------------------------------------------------------------------------
+
 
 def _make_resolver(target: str, timeout: float) -> dns.resolver.Resolver:
     """Build a dns.resolver.Resolver for `target`.
@@ -215,6 +220,7 @@ def _make_resolver(target: str, timeout: float) -> dns.resolver.Resolver:
         if not r.nameservers:
             try:
                 from netools.adapters import platform_dns
+
                 ifaces = platform_dns.get_network_interfaces()
                 dev = ifaces[0]["device"] if ifaces else "default"
                 active_dns = platform_dns.get_interface_dns(dev)
@@ -248,13 +254,15 @@ def _resolver_label(target: str) -> str:
 # Single probe
 # ---------------------------------------------------------------------------
 
+
 def _probe(hostname: str, resolver_target: str, timeout: float) -> CanaryProbe:
     label = _resolver_label(resolver_target)
     started = time.perf_counter()
     # TLD canaries (".ai") are probed via a guaranteed-nonexistent subdomain:
     # random.<tld> must NXDOMAIN; any answer means the resolver forges wildcards.
-    probe_host = f"canary-probe-{int(time.time()*1000):x}.{hostname.lstrip('.')}" \
-        if hostname.startswith(".") else hostname
+    probe_host = (
+        f"canary-probe-{int(time.time() * 1000):x}.{hostname.lstrip('.')}" if hostname.startswith(".") else hostname
+    )
     try:
         res = _make_resolver(resolver_target, timeout)
         # Use UDP A first; if it answers, intercepted. Empty A + AAAA NXDOMAIN = clean.
@@ -264,32 +272,46 @@ def _probe(hostname: str, resolver_target: str, timeout: float) -> CanaryProbe:
             if ans.rrset is not None and len(ans.rrset) > 0:
                 sample = ", ".join(str(rdata) for rdata in list(ans.rrset)[:3])
                 return CanaryProbe(
-                    hostname=hostname, resolver=label,
-                    status=STATUS_INTERCEPTED, rcode=str(rcode or "NOERROR"),
+                    hostname=hostname,
+                    resolver=label,
+                    status=STATUS_INTERCEPTED,
+                    rcode=str(rcode or "NOERROR"),
                     latency_ms=(time.perf_counter() - started) * 1000,
                     answer_summary=f"A={sample}",
                 )
             # No A record -> check rcode
             if rcode == dns.rcode.NXDOMAIN:
-                return CanaryProbe(hostname, label, STATUS_CLEAN, "NXDOMAIN",
-                                   (time.perf_counter() - started) * 1000, "NXDOMAIN")
+                return CanaryProbe(
+                    hostname, label, STATUS_CLEAN, "NXDOMAIN", (time.perf_counter() - started) * 1000, "NXDOMAIN"
+                )
             if rcode == dns.rcode.NOERROR:
-                return CanaryProbe(hostname, label, STATUS_CLEAN, "NOERROR",
-                                   (time.perf_counter() - started) * 1000, "NODATA")
-            return CanaryProbe(hostname, label, STATUS_SERVFAIL, str(rcode),
-                               (time.perf_counter() - started) * 1000, f"RCODE={rcode}")
+                return CanaryProbe(
+                    hostname, label, STATUS_CLEAN, "NOERROR", (time.perf_counter() - started) * 1000, "NODATA"
+                )
+            return CanaryProbe(
+                hostname, label, STATUS_SERVFAIL, str(rcode), (time.perf_counter() - started) * 1000, f"RCODE={rcode}"
+            )
         except dns.resolver.NXDOMAIN:
-            return CanaryProbe(hostname, label, STATUS_CLEAN, "NXDOMAIN",
-                               (time.perf_counter() - started) * 1000, "NXDOMAIN")
+            return CanaryProbe(
+                hostname, label, STATUS_CLEAN, "NXDOMAIN", (time.perf_counter() - started) * 1000, "NXDOMAIN"
+            )
         except dns.resolver.NoNameservers:
-            return CanaryProbe(hostname, label, STATUS_SERVFAIL, "NoNameservers",
-                               (time.perf_counter() - started) * 1000, "NoNameservers")
+            return CanaryProbe(
+                hostname,
+                label,
+                STATUS_SERVFAIL,
+                "NoNameservers",
+                (time.perf_counter() - started) * 1000,
+                "NoNameservers",
+            )
         except (dns.resolver.LifetimeTimeout, dns.exception.Timeout):
-            return CanaryProbe(hostname, label, STATUS_TIMEOUT, "timeout",
-                               (time.perf_counter() - started) * 1000, "timeout")
+            return CanaryProbe(
+                hostname, label, STATUS_TIMEOUT, "timeout", (time.perf_counter() - started) * 1000, "timeout"
+            )
     except Exception as e:
-        return CanaryProbe(hostname, label, STATUS_TIMEOUT, "exception",
-                           (time.perf_counter() - started) * 1000, str(e)[:80])
+        return CanaryProbe(
+            hostname, label, STATUS_TIMEOUT, "exception", (time.perf_counter() - started) * 1000, str(e)[:80]
+        )
 
 
 def _probe_precheck(resolver_target: str, timeout: float) -> bool:
@@ -312,6 +334,7 @@ def _probe_precheck(resolver_target: str, timeout: float) -> bool:
 # Public API: full canary sweep
 # ---------------------------------------------------------------------------
 
+
 def run_canary_sweep(
     resolvers: Optional[list[str]] = None,
     timeout: float = 2.0,
@@ -327,6 +350,7 @@ def run_canary_sweep(
         # Optionally add user's custom upstream if they set one.
         try:
             from netools.config import _user_cfg  # type: ignore
+
             custom = _user_cfg.get("custom_dns_upstream", "").strip()
             if custom:
                 resolvers.append(f"custom:{custom}")
@@ -350,10 +374,15 @@ def run_canary_sweep(
     for i, (h, r) in enumerate(tasks):
         t = threading.Thread(
             target=lambda idx=i, host=h, res=r: results.__setitem__(
-                idx, _probe(host, res, timeout) if precheck_results[res] else CanaryProbe(
-                    hostname=host, resolver=res, status=STATUS_OFFLINE,
+                idx,
+                _probe(host, res, timeout)
+                if precheck_results[res]
+                else CanaryProbe(
+                    hostname=host,
+                    resolver=res,
+                    status=STATUS_OFFLINE,
                     answer_summary="precheck-failed",
-                )
+                ),
             ),
             daemon=True,
         )
@@ -393,12 +422,14 @@ def run_canary_sweep(
 # Convenience: run in background thread (UI-friendly)
 # ---------------------------------------------------------------------------
 
+
 def run_canary_sweep_async(
     on_done,  # callable(CanaryRunResult)
     resolvers: Optional[list[str]] = None,
     timeout: float = 2.0,
 ):
     """Fire-and-forget background sweep. Calls on_done(result) on completion."""
+
     def _runner():
         try:
             res = run_canary_sweep(resolvers=resolvers, timeout=timeout)
@@ -415,6 +446,7 @@ def run_canary_sweep_async(
 # ---------------------------------------------------------------------------
 # Custom canary helpers (used by Preferences UI later)
 # ---------------------------------------------------------------------------
+
 
 def add_custom_canary(hostname: str) -> bool:
     hostname = hostname.strip().lower().rstrip(".")

@@ -76,4 +76,8 @@ line-length = 120
 target-version = "py39"
 
 [tool.ruff.lint]
-select = ["F", "I"]
+select = ["F", "I", "B", "RUF"]
+ignore = ["B904", "B008", "RUF001", "RUF013"]  # B904: raise from legacy; B008: fn call default arg; RUF001: unicode display chars; RUF013: legacy Optional
+
+[tool.ruff.format]
+docstring-code-format = true

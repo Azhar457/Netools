@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import customtkinter as ctk
+
 from netools.gui.i18n import tr
 from netools.gui.wm import mark_splash
 from netools.libs.logger import get_logger
@@ -34,7 +35,6 @@ class SplashScreen(ctk.CTkToplevel):
         self.overrideredirect(True)  # Borderless modern splash
         self.configure(fg_color="#181825")
 
-
         # Center on screen
         s_w = self.winfo_screenwidth()
         s_h = self.winfo_screenheight()
@@ -55,13 +55,7 @@ class SplashScreen(ctk.CTkToplevel):
         self.after(10, self._run_preloader_sequence)
 
     def _build_ui(self):
-        main_card = ctk.CTkFrame(
-            self,
-            fg_color="#1e1e2e",
-            corner_radius=12,
-            border_width=1,
-            border_color="#313244"
-        )
+        main_card = ctk.CTkFrame(self, fg_color="#1e1e2e", corner_radius=12, border_width=1, border_color="#313244")
         main_card.pack(fill="both", expand=True, padx=4, pady=4)
 
         # Header Title
@@ -69,7 +63,7 @@ class SplashScreen(ctk.CTkToplevel):
             main_card,
             text="⚡ Netools Suite v2.0",
             font=ctk.CTkFont(family="sans-serif", size=18, weight="bold"),
-            text_color="#89b4fa"
+            text_color="#89b4fa",
         )
         lbl_title.pack(anchor="w", padx=24, pady=(24, 2))
 
@@ -78,17 +72,13 @@ class SplashScreen(ctk.CTkToplevel):
             main_card,
             text="Unified Sing-box Rotator, GRC DNS Benchmark & AI Gateway",
             font=ctk.CTkFont(family="sans-serif", size=11),
-            text_color="#a6adc8"
+            text_color="#a6adc8",
         )
         lbl_sub.pack(anchor="w", padx=24, pady=(0, 20))
 
         # Progress bar
         self.prog_bar = ctk.CTkProgressBar(
-            main_card,
-            height=6,
-            corner_radius=3,
-            fg_color="#313244",
-            progress_color="#89b4fa"
+            main_card, height=6, corner_radius=3, fg_color="#313244", progress_color="#89b4fa"
         )
         self.prog_bar.pack(fill="x", padx=24, pady=(10, 8))
         self.prog_bar.set(0.01)
@@ -102,7 +92,7 @@ class SplashScreen(ctk.CTkToplevel):
             text=tr("🔍 Memuat modul & konfigurasi sistem..."),
             font=ctk.CTkFont(family="sans-serif", size=11),
             text_color="#cdd6f4",
-            anchor="w"
+            anchor="w",
         )
         self.lbl_status.pack(side="left")
 
@@ -111,7 +101,7 @@ class SplashScreen(ctk.CTkToplevel):
             text="1%",
             font=ctk.CTkFont(family="sans-serif", size=11, weight="bold"),
             text_color="#89b4fa",
-            anchor="e"
+            anchor="e",
         )
         self.lbl_pct.pack(side="right")
 
@@ -120,7 +110,7 @@ class SplashScreen(ctk.CTkToplevel):
             main_card,
             text=tr("Memuat database & me-render modul ke memori untuk performa instan..."),
             font=ctk.CTkFont(family="sans-serif", size=9),
-            text_color="#6c7086"
+            text_color="#6c7086",
         )
         lbl_hint.pack(side="bottom", pady=(0, 16))
 
@@ -183,4 +173,3 @@ class SplashScreen(ctk.CTkToplevel):
                 pass
             if callable(self.on_complete):
                 self.on_complete()
-

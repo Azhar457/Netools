@@ -48,8 +48,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "🔌 9Router & AI Sync": {"id": "🔌 Sync Router"},
     "🍪 Cookie Extractor": {"id": "🍪 Cookie Extractor"},
     "⚙️ Settings & About": {"id": "⚙️ Pengaturan & Info"},
-
-
     # -----------------------------------------------------------------------
     # Window & Tray Notifications
     # -----------------------------------------------------------------------
@@ -74,7 +72,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "❌ Keluar (Exit)": {"id": "❌ Keluar (Exit)"},
     "❌ Exit Netools": {"id": "❌ Keluar (Exit)"},
     "↩️ Restore DHCP Default": {"id": "↩️ Kembalikan ke DHCP"},
-
     # -----------------------------------------------------------------------
     # Tab 1: Dashboard View
     # -----------------------------------------------------------------------
@@ -113,7 +110,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "✓ Optimasi 1-Klik selesai! DNS tercepat diterapkan dan cache dibersihkan.": {
         "id": "✓ Optimasi 1-Klik selesai! DNS tercepat diterapkan dan cache dibersihkan.",
     },
-
     # -----------------------------------------------------------------------
     # Tab 2: DNS Suite View
     # -----------------------------------------------------------------------
@@ -171,7 +167,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "✓ Pengaturan DNS berhasil dikembalikan ke default DHCP!": {
         "id": "✓ Pengaturan DNS berhasil dikembalikan ke default DHCP!",
     },
-
     # -----------------------------------------------------------------------
     # Tab 3: Proxy Rotator View
     # -----------------------------------------------------------------------
@@ -192,7 +187,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "Health Status": {"id": "Status Kesehatan"},
     "● POOL ACTIVE": {"id": "● POOL AKTIF"},
     "● POOL STOPPED": {"id": "● POOL BERHENTI"},
-
     # -----------------------------------------------------------------------
     # Tab 4: 9Router & AI Gateway View
     # -----------------------------------------------------------------------
@@ -208,11 +202,18 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "Routing Strategy:": {"id": "Strategi Routing:"},
     "✓ Berhasil terhubung ke 9Router Gateway!": {"id": "✓ Berhasil terhubung ke 9Router Gateway!"},
     "Gagal terhubung ke 9Router: {error}": {"id": "Gagal terhubung ke 9Router: {error}"},
-    "✓ Successfully connected {assigned} connections to 9Router!": {"id": "✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!"},
-    "✓ Returned {cleared} 9Router proxies to Direct connection.": {"id": "✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct."},
-    "✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!": {"id": "✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!"},
-    "✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct.": {"id": "✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct."},
-
+    "✓ Successfully connected {assigned} connections to 9Router!": {
+        "id": "✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!"
+    },
+    "✓ Returned {cleared} 9Router proxies to Direct connection.": {
+        "id": "✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct."
+    },
+    "✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!": {
+        "id": "✓ Berhasil menghubungkan {assigned} koneksi ke 9Router!"
+    },
+    "✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct.": {
+        "id": "✓ {cleared} proxy 9Router dikembalikan ke koneksi Direct."
+    },
     # -----------------------------------------------------------------------
     # Tab 5: Preferences & About View
     # -----------------------------------------------------------------------
@@ -247,7 +248,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "📖 GitHub Repository": {"id": "📖 Repositori GitHub"},
     "✓ Bahasa berhasil diubah ke Bahasa Indonesia!": {"id": "✓ Bahasa berhasil diubah ke Bahasa Indonesia!"},
     "✓ Language changed to English!": {"id": "✓ Language changed to English!"},
-
     # -----------------------------------------------------------------------
     # GRC Benchmark Modal
     # -----------------------------------------------------------------------
@@ -266,7 +266,6 @@ _TRANSLATIONS: dict[str, dict[str, str]] = {
     "Secondary IP": {"id": "IP Cadangan"},
     "Avg Latency": {"id": "Rata-rata Latensi"},
     "Reliability": {"id": "Keandalan"},
-
     # -----------------------------------------------------------------------
     # Visual DPI & Censorship Flow Inspector Modal
     # -----------------------------------------------------------------------
@@ -300,18 +299,15 @@ _CANARY_INFO: dict[str, list[str]] = {
         "Canary domains are special hostnames that must NEVER resolve to an IP address. "
         "They are published by Mozilla and Apple as tripwires: if your network operator "
         "(ISP) tampers with DNS, these domains suddenly 'resolve' to a forged answer.",
-
         "How the check works:",
         "1. Netools queries each canary hostname through your system resolver "
         "(and any custom upstream you configured).",
-        "2. A correct resolver answers NXDOMAIN ('this domain does not exist'). "
-        "That means your DNS path is clean.",
+        "2. A correct resolver answers NXDOMAIN ('this domain does not exist'). That means your DNS path is clean.",
         "3. If an answer comes back anyway (an IP, CNAME, or SOA record), someone on "
         "the path forged it -> DNS interception detected. Your plain-DNS queries are "
         "being watched or redirected.",
         "4. Before judging, a pre-check resolves firefox.com / mozilla.org to make "
         "sure you are actually online - otherwise results would be false positives.",
-
         "Why this matters:",
         "If interception is detected, websites may be blocked or redirected by your "
         "provider even before you connect. Encrypted DNS (DoH via Netools' forwarder, "
@@ -325,7 +321,6 @@ _CANARY_INFO: dict[str, list[str]] = {
         "Domain canary adalah hostname khusus yang TIDAK PERNAH boleh resolve ke alamat IP. "
         "Domain ini diterbitkan oleh Mozilla dan Apple sebagai tripwire/alarm: jika operator jaringan "
         "(ISP) mengintervensi DNS, domain ini tiba-tiba 'ter-resolve' ke jawaban palsu.",
-
         "Cara kerja pemeriksaan:",
         "1. Netools menanyakan setiap hostname canary melalui resolver sistem "
         "(dan upstream kustom yang Anda konfigurasi).",
@@ -336,7 +331,6 @@ _CANARY_INFO: dict[str, list[str]] = {
         "dipantau atau dialihkan oleh ISP/Middlebox.",
         "4. Sebelum menilai, pra-cek me-resolve firefox.com / mozilla.org untuk "
         "memastikan Anda benar-benar online - jika tidak, hasil bisa salah.",
-
         "Mengapa ini penting:",
         "Jika intersepsi terdeteksi, situs web dapat diblokir atau dialihkan oleh penyedia "
         "Anda bahkan sebelum Anda terhubung. DNS terenkripsi (DoH via forwarder Netools, "
@@ -351,6 +345,7 @@ _CANARY_INFO: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 # Core i18n Functions & Extensibility
 # ---------------------------------------------------------------------------
+
 
 def register_locale(code: str, label: str, strings: dict[str, str], canary_info: Optional[list[str]] = None) -> None:
     """

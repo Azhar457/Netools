@@ -4,6 +4,7 @@ Tests dynamic translation, language registry, persistence, formatting, and exten
 """
 
 import unittest
+
 from netools.gui import i18n
 
 
@@ -61,7 +62,7 @@ class TestI18nEngine(unittest.TestCase):
             "🚀 Start Pool": "🚀 プールを開始",
             "🛑 Stop Pool": "🛑 プールを停止",
             "● System Ready": "● システム準備完了",
-            "Hello {name}": "こんにちは、{name}さん！"
+            "Hello {name}": "こんにちは、{name}さん！",
         }
         i18n.register_locale("ja", "🇯🇵 日本語", ja_strings)
 

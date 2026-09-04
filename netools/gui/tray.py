@@ -15,9 +15,11 @@ from typing import Any, Optional
 try:
     import pystray
     from PIL import Image, ImageDraw
+
     PYSTRAY_AVAILABLE = True
 except Exception as e:
     import traceback
+
     print("[DEBUG] netools.gui.tray import failed:", e)
     traceback.print_exc()
     PYSTRAY_AVAILABLE = False
@@ -90,13 +92,21 @@ class TrayManager:
             image = create_fallback_image()
 
         dns_menu = pystray.Menu(
-            pystray.MenuItem("⚡ Cloudflare (1.1.1.1)", lambda: self._on_quick_dns(["1.1.1.1", "1.0.0.1"], "Cloudflare")),
+            pystray.MenuItem(
+                "⚡ Cloudflare (1.1.1.1)", lambda: self._on_quick_dns(["1.1.1.1", "1.0.0.1"], "Cloudflare")
+            ),
             pystray.MenuItem("⚡ Google (8.8.8.8)", lambda: self._on_quick_dns(["8.8.8.8", "8.8.4.4"], "Google")),
-            pystray.MenuItem("🛡️ Quad9 (Security / No-Log)", lambda: self._on_quick_dns(["9.9.9.9", "149.112.112.112"], "Quad9")),
-            pystray.MenuItem("🚫 AdGuard (Ad-Blocking)", lambda: self._on_quick_dns(["94.140.14.14", "94.140.15.15"], "AdGuard")),
-            pystray.MenuItem("🇨🇳 AliDNS (Alibaba Cloud)", lambda: self._on_quick_dns(["223.5.5.5", "223.6.6.6"], "AliDNS")),
+            pystray.MenuItem(
+                "🛡️ Quad9 (Security / No-Log)", lambda: self._on_quick_dns(["9.9.9.9", "149.112.112.112"], "Quad9")
+            ),
+            pystray.MenuItem(
+                "🚫 AdGuard (Ad-Blocking)", lambda: self._on_quick_dns(["94.140.14.14", "94.140.15.15"], "AdGuard")
+            ),
+            pystray.MenuItem(
+                "🇨🇳 AliDNS (Alibaba Cloud)", lambda: self._on_quick_dns(["223.5.5.5", "223.6.6.6"], "AliDNS")
+            ),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem(tr("↩️ Restore DHCP Default"), self._on_restore_dhcp)
+            pystray.MenuItem(tr("↩️ Restore DHCP Default"), self._on_restore_dhcp),
         )
 
         menu = pystray.Menu(
@@ -108,7 +118,7 @@ class TrayManager:
             pystray.MenuItem(tr("🛑 Stop Proxy Pool"), self._on_stop_pool),
             pystray.MenuItem(tr("♻️ Flush DNS Cache"), self._on_flush_dns),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem(tr("❌ Keluar (Exit)"), self._on_exit)
+            pystray.MenuItem(tr("❌ Keluar (Exit)"), self._on_exit),
         )
 
         def _run_tray():
@@ -117,8 +127,10 @@ class TrayManager:
                 try:
                     if backend_name:
                         import os
+
                         os.environ["PYSTRAY_BACKEND"] = backend_name
                         import importlib
+
                         importlib.reload(pystray)
                     self.icon = pystray.Icon("netools", image, "Netools Suite v2.0", menu)
                     self.is_running = True
@@ -149,6 +161,7 @@ class TrayManager:
 
     def _on_quick_dns(self, ips, prov_name):
         from netools.adapters import platform_dns as sys_dns
+
         def _bg():
             ifaces = sys_dns.get_network_interfaces()
             if not ifaces:
@@ -158,17 +171,25 @@ class TrayManager:
             success = sys_dns.apply_system_dns(dev, ips, connection_name=conn, enable_dot=True, persistent=True)
             try:
                 if success:
-                    self.main_app.after(0, lambda: self.main_app.show_toast(tr("✓ DNS {prov_name} aktif dari System Tray!").replace("{prov_name}", prov_name), level="success"))
+                    self.main_app.after(
+                        0,
+                        lambda: self.main_app.show_toast(
+                            tr("✓ DNS {prov_name} aktif dari System Tray!").replace("{prov_name}", prov_name),
+                            level="success",
+                        ),
+                    )
                     if hasattr(self.main_app, "dns_view"):
                         self.main_app.after(0, self.main_app.dns_view.load_active_interface_dns)
                     if hasattr(self.main_app, "dashboard_view"):
                         self.main_app.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def _on_restore_dhcp(self, icon=None, item=None):
         from netools.adapters import platform_dns as sys_dns
+
         def _bg():
             ifaces = sys_dns.get_network_interfaces()
             if not ifaces:
@@ -177,45 +198,63 @@ class TrayManager:
             conn = ifaces[0].get("connection")
             sys_dns.restore_default_dns(dev, connection_name=conn)
             try:
-                self.main_app.after(0, lambda: self.main_app.show_toast(tr("✓ Interface dikembalikan ke DHCP dari System Tray."), level="info"))
+                self.main_app.after(
+                    0,
+                    lambda: self.main_app.show_toast(
+                        tr("✓ Interface dikembalikan ke DHCP dari System Tray."), level="info"
+                    ),
+                )
                 if hasattr(self.main_app, "dns_view"):
                     self.main_app.after(0, self.main_app.dns_view.load_active_interface_dns)
                 if hasattr(self.main_app, "dashboard_view"):
                     self.main_app.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def _on_start_pool(self, icon=None, item=None):
         from netools.services import proxy_service
+
         def _bg():
             proxy_service.start_proxy_pool(max_instances=20, standalone=False)
             try:
-                self.main_app.after(0, lambda: self.main_app.show_toast(tr("✓ Proxy pool aktif dari System Tray!"), level="success"))
+                self.main_app.after(
+                    0, lambda: self.main_app.show_toast(tr("✓ Proxy pool aktif dari System Tray!"), level="success")
+                )
                 self.main_app.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def _on_stop_pool(self, icon=None, item=None):
         from netools.services import proxy_service
+
         def _bg():
             proxy_service.stop_proxy_pool()
             try:
-                self.main_app.after(0, lambda: self.main_app.show_toast(tr("Proxy pool dimatikan dari System Tray."), level="warning"))
+                self.main_app.after(
+                    0, lambda: self.main_app.show_toast(tr("Proxy pool dimatikan dari System Tray."), level="warning")
+                )
                 self.main_app.after(0, self.main_app.dashboard_view.refresh)
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def _on_flush_dns(self, icon=None, item=None):
         from netools.adapters import platform_dns as sys_dns
+
         def _bg():
             sys_dns.flush_dns_cache()
             try:
-                self.main_app.after(0, lambda: self.main_app.show_toast(tr("✓ DNS cache di-flush dari System Tray!"), level="success"))
+                self.main_app.after(
+                    0, lambda: self.main_app.show_toast(tr("✓ DNS cache di-flush dari System Tray!"), level="success")
+                )
             except Exception:
                 pass
+
         threading.Thread(target=_bg, daemon=True).start()
 
     def _on_exit(self, icon=None, item=None):

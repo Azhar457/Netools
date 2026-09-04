@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional
 from netools.adapters import ninerouter as nr_adapt
 from netools.adapters import omniroute as or_adapt
 from netools.adapters import singbox as sb_drv
-
 from netools.config import (
     CONFIGS_DIR,
     HTTP_PORT_OFFSET,
@@ -34,6 +33,7 @@ from netools.state import load_state, save_state
 def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, Any]]:
     """Fetch raw subscriptions from sources with retry and local cache fallback."""
     import json
+
     all_proxies = []
     seen = set()
     failed_sources = 0
@@ -82,7 +82,6 @@ def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, An
     return all_proxies
 
 
-
 def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
     """Start full proxy pool with high-speed parallel testing and backend sync."""
     log.info("Stopping old instances...")
@@ -102,14 +101,15 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
             started.append((name, port, proxy, proc))
 
     # Wait for instances to start listening (poll-based, max 3s)
-    for name, port, proxy, proc in started:
-        wait_for_port(port, timeout=3.0)
+    for _, port, _, _ in started:
+        wait_for_port(port, timeout=3.0)  # noqa: B007 — port is the only variable needed here
 
     # Parallel Upstream Testing (All 20 instances tested concurrently)
     alive = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=15) as ex:
-        futures = {ex.submit(probe_socks_upstream, port): (name, port, proxy, proc)
-                   for name, port, proxy, proc in started}
+        futures = {
+            ex.submit(probe_socks_upstream, port): (name, port, proxy, proc) for name, port, proxy, proc in started
+        }
         for future in concurrent.futures.as_completed(futures):
             name, port, proxy, proc = futures[future]
             if future.result():
@@ -180,6 +180,7 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
     log.info(f"{active_count} proxies active{mode_str}")
     return state
 
+
 def stop_proxy_pool(standalone: bool = False) -> None:
     """Stop all instances, wipe state and scratch files, and cleanly unlink gateway pools."""
     sb_drv.stop_all_singbox_instances()
@@ -198,7 +199,6 @@ def stop_proxy_pool(standalone: bool = False) -> None:
             log.info("Clearing proxy from all OmniRoute connections...")
             or_adapt.clear_all_connection_proxies()
 
-
     # Wipe scratch files
     for f in CONFIGS_DIR.glob("*.json"):
         f.unlink(missing_ok=True)
@@ -210,10 +210,12 @@ def stop_proxy_pool(standalone: bool = False) -> None:
     STATE_FILE.unlink(missing_ok=True)
     log.info("All cleaned up")
 
+
 def refresh_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
     """Stop and restart proxy pool."""
     stop_proxy_pool(standalone=standalone)
     return start_proxy_pool(max_instances=max_instances, standalone=standalone)
+
 
 def get_proxy_status() -> Dict[str, Any]:
     """Check live status of proxy instances."""
@@ -223,19 +225,24 @@ def get_proxy_status() -> Dict[str, Any]:
 
     for name, info in instances.items():
         alive = is_port_open(info["port"])
-        results.append({
-            "name": name,
-            "port": info["port"],
-            "http_port": info.get("http_port", info["port"] + HTTP_PORT_OFFSET),
-            "server": info["server"],
-            "proxy_type": info["proxy_type"],
-            "dns": info.get("dns", "⚡ Remote SOCKS5h"),
-            "started_at": info.get("started_at", "?"),
-            "alive": alive
-        })
+        results.append(
+            {
+                "name": name,
+                "port": info["port"],
+                "http_port": info.get("http_port", info["port"] + HTTP_PORT_OFFSET),
+                "server": info["server"],
+                "proxy_type": info["proxy_type"],
+                "dns": info.get("dns", "⚡ Remote SOCKS5h"),
+                "started_at": info.get("started_at", "?"),
+                "alive": alive,
+            }
+        )
     return {"total": len(results), "alive_count": sum(1 for r in results if r["alive"]), "instances": results}
 
-def start_single_instance(name: str, port: int, proxy: Dict[str, Any], standalone: bool = False, pool_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+
+def start_single_instance(
+    name: str, port: int, proxy: Dict[str, Any], standalone: bool = False, pool_name: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
     """Start and test a single instance (used by auto-heal watchdog)."""
     config = sb_drv.build_singbox_config(proxy, port)
     proc = sb_drv.start_singbox_instance(name, config)

@@ -14,7 +14,7 @@ class TestSingboxAdapter(unittest.TestCase):
             "server": "1.2.3.4",
             "server_port": 8388,
             "method": "aes-256-gcm",
-            "password": "secretpassword"
+            "password": "secretpassword",
         }
         cfg = singbox.build_singbox_config(proxy, local_port=11080)
         self.assertEqual(cfg["inbounds"][0]["listen_port"], 11080)
@@ -28,7 +28,7 @@ class TestSingboxAdapter(unittest.TestCase):
             "server": "trojan.test",
             "server_port": 443,
             "password": "pass",
-            "tls": {"enabled": True, "server_name": "trojan.test"}
+            "tls": {"enabled": True, "server_name": "trojan.test"},
         }
         cfg = singbox.build_singbox_config(proxy, local_port=11081)
         self.assertEqual(cfg["outbounds"][0]["type"], "trojan")
@@ -41,7 +41,7 @@ class TestSingboxAdapter(unittest.TestCase):
             "server_port": 443,
             "uuid": "uuid-1234",
             "tls": {"enabled": True, "server_name": "vless.test"},
-            "transport": {"type": "ws", "path": "/ws"}
+            "transport": {"type": "ws", "path": "/ws"},
         }
         cfg = singbox.build_singbox_config(proxy, local_port=11082)
         self.assertEqual(cfg["outbounds"][0]["type"], "vless")
@@ -52,18 +52,21 @@ class TestSingboxAdapter(unittest.TestCase):
 class TestOmnirouteAdapter(unittest.TestCase):
     def test_dns_packet_builder(self):
         from netools.adapters.omniroute import _build_dns_query
+
         query = _build_dns_query("api.openai.com")
         self.assertIsInstance(query, bytes)
         self.assertTrue(b"openai" in query)
 
     def test_credentials_setter(self):
         from netools.adapters import omniroute
+
         omniroute.set_credentials(url="http://localhost:20128", token="test-token")
         self.assertEqual(omniroute._CURRENT_URL, "http://localhost:20128")
         self.assertEqual(omniroute._CURRENT_TOKEN, "test-token")
 
     def test_health_check_offline(self):
         from netools.adapters import omniroute
+
         omniroute.set_credentials(url="http://127.0.0.1:59999")
         omniroute._health_cache["val"] = None
         # When omniroute port is not listening, safe_backend_call safely returns False without raising
@@ -72,7 +75,5 @@ class TestOmnirouteAdapter(unittest.TestCase):
         omniroute.set_credentials(url="http://localhost:20128")
 
 
-
 if __name__ == "__main__":
     unittest.main(verbosity=2)
-

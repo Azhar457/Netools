@@ -6,7 +6,7 @@ Featuring 1-100% Preloader Splash Screen and Native System Tray Integration.
 import sys
 import tkinter as tk
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import customtkinter as ctk
 
@@ -20,7 +20,6 @@ from netools.gui.view_preferences import PreferencesView
 from netools.gui.view_proxy import ProxyView
 from netools.gui.view_session_extractor import SessionExtractorView
 from netools.gui.view_settings import SettingsView
-
 
 
 def center_window(window: ctk.CTk, width: int = 920, height: int = 720):
@@ -58,6 +57,7 @@ class NetoolsApp(ctk.CTk):
         self.toast = ToastManager(self)
         self.tray = TrayManager(self)
         from netools.gui.tray import PYSTRAY_AVAILABLE
+
         if PYSTRAY_AVAILABLE:
             # Start tray eagerly so close-to-tray works from the first launch.
             # NOTE: do NOT gate this on tray.is_available(); that only becomes
@@ -66,6 +66,7 @@ class NetoolsApp(ctk.CTk):
 
         from netools.config import _user_cfg
         from netools.gui.theme import ThemeManager
+
         saved_theme = _user_cfg.get("theme", "dark")
         ThemeManager.apply_theme(saved_theme, self)
 
@@ -76,15 +77,21 @@ class NetoolsApp(ctk.CTk):
 
         self._build_ui()
 
-
-
     def show_toast(self, message: str, level: str = "success", duration_ms: int = 4000) -> None:
         self.toast.show(message, level=level, duration_ms=duration_ms)
         if hasattr(self, "lbl_header_status"):
             from netools.gui.theme import ThemeManager
-            fg_map = {"success": ThemeManager.success(), "info": ThemeManager.primary(), "warning": ThemeManager.warning(), "error": ThemeManager.danger()}
+
+            fg_map = {
+                "success": ThemeManager.success(),
+                "info": ThemeManager.primary(),
+                "warning": ThemeManager.warning(),
+                "error": ThemeManager.danger(),
+            }
             clean_msg = message.split("\n")[0][:45]
-            self.lbl_header_status.configure(text=f"● {clean_msg}", text_color=fg_map.get(level, ThemeManager.primary()))
+            self.lbl_header_status.configure(
+                text=f"● {clean_msg}", text_color=fg_map.get(level, ThemeManager.primary())
+            )
 
     def _handle_canary_result(self, result):
         """Apply side-effects when DNS canary sweep completes.
@@ -114,6 +121,7 @@ class NetoolsApp(ctk.CTk):
         # 3) Optional auto-toggle DoH forwarder
         if _user_cfg.get("doh_auto_canary", False):
             from netools.services import doh_service
+
             if verdict == canary_service.VERDICT_CLEAN:
                 if not doh_service.is_doh_forwarder_running():
                     doh_service.start_doh_forwarder(provider=_user_cfg.get("doh_provider", "alidns"))
@@ -123,13 +131,13 @@ class NetoolsApp(ctk.CTk):
 
     def _apply_theme(self):
         from netools.gui.theme import ThemeManager
+
         ThemeManager.apply_theme(ThemeManager.get_current_theme_key(), self)
-
-
 
     def apply_theme_in_place(self):
         """In-place dynamic repaint without destroying or rebuilding widgets (0 ms lag, zero flicker)."""
         from netools.gui.theme import ThemeManager
+
         self.configure(fg_color=ThemeManager.bg())
         if hasattr(self, "header"):
             self.header.configure(fg_color=ThemeManager.surface_alt())
@@ -152,7 +160,7 @@ class NetoolsApp(ctk.CTk):
                 segmented_button_unselected_color=ThemeManager.surface(),
                 segmented_button_unselected_hover_color=ThemeManager.surface_alt(),
                 text_color=ThemeManager.text(),
-                text_color_disabled=ThemeManager.text_muted()
+                text_color_disabled=ThemeManager.text_muted(),
             )
         if hasattr(self, "dashboard_view") and hasattr(self.dashboard_view, "apply_theme"):
             self.dashboard_view.apply_theme()
@@ -167,9 +175,9 @@ class NetoolsApp(ctk.CTk):
         if hasattr(self, "preferences_view") and hasattr(self.preferences_view, "apply_theme"):
             self.preferences_view.apply_theme()
 
-
     def _build_ui(self):
         from netools.gui.theme import Fonts, ThemeManager
+
         # Header banner
         self.header = ctk.CTkFrame(self, fg_color=ThemeManager.surface_alt(), height=64)
         self.header.pack(fill="x", padx=0, pady=0)
@@ -179,10 +187,7 @@ class NetoolsApp(ctk.CTk):
         self.title_box.pack(side="left", padx=20, pady=8)
 
         self.title_label = ctk.CTkLabel(
-            self.title_box,
-            text=tr("⚡ Netools Suite v2.0"),
-            font=Fonts.display(17),
-            text_color=ThemeManager.primary()
+            self.title_box, text=tr("⚡ Netools Suite v2.0"), font=Fonts.display(17), text_color=ThemeManager.primary()
         )
         self.title_label.pack(anchor="w")
 
@@ -190,12 +195,18 @@ class NetoolsApp(ctk.CTk):
             self.title_box,
             text=tr("Unified Sing-box Rotator, Real-Time GRC DNS Benchmark & AI Gateway Router"),
             font=Fonts.regular(11),
-            text_color=ThemeManager.text_muted()
+            text_color=ThemeManager.text_muted(),
         )
         self.subtitle_label.pack(anchor="w")
 
         # Right-side Live Status Pill (Visibility of System Status - Nielsen #1)
-        self.status_box = ctk.CTkFrame(self.header, fg_color=ThemeManager.surface(), corner_radius=20, border_width=1, border_color=ThemeManager.border())
+        self.status_box = ctk.CTkFrame(
+            self.header,
+            fg_color=ThemeManager.surface(),
+            corner_radius=20,
+            border_width=1,
+            border_color=ThemeManager.border(),
+        )
         self.status_box.pack(side="right", padx=20, pady=14)
 
         self.lbl_header_status = ctk.CTkLabel(
@@ -204,10 +215,9 @@ class NetoolsApp(ctk.CTk):
             font=Fonts.bold(11),
             text_color=ThemeManager.success(),
             padx=14,
-            pady=5
+            pady=5,
         )
         self.lbl_header_status.pack()
-
 
         # Tab View
         self.tabview = ctk.CTkTabview(
@@ -221,7 +231,7 @@ class NetoolsApp(ctk.CTk):
             segmented_button_font=Fonts.bold(12),
             text_color=ThemeManager.text(),
             text_color_disabled=ThemeManager.text_muted(),
-            corner_radius=10
+            corner_radius=10,
         )
         self.tabview.pack(fill="both", expand=True, padx=16, pady=(0, 16))
 
@@ -266,7 +276,6 @@ class NetoolsApp(ctk.CTk):
             tr("⚙️ Settings & About"),
         ]
 
-
         active_idx = 4
         if hasattr(self, "tabview"):
             try:
@@ -292,7 +301,6 @@ class NetoolsApp(ctk.CTk):
                 self.tabview.set(new_tab_name)
             except Exception:
                 pass
-
 
     def select_tab(self, target: Any):
         """Switch to tab by index (0-4), key ('dashboard', 'dns', 'proxy', 'settings', 'preferences'), or title."""
@@ -339,7 +347,9 @@ class NetoolsApp(ctk.CTk):
         Keep running in the System Tray if available; if tray is disabled or unavailable, minimize to taskbar or exit."""
         if hasattr(self, "tray") and self.tray and self.tray.is_running and self.minimize_to_tray_enabled:
             self.withdraw()
-            self.show_toast(tr("Netools aktif di latar belakang (System Tray). PAC & proxy tetap berjalan."), level="info")
+            self.show_toast(
+                tr("Netools aktif di latar belakang (System Tray). PAC & proxy tetap berjalan."), level="info"
+            )
         elif self.minimize_to_tray_enabled:
             # If user wants background persistence but tray daemon is not attached to this desktop session,
             # minimize to taskbar rather than vanishing completely or killing services!
@@ -353,6 +363,7 @@ class NetoolsApp(ctk.CTk):
         try:
             from netools.adapters import singbox
             from netools.services import doh_service, pac_service, proxy_service, watchdog_service
+
             pac_service.stop_pac_server()
             doh_service.stop_doh_forwarder()
             proxy_service.stop_proxy_pool()
@@ -376,15 +387,13 @@ class NetoolsApp(ctk.CTk):
 
 def main(no_splash: bool = False):
     import os
+
     from netools.config import ensure_runtime_dirs
+
     ensure_runtime_dirs()
     app = NetoolsApp()
 
-    skip_splash = (
-        no_splash
-        or "--no-splash" in sys.argv
-        or os.getenv("NETOOLS_NO_SPLASH") == "1"
-    )
+    skip_splash = no_splash or "--no-splash" in sys.argv or os.getenv("NETOOLS_NO_SPLASH") == "1"
 
     def on_splash_done():
         try:
@@ -408,7 +417,5 @@ def main(no_splash: bool = False):
     app.mainloop()
 
 
-
 if __name__ == "__main__":
     main()
-

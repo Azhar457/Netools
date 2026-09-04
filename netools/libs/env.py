@@ -22,6 +22,7 @@ def get_os_type() -> str:
         return "linux"
     return "unknown"
 
+
 def check_binary(name: str) -> Dict[str, Any]:
     """Check if a CLI executable exists on PATH or in standard directory."""
     path = shutil.which(name)
@@ -43,12 +44,8 @@ def check_binary(name: str) -> Dict[str, Any]:
         if version_str == "Not installed":
             version_str = "Installed"
 
-    return {
-        "name": name,
-        "found": found,
-        "path": path or "",
-        "version": version_str
-    }
+    return {"name": name, "found": found, "path": path or "", "version": version_str}
+
 
 def get_system_diagnostics() -> Dict[str, Any]:
     """Run full platform environment & dependency diagnostics check."""

@@ -23,7 +23,7 @@ class TestEnhancements(unittest.TestCase):
             lineno=10,
             msg="Test message",
             args=(),
-            exc_info=None
+            exc_info=None,
         )
         out = formatter.format(record)
         data = json.loads(out)
@@ -55,14 +55,20 @@ class TestEnhancements(unittest.TestCase):
     @patch("netools.services.proxy_service.fetch_text")
     def test_proxy_service_fallback_cache(self, mock_fetch):
         mock_fetch.side_effect = Exception("Connection refused to all GitHub sources")
-        
+
         with patch("netools.services.proxy_service.RUNTIME_DIR", Path("/tmp")):
             cache_file = Path("/tmp/last_known_proxies.json")
             cached_data = [
-                {"type": "shadowsocks", "server": "9.9.9.9", "server_port": 8388, "method": "aes-256-gcm", "password": "p"}
+                {
+                    "type": "shadowsocks",
+                    "server": "9.9.9.9",
+                    "server_port": 8388,
+                    "method": "aes-256-gcm",
+                    "password": "p",
+                }
             ]
             cache_file.write_text(json.dumps(cached_data))
-            
+
             try:
                 proxies = proxy_service.fetch_and_parse_proxies(max_count=5)
                 self.assertEqual(len(proxies), 1)
@@ -72,6 +78,7 @@ class TestEnhancements(unittest.TestCase):
 
     def test_treeview_heterogeneous_sorting(self):
         """Verify that mixed data (numbers, strings, timeouts, emojis) sorts without TypeError."""
+
         def _val_key(v):
             if v is None:
                 return (1, 999999.0, "")

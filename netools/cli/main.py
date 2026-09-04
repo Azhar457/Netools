@@ -14,12 +14,15 @@ from netools.services import dns_service, doh_service, pac_service, proxy_servic
 
 def _register_graceful_shutdown(standalone: bool = False):
     """Register SIGTERM/SIGINT handlers for clean proxy shutdown."""
+
     def _handler(signum, frame):
         print("\n[INFO] Shutting down gracefully...")
         proxy_service.stop_proxy_pool(standalone=standalone)
         sys.exit(0)
+
     signal.signal(signal.SIGTERM, _handler)
     signal.signal(signal.SIGINT, _handler)
+
 
 def cmd_proxy(args):
     """Handle proxy commands."""
@@ -38,13 +41,16 @@ def cmd_proxy(args):
         print(f"Active Sing-box instances: {stat['alive_count']}/{stat['total']}")
         for inst in stat["instances"]:
             mark = "✓" if inst["alive"] else "✗"
-            print(f"  {mark} {inst['name']}: {inst['proxy_type']} → {inst['server']} → SOCKS {inst['port']} | HTTP {inst['http_port']} ({inst['started_at']})")
+            print(
+                f"  {mark} {inst['name']}: {inst['proxy_type']} → {inst['server']} → SOCKS {inst['port']} | HTTP {inst['http_port']} ({inst['started_at']})"
+            )
     elif action == "monitor":
         interval = args.interval or 30
         _register_graceful_shutdown(standalone)
         watchdog_service.run_watchdog_loop(interval=interval, standalone=standalone)
     else:
         print("Usage: netools proxy {start,stop,refresh,status,monitor}")
+
 
 def cmd_dns(args):
     """Handle DNS commands."""
@@ -90,6 +96,7 @@ def cmd_dns(args):
     else:
         print("Usage: netools dns {apply,flush,restore,presets,doh}")
 
+
 def cmd_pac(args):
     """Handle PAC server commands."""
     action = args.pac_action
@@ -107,15 +114,18 @@ def cmd_pac(args):
     else:
         print("Usage: netools pac {start,stop,status}")
 
+
 def cmd_web(args):
     """Serve Web App for GitHub Pages preview."""
     port = args.port or WEB_APP_PORT
     print(f"🌐 Netools Web App running at http://127.0.0.1:{port}/")
     subprocess.run([sys.executable, "-m", "http.server", str(port), "--directory", str(BASE_DIR / "docs")])
 
+
 def cmd_gui(args):
     """Launch Desktop GUI All-In-One."""
     from netools.gui.app import main as run_gui
+
     run_gui(no_splash=getattr(args, "no_splash", False))
 
 
@@ -124,36 +134,48 @@ def cmd_tray_test(args):
     import sys
     import time
     import traceback
+
     print("=== Netools System Tray Diagnostics ===")
     print("Python version:", sys.version)
     try:
         import pystray
+
         print("Direct import pystray succeeded:", pystray)
     except Exception:
         print("Direct import pystray failed:")
         traceback.print_exc()
     from netools.gui.tray import PYSTRAY_AVAILABLE, TrayManager
+
     print("PYSTRAY_AVAILABLE:", PYSTRAY_AVAILABLE)
+
     class DummyApp:
-        def after(self, *args): pass
-        def show_toast(self, *args, **kwargs): pass
+        def after(self, *args):
+            pass
+
+        def show_toast(self, *args, **kwargs):
+            pass
+
     tray = TrayManager(DummyApp())
     print("TrayManager instance created:", tray)
     try:
         import gi
+
         print("gi available:", gi)
-        gi.require_version('Gtk', '3.0')
+        gi.require_version("Gtk", "3.0")
         from gi.repository import Gtk
+
         print("Gtk 3.0 loaded successfully:", Gtk)
         try:
-            gi.require_version('AppIndicator3', '0.1')
+            gi.require_version("AppIndicator3", "0.1")
             from gi.repository import AppIndicator3
+
             print("AppIndicator3 0.1 loaded successfully:", AppIndicator3)
         except Exception as e:
             print("AppIndicator3 load error:", e)
         try:
-            gi.require_version('AyatanaAppIndicator3', '0.1')
+            gi.require_version("AyatanaAppIndicator3", "0.1")
             from gi.repository import AyatanaAppIndicator3
+
             print("AyatanaAppIndicator3 loaded successfully:", AyatanaAppIndicator3)
         except Exception as e:
             print("AyatanaAppIndicator3 load error:", e)
@@ -168,22 +190,27 @@ def cmd_tray_test(args):
     tray.stop()
     print("=== Tray test finished ===")
 
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="netools",
-        description="⚡ Netools Suite: Sing-box Proxy Rotator, DNS Searcher/Jumper, PAC Server & AI Gateway Sync"
+        description="⚡ Netools Suite: Sing-box Proxy Rotator, DNS Searcher/Jumper, PAC Server & AI Gateway Sync",
     )
     subparsers = parser.add_subparsers(dest="command")
 
     # proxy subcommand
     p_proxy = subparsers.add_parser("proxy", help="Sing-box Proxy Pool Management")
-    p_proxy.add_argument("proxy_action", choices=["start", "stop", "refresh", "status", "monitor"], default="status", nargs="?")
+    p_proxy.add_argument(
+        "proxy_action", choices=["start", "stop", "refresh", "status", "monitor"], default="status", nargs="?"
+    )
     p_proxy.add_argument("--no-9r", action="store_true", help="Standalone mode (skip 9Router registration)")
     p_proxy.add_argument("interval", type=int, nargs="?", default=30, help="Monitor auto-heal interval in seconds")
 
     # dns subcommand
     p_dns = subparsers.add_parser("dns", help="DNS Searcher & GRC Benchmark")
-    p_dns.add_argument("dns_action", choices=["apply", "flush", "restore", "presets", "doh"], default="presets", nargs="?")
+    p_dns.add_argument(
+        "dns_action", choices=["apply", "flush", "restore", "presets", "doh"], default="presets", nargs="?"
+    )
     p_dns.add_argument("ips", nargs="*", help="DNS IP addresses to apply")
     p_dns.add_argument("--provider", default="alidns", help="DoH provider for local forwarder")
     p_dns.add_argument("--port", type=int, default=5353, help="Port for DoH forwarder")
@@ -207,8 +234,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main():
     from netools.libs.dns_async import init_async_loop
+
     init_async_loop()
     from netools.config import ensure_runtime_dirs
+
     ensure_runtime_dirs()
     parser = build_parser()
     args = parser.parse_args()
@@ -227,6 +256,7 @@ def main():
         cmd_gui(args)
     else:
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()

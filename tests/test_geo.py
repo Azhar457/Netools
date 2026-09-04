@@ -27,17 +27,21 @@ def test_detect_country_prefers_manual_override():
 
 
 def test_detect_country_uses_cache_without_network():
-    with mock.patch.object(geo, "load_user_config", return_value={"detected_country": "SG"}), \
-         mock.patch.object(geo, "_via_trace", side_effect=AssertionError("network hit")):
+    with (
+        mock.patch.object(geo, "load_user_config", return_value={"detected_country": "SG"}),
+        mock.patch.object(geo, "_via_trace", side_effect=AssertionError("network hit")),
+    ):
         assert geo.detect_country() == "SG"
 
 
 def test_detect_country_falls_back_to_locale(tmp_path):
     cfg_file = tmp_path / "config.json"
-    with mock.patch.object(geo, "load_user_config", return_value={}), \
-         mock.patch.object(geo, "USER_CONFIG_FILE", cfg_file), \
-         mock.patch.object(geo, "_via_trace", return_value=""), \
-         mock.patch.object(geo, "_via_locale", return_value="BR"):
+    with (
+        mock.patch.object(geo, "load_user_config", return_value={}),
+        mock.patch.object(geo, "USER_CONFIG_FILE", cfg_file),
+        mock.patch.object(geo, "_via_trace", return_value=""),
+        mock.patch.object(geo, "_via_locale", return_value="BR"),
+    ):
         assert geo.detect_country() == "BR"
     # result cached
     assert "BR" in cfg_file.read_text()

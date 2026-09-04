@@ -9,42 +9,40 @@ import shutil
 import subprocess
 import threading
 import time
-from pathlib import Path
 from typing import Callable, Optional
 
 from netools.libs.logger import get_logger
 from netools.services.session_extractor import (
     extract_all_browser_sessions,
-    SUPPORTED_PROVIDERS,
 )
 
 log = get_logger(__name__)
 
 PROVIDER_URLS = {
-    "adapta-web":      "https://adapta.org/",
-    "lmarena":         "https://lmarena.ai/",
-    "blackbox-web":    "https://www.blackbox.ai/",
-    "chatgpt-web":     "https://chatgpt.com/",
-    "claude-web":      "https://claude.ai/login",
-    "deepseek-web":    "https://chat.deepseek.com/",
-    "doubao-web":      "https://www.dola.com/",
+    "adapta-web": "https://adapta.org/",
+    "lmarena": "https://lmarena.ai/",
+    "blackbox-web": "https://www.blackbox.ai/",
+    "chatgpt-web": "https://chatgpt.com/",
+    "claude-web": "https://claude.ai/login",
+    "deepseek-web": "https://chat.deepseek.com/",
+    "doubao-web": "https://www.dola.com/",
     "gemini-business": "https://gemini.google.com/",
-    "gemini-web":      "https://gemini.google.com/",
-    "grok-web":        "https://grok.com/",
-    "huggingchat":     "https://huggingface.co/chat/",
-    "inner-ai":        "https://inner.ai/",
-    "kimi-web":        "https://www.kimi.ai/",
-    "copilot-m365-web":"https://www.microsoft365.com/",
-    "copilot-web":     "https://copilot.microsoft.com/",
-    "muse-spark-web":  "https://meta.ai/",
-    "perplexity-web":  "https://www.perplexity.ai/",
-    "poe-web":         "https://www.poe.com/",
-    "t3-web":          "https://t3.chat/",
-    "yuanbao-web":     "https://yuanbao.tencent.com/",
-    "v0-vercel-web":   "https://v0.dev/",
-    "venice-web":      "https://venice.ai/",
-    "zai-web":         "https://chat.z.ai/",
-    "zenmux-free":     "https://zenmux.com/",
+    "gemini-web": "https://gemini.google.com/",
+    "grok-web": "https://grok.com/",
+    "huggingchat": "https://huggingface.co/chat/",
+    "inner-ai": "https://inner.ai/",
+    "kimi-web": "https://www.kimi.ai/",
+    "copilot-m365-web": "https://www.microsoft365.com/",
+    "copilot-web": "https://copilot.microsoft.com/",
+    "muse-spark-web": "https://meta.ai/",
+    "perplexity-web": "https://www.perplexity.ai/",
+    "poe-web": "https://www.poe.com/",
+    "t3-web": "https://t3.chat/",
+    "yuanbao-web": "https://yuanbao.tencent.com/",
+    "v0-vercel-web": "https://v0.dev/",
+    "venice-web": "https://venice.ai/",
+    "zai-web": "https://chat.z.ai/",
+    "zenmux-free": "https://zenmux.com/",
 }
 
 
@@ -63,11 +61,7 @@ def find_browser_executable(browser_name: str) -> Optional[str]:
     elif "firefox" in name_lower:
         return shutil.which("firefox")
     # Default fallback
-    return (
-        shutil.which("brave-browser")
-        or shutil.which("google-chrome")
-        or shutil.which("firefox")
-    )
+    return shutil.which("brave-browser") or shutil.which("google-chrome") or shutil.which("firefox")
 
 
 class BrowserLoginSession:
@@ -137,7 +131,11 @@ class BrowserLoginSession:
     def _watch_loop(self):
         """Poll storage until matching token is found or session closed."""
         # Initial snapshot of existing tokens
-        b_key = "Brave" if "brave" in self.browser_name.lower() else ("Chrome" if "chrome" in self.browser_name.lower() else "all")
+        b_key = (
+            "Brave"
+            if "brave" in self.browser_name.lower()
+            else ("Chrome" if "chrome" in self.browser_name.lower() else "all")
+        )
         initial_tokens = {
             s["token"]
             for s in extract_all_browser_sessions(

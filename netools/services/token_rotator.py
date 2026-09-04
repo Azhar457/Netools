@@ -13,12 +13,11 @@ silently refreshes tokens via cookies, but LevelDB may hold an older copy.
 
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
 from netools.libs.logger import get_logger
 from netools.services.omniroute_bridge import (
-    TokenTTL,
     compute_token_ttl,
     inject_session_to_omniroute,
 )
@@ -30,23 +29,25 @@ log = get_logger(__name__)
 # Configuration
 # ---------------------------------------------------------------------------
 
-_DEFAULT_SCAN_INTERVAL = 30        # seconds between scans
-_RESCAN_THRESHOLD = 300            # re-scan when < 5 min remaining
-_MAX_ROTATIONS_PER_HOUR = 20       # rate limit rotations
-_ROTATION_COOLDOWN = 60            # min seconds between rotations per provider
+_DEFAULT_SCAN_INTERVAL = 30  # seconds between scans
+_RESCAN_THRESHOLD = 300  # re-scan when < 5 min remaining
+_MAX_ROTATIONS_PER_HOUR = 20  # rate limit rotations
+_ROTATION_COOLDOWN = 60  # min seconds between rotations per provider
 
 
 # ---------------------------------------------------------------------------
 # Rotation Event
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RotationEvent:
     """Record of a single token rotation."""
+
     timestamp: float = 0.0
     provider: str = ""
     account: str = ""
-    old_token_preview: str = ""     # first 20 chars
+    old_token_preview: str = ""  # first 20 chars
     new_token_preview: str = ""
     success: bool = False
     message: str = ""
@@ -59,6 +60,7 @@ class RotationEvent:
 # ---------------------------------------------------------------------------
 # Token Auto-Rotator
 # ---------------------------------------------------------------------------
+
 
 class TokenRotator:
     """Background service that monitors token TTL and auto-rotates expiring tokens.
@@ -105,8 +107,7 @@ class TokenRotator:
         self._stop_event.clear()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
-        log.info("Token rotator started (interval=%ds, threshold=%ds)",
-                 self.scan_interval, self.threshold)
+        log.info("Token rotator started (interval=%ds, threshold=%ds)", self.scan_interval, self.threshold)
         if self.on_status:
             self.on_status("🔄 Auto-rotator aktif — memantau token...")
 
@@ -221,8 +222,7 @@ class TokenRotator:
 
             # Rate limit check
             if self._rotation_count_hour >= _MAX_ROTATIONS_PER_HOUR:
-                log.warning("Token rotator: rate limit reached (%d/hr)",
-                            _MAX_ROTATIONS_PER_HOUR)
+                log.warning("Token rotator: rate limit reached (%d/hr)", _MAX_ROTATIONS_PER_HOUR)
                 break
 
             log.info("Token rotator: %s (%s) needs rotation — %s", provider, account, reason)
@@ -255,10 +255,7 @@ class TokenRotator:
             return None
 
         # Find sessions for this account
-        candidates = [
-            s for s in sessions
-            if s.get("account") == account or s.get("provider") == provider
-        ]
+        candidates = [s for s in sessions if s.get("account") == account or s.get("provider") == provider]
 
         if not candidates:
             return None
@@ -299,9 +296,7 @@ class TokenRotator:
         old_token = tracked.get("token", "")
         new_token = fresh.get("token", "")
 
-        result = inject_session_to_omniroute(
-            provider=provider, token=new_token, name=account
-        )
+        result = inject_session_to_omniroute(provider=provider, token=new_token, name=account)
 
         event = RotationEvent(
             timestamp=time.time(),

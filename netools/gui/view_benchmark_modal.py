@@ -65,59 +65,89 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             hdr,
             text="🏆 Gibson Research Corp (GRC) 3-Tier DNS Benchmark Engine",
             font=Fonts.title(15),
-            text_color=ThemeManager.warning()
+            text_color=ThemeManager.warning(),
         ).pack(side="left", padx=20, pady=10)
 
         # Filter & Execution Control Card
-        card_filter = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        card_filter = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         card_filter.pack(fill="x", padx=16, pady=8)
 
         r1 = ctk.CTkFrame(card_filter, fg_color=ThemeManager.surface())
         r1.pack(fill="x", padx=14, pady=(10, 4))
 
-        ctk.CTkLabel(r1, text="Test Protocol / IP:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(r1, text="Test Protocol / IP:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(
+            side="left", padx=(0, 6)
+        )
 
         self.mode_var = ctk.StringVar(value="IPv4 Standard (UDP 53)")
         self.mode_cb = ctk.CTkComboBox(
             r1,
             variable=self.mode_var,
-            values=["IPv4 Standard (UDP 53)", "IPv6 Next-Gen (UDP 53)", "DNS-over-HTTPS (DoH)", "DNS-over-TLS (DoT 853)"],
+            values=[
+                "IPv4 Standard (UDP 53)",
+                "IPv6 Next-Gen (UDP 53)",
+                "DNS-over-HTTPS (DoH)",
+                "DNS-over-TLS (DoT 853)",
+            ],
             width=210,
             font=Fonts.regular(11),
-            dropdown_font=Fonts.regular(11)
+            dropdown_font=Fonts.regular(11),
         )
         self.mode_cb.pack(side="left", padx=4)
 
-        ctk.CTkLabel(r1, text="|  Region:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left", padx=(14, 6))
+        ctk.CTkLabel(r1, text="|  Region:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(
+            side="left", padx=(14, 6)
+        )
 
         self.region_var = ctk.StringVar(value="🌏 All Curated Resolvers (90+)")
         self.region_cb = ctk.CTkComboBox(
-            r1, variable=self.region_var,
-            values=["🌏 All Curated Resolvers (90+)", "🇨🇳/🇸🇬/🇯🇵 Asia-Pacific", "🌍 Europe & UK", "🌎 North America", "🌐 Global Anycast"],
-            width=240, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
+            r1,
+            variable=self.region_var,
+            values=[
+                "🌏 All Curated Resolvers (90+)",
+                "🇨🇳/🇸🇬/🇯🇵 Asia-Pacific",
+                "🌍 Europe & UK",
+                "🌎 North America",
+                "🌐 Global Anycast",
+            ],
+            width=240,
+            font=Fonts.regular(11),
+            dropdown_font=Fonts.regular(11),
         )
         self.region_cb.pack(side="left", padx=4)
 
         r2 = ctk.CTkFrame(card_filter, fg_color=ThemeManager.surface())
         r2.pack(fill="x", padx=14, pady=(4, 10))
 
-        ctk.CTkLabel(r2, text="TLD Target:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left", padx=(0, 6))
-
+        ctk.CTkLabel(r2, text="TLD Target:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(
+            side="left", padx=(0, 6)
+        )
 
         tld_choices = [f"{v['name']} ({k})" for k, v in self.target_tlds.items()]
         self.tld_var = ctk.StringVar(value=tld_choices[0] if tld_choices else "Indonesia (.id)")
         self.tld_cb = ctk.CTkComboBox(
-            r2, variable=self.tld_var, values=tld_choices,
-            width=240, font=Fonts.regular(11), dropdown_font=Fonts.regular(11)
+            r2,
+            variable=self.tld_var,
+            values=tld_choices,
+            width=240,
+            font=Fonts.regular(11),
+            dropdown_font=Fonts.regular(11),
         )
         self.tld_cb.pack(side="left", padx=4)
         self._auto_select_country_preset()
 
         # Manage TLD Categories (CRUD)
         ctk.CTkButton(
-            r2, text=tr("🗂 Manage"), font=Fonts.bold(10),
-            fg_color=ThemeManager.border(), text_color=ThemeManager.primary(),
-            hover_color=ThemeManager.surface_alt(), height=30, width=90,
+            r2,
+            text=tr("🗂 Manage"),
+            font=Fonts.bold(10),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.primary(),
+            hover_color=ThemeManager.surface_alt(),
+            height=30,
+            width=90,
             command=self.open_tld_manager,
         ).pack(side="left", padx=(6, 0))
 
@@ -129,22 +159,35 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             variable=self.turbo_var,
             font=Fonts.bold(10),
             text_color=ThemeManager.warning(),
-            progress_color=ThemeManager.warning()
+            progress_color=ThemeManager.warning(),
         )
         self.turbo_switch.pack(side="left", padx=(10, 4))
 
         # Action Buttons
         self.btn_start = ctk.CTkButton(
-            r2, text="🚀 Run Benchmark", font=Fonts.bold(11),
-            fg_color=ThemeManager.warning(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.border(),
-            height=30, width=130, command=self.start_benchmark
+            r2,
+            text="🚀 Run Benchmark",
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.warning(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.border(),
+            height=30,
+            width=130,
+            command=self.start_benchmark,
         )
         self.btn_start.pack(side="left", padx=(10, 4))
 
         self.btn_stop = ctk.CTkButton(
-            r2, text="🛑 Cancel", font=Fonts.bold(11),
-            fg_color=ThemeManager.danger(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.warning(),
-            height=30, width=90, state="disabled", command=self.stop_benchmark
+            r2,
+            text="🛑 Cancel",
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.danger(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.warning(),
+            height=30,
+            width=90,
+            state="disabled",
+            command=self.stop_benchmark,
         )
         self.btn_stop.pack(side="left", padx=4)
 
@@ -157,13 +200,17 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         self.prog_bar.set(0)
 
         self.lbl_status = ctk.CTkLabel(
-            prog_frame, text="Ready. Click 'Run Benchmark' to start real-time latency evaluation (Click column headers to sort).",
-            font=Fonts.regular(11), text_color=ThemeManager.text_muted()
+            prog_frame,
+            text="Ready. Click 'Run Benchmark' to start real-time latency evaluation (Click column headers to sort).",
+            font=Fonts.regular(11),
+            text_color=ThemeManager.text_muted(),
         )
         self.lbl_status.pack(anchor="w")
 
         # Results Table
-        tbl_frame = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        tbl_frame = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         tbl_frame.pack(fill="both", expand=True, padx=16, pady=4)
 
         cols = ("rank", "flag", "name", "proto", "cached", "uncached", "dotcom", "score", "status")
@@ -177,13 +224,13 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             foreground=ThemeManager.text(),
             fieldbackground=ThemeManager.surface(),
             rowheight=26,
-            font=("sans-serif", 10)
+            font=("sans-serif", 10),
         )
         style.configure(
             "Treeview.Heading",
             background=ThemeManager.surface_alt(),
             foreground=ThemeManager.text(),
-            font=("sans-serif", 10, "bold")
+            font=("sans-serif", 10, "bold"),
         )
         style.map("Treeview", background=[("selected", ThemeManager.border())])
 
@@ -210,14 +257,16 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         vsb.pack(side="right", fill="y", padx=(0, 8), pady=8)
 
         # Smart Mix Recommendation Card & Apply Buttons
-        smart_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        smart_card = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         smart_card.pack(fill="x", padx=16, pady=(4, 12))
 
         ctk.CTkLabel(
             smart_card,
             text="🏆 Smart Mix Recommendation (GRC Optimum Triad)",
             font=Fonts.subtitle(13),
-            text_color=ThemeManager.success()
+            text_color=ThemeManager.success(),
         ).pack(anchor="w", padx=14, pady=(10, 4))
 
         self.lbl_smart_rec = ctk.CTkLabel(
@@ -225,7 +274,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             text="• Run benchmark to generate composite latency recommendations for Slot 1, 2, and 3.",
             font=Fonts.mono(11),
             text_color=ThemeManager.text_muted(),
-            justify="left"
+            justify="left",
         )
         self.lbl_smart_rec.pack(anchor="w", padx=14, pady=(0, 8))
 
@@ -233,16 +282,28 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         btn_row.pack(fill="x", padx=14, pady=(0, 10))
 
         self.btn_apply_smart = ctk.CTkButton(
-            btn_row, text="⚡ Apply GRC Smart Mix (Slots 1-3)", font=Fonts.bold(12),
-            fg_color=ThemeManager.success(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.accent(),
-            height=36, state="disabled", command=self.apply_smart_mix
+            btn_row,
+            text="⚡ Apply GRC Smart Mix (Slots 1-3)",
+            font=Fonts.bold(12),
+            fg_color=ThemeManager.success(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            height=36,
+            state="disabled",
+            command=self.apply_smart_mix,
         )
         self.btn_apply_smart.pack(side="left", padx=(0, 6))
 
         self.btn_apply_fastest = ctk.CTkButton(
-            btn_row, text="🥇 Apply #1 Fastest Only", font=Fonts.bold(12),
-            fg_color=ThemeManager.primary(), text_color=ThemeManager.get("on_primary"), hover_color=ThemeManager.accent(),
-            height=36, state="disabled", command=self.apply_fastest_single
+            btn_row,
+            text="🥇 Apply #1 Fastest Only",
+            font=Fonts.bold(12),
+            fg_color=ThemeManager.primary(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            height=36,
+            state="disabled",
+            command=self.apply_fastest_single,
         )
         self.btn_apply_fastest.pack(side="left", padx=6)
 
@@ -254,19 +315,32 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             ("🎯 Best TLD", "dotcom_ms"),
         ):
             b = ctk.CTkButton(
-                btn_row, text=label, font=Fonts.bold(11),
-                fg_color=ThemeManager.surface_alt(), text_color=ThemeManager.primary(),
-                hover_color=ThemeManager.border(), border_width=1, border_color=ThemeManager.border(),
-                height=36, width=120, state="disabled",
+                btn_row,
+                text=label,
+                font=Fonts.bold(11),
+                fg_color=ThemeManager.surface_alt(),
+                text_color=ThemeManager.primary(),
+                hover_color=ThemeManager.border(),
+                border_width=1,
+                border_color=ThemeManager.border(),
+                height=36,
+                width=120,
+                state="disabled",
                 command=lambda m=metric, l=label: self.apply_best_metric(m, l),
             )
             b.pack(side="left", padx=4)
             self.metric_buttons.append(b)
 
         ctk.CTkButton(
-            btn_row, text="Tutup", font=Fonts.bold(11),
-            fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt(),
-            height=36, width=90, command=self.destroy
+            btn_row,
+            text="Tutup",
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            height=36,
+            width=90,
+            command=self.destroy,
         ).pack(side="right")
 
     def sort_column(self, col: str):
@@ -290,15 +364,17 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         items.sort(key=lambda t: _val_key(t[0]), reverse=reverse)
 
-
         for index, (_, k) in enumerate(items):
             self.tree.move(k, "", index)
 
     def _get_benchmark_mode_key(self) -> str:
         m = self.mode_var.get().lower()
-        if "ipv6" in m: return "ipv6"
-        if "doh" in m: return "doh"
-        if "dot" in m: return "dot"
+        if "ipv6" in m:
+            return "ipv6"
+        if "doh" in m:
+            return "doh"
+        if "dot" in m:
+            return "dot"
         return "ipv4"
 
     def _tld_choices(self):
@@ -310,9 +386,11 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         Detection runs off the UI thread (first run does one HTTPS request);
         result is cached in config.json so subsequent opens are instant.
         """
+
         def worker():
             try:
                 from netools.libs.geo import detect_country
+
                 key = db.preset_key_for_country(detect_country(), self.target_tlds)
                 if key:
                     label = f"{self.target_tlds[key]['name']} ({key})"
@@ -330,34 +408,40 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         mark_dialog(win, self.winfo_toplevel())
         win.after(120, win.lift)
 
-        ctk.CTkLabel(win, text="Categories:", font=Fonts.bold(12),
-                     text_color=ThemeManager.text()).pack(anchor="w", padx=14, pady=(12, 2))
-        cat_box = ctk.CTkTextbox(win, height=90, font=Fonts.mono(11),
-                                 fg_color=ThemeManager.surface_alt(),
-                                 text_color=ThemeManager.text())
+        ctk.CTkLabel(win, text="Categories:", font=Fonts.bold(12), text_color=ThemeManager.text()).pack(
+            anchor="w", padx=14, pady=(12, 2)
+        )
+        cat_box = ctk.CTkTextbox(
+            win, height=90, font=Fonts.mono(11), fg_color=ThemeManager.surface_alt(), text_color=ThemeManager.text()
+        )
         cat_box.pack(fill="x", padx=14)
 
         row1 = ctk.CTkFrame(win, fg_color="transparent")
         row1.pack(fill="x", padx=14, pady=(8, 0))
-        ctk.CTkLabel(row1, text="Key:", font=Fonts.bold(11),
-                     text_color=ThemeManager.text()).pack(side="left")
-        key_entry = ctk.CTkEntry(row1, width=130, font=Fonts.mono(11),
-                                 fg_color=ThemeManager.surface(),
-                                 border_color=ThemeManager.border(),
-                                 text_color=ThemeManager.text())
+        ctk.CTkLabel(row1, text="Key:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(side="left")
+        key_entry = ctk.CTkEntry(
+            row1,
+            width=130,
+            font=Fonts.mono(11),
+            fg_color=ThemeManager.surface(),
+            border_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+        )
         key_entry.pack(side="left", padx=6)
-        ctk.CTkLabel(row1, text="Name:", font=Fonts.bold(11),
-                     text_color=ThemeManager.text()).pack(side="left", padx=(8, 0))
-        name_entry = ctk.CTkEntry(row1, width=200, font=Fonts.regular(11),
-                                  fg_color=ThemeManager.surface(),
-                                  text_color=ThemeManager.text())
+        ctk.CTkLabel(row1, text="Name:", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(
+            side="left", padx=(8, 0)
+        )
+        name_entry = ctk.CTkEntry(
+            row1, width=200, font=Fonts.regular(11), fg_color=ThemeManager.surface(), text_color=ThemeManager.text()
+        )
         name_entry.pack(side="left", padx=6)
 
-        ctk.CTkLabel(win, text="Domains (one per line):", font=Fonts.bold(11),
-                     text_color=ThemeManager.text()).pack(anchor="w", padx=14, pady=(8, 2))
-        dom_box = ctk.CTkTextbox(win, font=Fonts.mono(11),
-                                 fg_color=ThemeManager.surface_alt(),
-                                 text_color=ThemeManager.text())
+        ctk.CTkLabel(win, text="Domains (one per line):", font=Fonts.bold(11), text_color=ThemeManager.text()).pack(
+            anchor="w", padx=14, pady=(8, 2)
+        )
+        dom_box = ctk.CTkTextbox(
+            win, font=Fonts.mono(11), fg_color=ThemeManager.surface_alt(), text_color=ThemeManager.text()
+        )
         dom_box.pack(fill="both", expand=True, padx=14, pady=(0, 6))
 
         btns = ctk.CTkFrame(win, fg_color="transparent")
@@ -377,7 +461,8 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         def _load_key(key):
             cats = db.load_tld_presets()
             info = cats.get(key)
-            key_entry.delete(0, "end"); name_entry.delete(0, "end")
+            key_entry.delete(0, "end")
+            name_entry.delete(0, "end")
             dom_box.delete("1.0", "end")
             if not info:
                 return
@@ -395,11 +480,13 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                     _load_key(key)
             except Exception:
                 pass
+
         cat_box.bind("<ButtonRelease-1>", _on_cat_click)
 
         def _new():
             state["current_key"] = ""
-            key_entry.delete(0, "end"); name_entry.delete(0, "end")
+            key_entry.delete(0, "end")
+            name_entry.delete(0, "end")
             dom_box.delete("1.0", "end")
             key_entry.focus_set()
 
@@ -409,15 +496,13 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             raw = dom_box.get("1.0", "end").splitlines()
             domains = [d.strip() for d in raw if d.strip()]
             if not key or not name or not domains:
-                self.dns_view.main_app.show_toast(
-                    "Key, Name, and at least 1 domain required.", level="warning")
+                self.dns_view.main_app.show_toast("Key, Name, and at least 1 domain required.", level="warning")
                 return
             if db.save_tld_category(key, name, domains):
                 self.target_tlds = db.load_tld_presets()
                 self.tld_cb.configure(values=self._tld_choices())
                 _refresh_cat_list()
-                self.dns_view.main_app.show_toast(
-                    f"✓ TLD category '{key}' saved.", level="success")
+                self.dns_view.main_app.show_toast(f"✓ TLD category '{key}' saved.", level="success")
             else:
                 self.dns_view.main_app.show_toast(f"Failed to save '{key}'.", level="error")
 
@@ -431,9 +516,9 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 self.tld_cb.configure(values=choices)
                 if choices:
                     self.tld_var.set(choices[0])
-                _refresh_cat_list(); _new()
-                self.dns_view.main_app.show_toast(
-                    f"🗑 TLD category '{key}' deleted/hidden.", level="info")
+                _refresh_cat_list()
+                _new()
+                self.dns_view.main_app.show_toast(f"🗑 TLD category '{key}' deleted/hidden.", level="info")
             else:
                 self.dns_view.main_app.show_toast(f"Not found: '{key}'", level="warning")
 
@@ -444,24 +529,65 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             self.tld_cb.configure(values=choices)
             if choices:
                 self.tld_var.set(choices[0])
-            _refresh_cat_list(); _new()
+            _refresh_cat_list()
+            _new()
             self.dns_view.main_app.show_toast("TLD presets reset to defaults.", level="info")
 
-        ctk.CTkButton(btns, text="➕ New", width=80, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.primary(), text_color=ThemeManager.get("on_primary"),
-                      hover_color=ThemeManager.accent(), command=_new).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(btns, text="💾 Save", width=90, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.success(), text_color=ThemeManager.get("on_primary"),
-                      hover_color=ThemeManager.accent(), command=_save).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(btns, text="🗑 Delete", width=90, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.danger(), text_color=ThemeManager.get("on_primary"),
-                      hover_color=ThemeManager.accent(), command=_delete).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(btns, text="↺ Reset Defaults", width=130, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.border(), text_color=ThemeManager.text(),
-                      hover_color=ThemeManager.surface_alt(), command=_reset_all).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(btns, text="Close", width=80, height=30, font=Fonts.bold(11),
-                      fg_color=ThemeManager.border(), text_color=ThemeManager.text(),
-                      hover_color=ThemeManager.surface_alt(), command=win.destroy).pack(side="right")
+        ctk.CTkButton(
+            btns,
+            text="➕ New",
+            width=80,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.primary(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            command=_new,
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            btns,
+            text="💾 Save",
+            width=90,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.success(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            command=_save,
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            btns,
+            text="🗑 Delete",
+            width=90,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.danger(),
+            text_color=ThemeManager.get("on_primary"),
+            hover_color=ThemeManager.accent(),
+            command=_delete,
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            btns,
+            text="↺ Reset Defaults",
+            width=130,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            command=_reset_all,
+        ).pack(side="left", padx=(0, 6))
+        ctk.CTkButton(
+            btns,
+            text="Close",
+            width=80,
+            height=30,
+            font=Fonts.bold(11),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            command=win.destroy,
+        ).pack(side="right")
 
         _refresh_cat_list()
 
@@ -488,10 +614,11 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         # Pre-flight check for IPv6
         if mode_key == "ipv6":
             from netools.libs.net import check_ipv6_connectivity
+
             if not check_ipv6_connectivity():
                 self.lbl_status.configure(
                     text="⚠️ ISP/Jaringan lokal Anda tidak memiliki koneksi IPv6 (Network Unreachable). Silakan pilih mode IPv4 atau DoH/DoT.",
-                    text_color=ThemeManager.danger()
+                    text_color=ThemeManager.danger(),
                 )
                 self.btn_start.configure(state="normal")
                 self.btn_stop.configure(state="disabled")
@@ -500,10 +627,14 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         reg_text = self.region_var.get()
         region_key = "all"
-        if "Asia" in reg_text: region_key = "asia"
-        elif "Europe" in reg_text: region_key = "europe"
-        elif "North America" in reg_text: region_key = "north_america"
-        elif "Global" in reg_text: region_key = "global"
+        if "Asia" in reg_text:
+            region_key = "asia"
+        elif "Europe" in reg_text:
+            region_key = "europe"
+        elif "North America" in reg_text:
+            region_key = "north_america"
+        elif "Global" in reg_text:
+            region_key = "global"
 
         tld_sel = self.tld_var.get()
         tld_key = "indonesia"
@@ -518,7 +649,10 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         is_turbo = self.turbo_var.get()
         self.prog_bar.set(0)
         mode_desc = f"{mode_key.upper()} (⚡ Turbo <200ms)" if is_turbo else mode_key.upper()
-        self.lbl_status.configure(text=f"Benchmarking {total_count} DNS resolvers in real-time ({mode_desc})...", text_color=ThemeManager.text())
+        self.lbl_status.configure(
+            text=f"Benchmarking {total_count} DNS resolvers in real-time ({mode_desc})...",
+            text_color=ThemeManager.text(),
+        )
 
         def _worker():
             # Parallel benchmark: spawn N workers (capped to provider count) so
@@ -535,7 +669,8 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 if self.benchmark_cancelled:
                     return None
                 return bm.benchmark_provider_full(
-                    p_id, p_info,
+                    p_id,
+                    p_info,
                     tld_category=tld_key,
                     mode=mode_key,
                     timeout=2.5,
@@ -556,7 +691,9 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                     self.results_map[p_id] = res
                     prog = done_count / max(1, total_count)
                     try:
-                        self.after(0, lambda r=res, p=prog, i=done_count, tot=total_count: self._stream_row(r, p, i, tot))
+                        self.after(
+                            0, lambda r=res, p=prog, i=done_count, tot=total_count: self._stream_row(r, p, i, tot)
+                        )
                     except Exception:
                         pass
 
@@ -564,6 +701,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 self.after(0, self._finalize_benchmark)
             except Exception:
                 pass
+
         threading.Thread(target=_worker, daemon=True).start()
 
     def _stream_row(self, res: dict, progress: float, idx: int, total: int):
@@ -575,23 +713,32 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         try:
             self.prog_bar.set(progress)
-            self.lbl_status.configure(text=f"Testing [{idx}/{total}]: {res.get('country', '')} {res.get('name', '')}...")
+            self.lbl_status.configure(
+                text=f"Testing [{idx}/{total}]: {res.get('country', '')} {res.get('name', '')}..."
+            )
         except Exception:
             return
 
+        c_ms = f"{res['cached_ms']:.1f} ms" if res.get("cached_ms") is not None else "Timeout"
+        u_ms = (
+            f"{res['uncached_ms']:.1f} ms"
+            if res.get("uncached_ms") is not None
+            else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
+        )
+        d_ms = (
+            f"{res['dotcom_ms']:.1f} ms"
+            if res.get("dotcom_ms") is not None
+            else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
+        )
+        s_ms = f"{res['score']:.1f} ms" if res.get("score") is not None and res["score"] < 9000 else "—"
 
-        c_ms = f"{res['cached_ms']:.1f} ms" if res.get('cached_ms') is not None else "Timeout"
-        u_ms = f"{res['uncached_ms']:.1f} ms" if res.get('uncached_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
-        d_ms = f"{res['dotcom_ms']:.1f} ms" if res.get('dotcom_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
-        s_ms = f"{res['score']:.1f} ms" if res.get('score') is not None and res['score'] < 9000 else "—"
-        
         if res.get("hijack_detected"):
             stat = "🔴 Hijacked"
         elif "Cutoff" in res.get("status", ""):
             stat = "🟡 Cutoff (>200ms)"
-        elif res.get("status") == "Stable" and res.get('score', 9999) < 60:
+        elif res.get("status") == "Stable" and res.get("score", 9999) < 60:
             stat = "🟢 Fast"
-        elif res.get("status") == "Stable" or (res.get('score', 9999) < 150 and res.get('score', 9999) > 0):
+        elif res.get("status") == "Stable" or (res.get("score", 9999) < 150 and res.get("score", 9999) > 0):
             stat = "🟡 OK"
         elif res.get("status") == "Partial":
             stat = "🟡 Partial"
@@ -600,10 +747,11 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
         proto = res.get("protocol", "IPv4")
 
-        self.tree.insert("", "end", values=(
-            idx, res.get("country", "🌐"), res.get("name", "Unknown"), proto,
-            c_ms, u_ms, d_ms, s_ms, stat
-        ))
+        self.tree.insert(
+            "",
+            "end",
+            values=(idx, res.get("country", "🌐"), res.get("name", "Unknown"), proto, c_ms, u_ms, d_ms, s_ms, stat),
+        )
 
     def _finalize_benchmark(self):
         try:
@@ -626,32 +774,39 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 pass
             return
 
-
         sorted_res = sorted(
             [r for r in self.results_map.values() if r.get("score") is not None],
             key=lambda x: (
                 0 if x.get("status") == "Stable" else (1 if x.get("status") == "Partial" else 2),
                 x.get("score", 9999),
-                x.get("cached_ms") or 9999.0
-            )
+                x.get("cached_ms") or 9999.0,
+            ),
         )
 
         for item in self.tree.get_children():
             self.tree.delete(item)
 
         for rk, res in enumerate(sorted_res, 1):
-            c_ms = f"{res['cached_ms']:.1f} ms" if res.get('cached_ms') is not None else "Timeout"
-            u_ms = f"{res['uncached_ms']:.1f} ms" if res.get('uncached_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
-            d_ms = f"{res['dotcom_ms']:.1f} ms" if res.get('dotcom_ms') is not None else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
-            s_ms = f"{res['score']:.1f} ms" if res.get('score') is not None and res['score'] < 9000 else "—"
-            
+            c_ms = f"{res['cached_ms']:.1f} ms" if res.get("cached_ms") is not None else "Timeout"
+            u_ms = (
+                f"{res['uncached_ms']:.1f} ms"
+                if res.get("uncached_ms") is not None
+                else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
+            )
+            d_ms = (
+                f"{res['dotcom_ms']:.1f} ms"
+                if res.get("dotcom_ms") is not None
+                else ("Cutoff" if "Cutoff" in res.get("status", "") else "—")
+            )
+            s_ms = f"{res['score']:.1f} ms" if res.get("score") is not None and res["score"] < 9000 else "—"
+
             if res.get("hijack_detected"):
                 stat = "🔴 Hijacked"
             elif "Cutoff" in res.get("status", ""):
                 stat = "🟡 Cutoff (>200ms)"
-            elif res.get("status") == "Stable" and res.get('score', 9999) < 60:
+            elif res.get("status") == "Stable" and res.get("score", 9999) < 60:
                 stat = "🟢 Fast"
-            elif res.get("status") == "Stable" or (res.get('score', 9999) < 150 and res.get('score', 9999) > 0):
+            elif res.get("status") == "Stable" or (res.get("score", 9999) < 150 and res.get("score", 9999) > 0):
                 stat = "🟡 OK"
             elif res.get("status") == "Partial":
                 stat = "🟡 Partial"
@@ -660,12 +815,16 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
 
             proto = res.get("protocol", "IPv4")
 
-            self.tree.insert("", "end", values=(
-                rk, res.get("country", "🌐"), res.get("name", "Unknown"), proto,
-                c_ms, u_ms, d_ms, s_ms, stat
-            ))
+            self.tree.insert(
+                "",
+                "end",
+                values=(rk, res.get("country", "🌐"), res.get("name", "Unknown"), proto, c_ms, u_ms, d_ms, s_ms, stat),
+            )
 
-        self.lbl_status.configure(text=f"✓ Benchmark selesai! {len(sorted_res)} resolvers diurutkan (Klik header kolom untuk menyortir).", text_color=ThemeManager.success())
+        self.lbl_status.configure(
+            text=f"✓ Benchmark selesai! {len(sorted_res)} resolvers diurutkan (Klik header kolom untuk menyortir).",
+            text_color=ThemeManager.success(),
+        )
 
         if sorted_res:
             self.btn_apply_smart.configure(state="normal")
@@ -674,9 +833,9 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 b.configure(state="normal")
 
             smart = bm.calculate_smart_mix(self.results_map)
-            c_name = smart.get('cached', {}).get('name', 'None')
-            u_name = smart.get('uncached', {}).get('name', 'None')
-            d_name = smart.get('dotcom', {}).get('name', 'None')
+            c_name = smart.get("cached", {}).get("name", "None")
+            u_name = smart.get("uncached", {}).get("name", "None")
+            d_name = smart.get("dotcom", {}).get("name", "None")
 
             rec_txt = (
                 f"• DNS 1 (Primary Cached)   : {c_name} ({smart.get('cached', {}).get('cached_ms', 0):.1f} ms)\n"
@@ -721,15 +880,19 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             mode_key=mode_key,
         )
 
-        self.lbl_status.configure(text="⚡ Menerapkan GRC Smart Mix ke sistem jaringan...", text_color=ThemeManager.warning())
+        self.lbl_status.configure(
+            text="⚡ Menerapkan GRC Smart Mix ke sistem jaringan...", text_color=ThemeManager.warning()
+        )
 
         def _bg():
             self.dns_view.apply_dns()
             try:
-                self.after(0, lambda: self.lbl_status.configure(
-                    text="✓ Berhasil! GRC Smart Mix aktif di sistem.",
-                    text_color=ThemeManager.success()
-                ))
+                self.after(
+                    0,
+                    lambda: self.lbl_status.configure(
+                        text="✓ Berhasil! GRC Smart Mix aktif di sistem.", text_color=ThemeManager.success()
+                    ),
+                )
             except Exception:
                 pass
 
@@ -796,10 +959,12 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
         def _bg():
             self.dns_view.apply_dns()
             try:
-                self.after(0, lambda: self.lbl_status.configure(
-                    text=f"✓ Berhasil! {label} '{best['name']}' aktif di sistem.",
-                    text_color=ThemeManager.success()
-                ))
+                self.after(
+                    0,
+                    lambda: self.lbl_status.configure(
+                        text=f"✓ Berhasil! {label} '{best['name']}' aktif di sistem.", text_color=ThemeManager.success()
+                    ),
+                )
             except Exception:
                 pass
 

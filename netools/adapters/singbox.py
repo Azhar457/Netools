@@ -68,6 +68,7 @@ def build_singbox_config(proxy: Dict[str, Any], local_port: int) -> Dict[str, An
         },
     }
 
+
 def start_singbox_instance(name: str, config: Dict[str, Any]) -> Optional[subprocess.Popen]:
     """Write config file, spawn sing-box subprocess, and store PID."""
     config_path = CONFIGS_DIR / f"{name}.json"
@@ -98,6 +99,7 @@ def start_singbox_instance(name: str, config: Dict[str, Any]) -> Optional[subpro
     finally:
         log_file.close()  # parent closes its handle; child keeps the dup'd fd
 
+
 def stop_singbox_instance(name: str) -> None:
     """Kill sing-box instance by name, remove pid and config."""
     pid_file = PID_DIR / f"{name}.pid"
@@ -114,6 +116,7 @@ def stop_singbox_instance(name: str) -> None:
 
     config_file = CONFIGS_DIR / f"{name}.json"
     config_file.unlink(missing_ok=True)
+
 
 def stop_all_singbox_instances() -> None:
     """Kill all active singbox instances recorded in PID_DIR (only our managed PIDs)."""

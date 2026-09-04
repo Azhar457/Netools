@@ -4,28 +4,25 @@ import base64
 import json
 import time
 
-import pytest
-
-from netools.services.omniroute_bridge import TokenTTL, compute_token_ttl
+from netools.services.omniroute_bridge import compute_token_ttl
 from netools.services.session_extractor import (
-    _identify_provider_from_jwt,
-    _is_refresh_token,
-    _is_access_token,
-    decode_jwt_payload,
-    extract_chromium_storage,
-    SUPPORTED_PROVIDERS,
     _COOKIE_DOMAIN_TO_PROVIDER,
+    SUPPORTED_PROVIDERS,
+    _identify_provider_from_jwt,
+    _is_access_token,
+    _is_refresh_token,
+    decode_jwt_payload,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_jwt(payload: dict) -> str:
     """Create a fake JWT from a payload dict."""
-    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').rstrip(b'=').decode()
-    payload_b64 = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b'=').decode()
+    header = base64.urlsafe_b64encode(b'{"alg":"HS256","typ":"JWT"}').rstrip(b"=").decode()
+    payload_b64 = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=").decode()
     sig = "fake_signature"
     return f"{header}.{payload_b64}.{sig}"
 
@@ -33,6 +30,7 @@ def _make_jwt(payload: dict) -> str:
 # ---------------------------------------------------------------------------
 # decode_jwt_payload Tests
 # ---------------------------------------------------------------------------
+
 
 class TestDecodeJWTPayload:
     def test_valid_jwt(self):
@@ -59,6 +57,7 @@ class TestDecodeJWTPayload:
 # ---------------------------------------------------------------------------
 # Provider Identification Tests
 # ---------------------------------------------------------------------------
+
 
 class TestIdentifyProviderFromJWT:
     def test_chatgpt_web(self):
@@ -100,6 +99,7 @@ class TestIdentifyProviderFromJWT:
 # ---------------------------------------------------------------------------
 # Refresh Token Detection Tests
 # ---------------------------------------------------------------------------
+
 
 class TestIsRefreshToken:
     def test_typ_refresh(self):
@@ -147,6 +147,7 @@ class TestIsAccessToken:
 # TTL Integration Tests
 # ---------------------------------------------------------------------------
 
+
 class TestTTLIntegration:
     def test_ttl_active(self):
         exp = int(time.time() + 7200)  # 2 hours
@@ -187,6 +188,7 @@ class TestTTLIntegration:
 # Supported Providers Tests
 # ---------------------------------------------------------------------------
 
+
 class TestSupportedProviders:
     def test_provider_count(self):
         # Should have 26 entries (25 providers + "all")
@@ -195,13 +197,32 @@ class TestSupportedProviders:
     def test_all_provider_keys(self):
         keys = [k for k, _ in SUPPORTED_PROVIDERS]
         expected = {
-            "all", "chatgpt-web", "claude-web", "deepseek-web", "gemini-web",
-            "gemini-business", "grok-web", "kimi-web", "copilot-web",
-            "copilot-m365-web", "perplexity-web", "blackbox-web",
-            "muse-spark-web", "zai-web", "doubao-web", "t3-web",
-            "inner-ai", "adapta-web", "lmarena", "yuanbao-web",
-            "huggingchat", "poe-web", "venice-web", "v0-vercel-web",
-            "zenmux-free", "custom",
+            "all",
+            "chatgpt-web",
+            "claude-web",
+            "deepseek-web",
+            "gemini-web",
+            "gemini-business",
+            "grok-web",
+            "kimi-web",
+            "copilot-web",
+            "copilot-m365-web",
+            "perplexity-web",
+            "blackbox-web",
+            "muse-spark-web",
+            "zai-web",
+            "doubao-web",
+            "t3-web",
+            "inner-ai",
+            "adapta-web",
+            "lmarena",
+            "yuanbao-web",
+            "huggingchat",
+            "poe-web",
+            "venice-web",
+            "v0-vercel-web",
+            "zenmux-free",
+            "custom",
         }
         assert set(keys) == expected
 
@@ -215,6 +236,7 @@ class TestSupportedProviders:
 # ---------------------------------------------------------------------------
 # Cookie Domain Mapping Tests
 # ---------------------------------------------------------------------------
+
 
 class TestCookieDomainMapping:
     def test_chatgpt_mapping(self):
@@ -233,12 +255,29 @@ class TestCookieDomainMapping:
         """Ensure all 25 web providers have at least one domain mapping."""
         mapped = set(_COOKIE_DOMAIN_TO_PROVIDER.values())
         expected_all = {
-            "chatgpt-web", "claude-web", "deepseek-web", "gemini-web",
-            "gemini-business", "grok-web", "kimi-web", "copilot-web",
-            "copilot-m365-web", "perplexity-web", "blackbox-web",
-            "muse-spark-web", "zai-web", "doubao-web", "t3-web",
-            "inner-ai", "adapta-web", "lmarena", "yuanbao-web",
-            "huggingchat", "poe-web", "venice-web", "v0-vercel-web",
+            "chatgpt-web",
+            "claude-web",
+            "deepseek-web",
+            "gemini-web",
+            "gemini-business",
+            "grok-web",
+            "kimi-web",
+            "copilot-web",
+            "copilot-m365-web",
+            "perplexity-web",
+            "blackbox-web",
+            "muse-spark-web",
+            "zai-web",
+            "doubao-web",
+            "t3-web",
+            "inner-ai",
+            "adapta-web",
+            "lmarena",
+            "yuanbao-web",
+            "huggingchat",
+            "poe-web",
+            "venice-web",
+            "v0-vercel-web",
             "zenmux-free",
         }
         missing = expected_all - mapped

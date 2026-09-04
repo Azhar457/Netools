@@ -6,7 +6,6 @@ import socketserver
 import ssl
 import threading
 import urllib.request
-
 from typing import Optional
 
 from netools.config import DOH_PROXY_PORT
@@ -37,6 +36,7 @@ class _DoHHandler(socketserver.BaseRequestHandler):
 
 
 _ssl_ctx = ssl._create_unverified_context()
+
 
 def _forward_doh(raw_packet: bytes, timeout: float = 5.0) -> Optional[bytes]:
     if not _doh_url:
@@ -107,9 +107,7 @@ def start_doh_forwarder(provider: str = "alidns", port: int = DOH_PROXY_PORT) ->
         _doh_server = None
         return False
 
-    _doh_thread = threading.Thread(
-        target=_doh_server.serve_forever, daemon=True, name="doh-forwarder"
-    )
+    _doh_thread = threading.Thread(target=_doh_server.serve_forever, daemon=True, name="doh-forwarder")
     _doh_thread.start()
     log.info(f"DoH forwarder running: udp://127.0.0.1:{port} -> {_doh_url} ({provider})")
     return True

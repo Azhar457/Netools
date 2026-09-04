@@ -8,9 +8,9 @@ Provides reliable transaction handling, input validation, and TTL awareness.
 import sqlite3
 import time
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from netools.libs.logger import get_logger
 
@@ -21,19 +21,43 @@ log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 _DEFAULT_DB_PATH = Path.home() / ".omniroute" / "storage.sqlite"
-_TTL_ACTIVE_THRESHOLD = 3600        # < 1 hour remaining → expiring_soon
-_TOKEN_MAX_LENGTH = 16_384          # sanity cap for stored token
+_TTL_ACTIVE_THRESHOLD = 3600  # < 1 hour remaining → expiring_soon
+_TOKEN_MAX_LENGTH = 16_384  # sanity cap for stored token
 
 # Web-cookie providers use auth_type = "cookie" in OmniRoute (not "apikey")
 _WEB_COOKIE_PROVIDERS = {
-    "chatgpt-web", "chatgpt-web-codex", "claude-web", "deepseek-web",
-    "grok-web", "gemini-web", "gemini-business", "perplexity-web",
-    "blackbox-web", "muse-spark-web", "copilot-web", "copilot-m365-web",
-    "t3-web", "inner-ai", "adapta-web", "lmarena", "yuanbao-web",
-    "huggingchat", "poe-web", "venice-web", "v0-vercel-web",
-    "kimi-web", "doubao-web", "zai-web", "zenmux-free",
-    "tencent-aistudio-web", "tinycms-web", "notion-web",
-    "hyperagent", "conol-web", "maxai", "uc",
+    "chatgpt-web",
+    "chatgpt-web-codex",
+    "claude-web",
+    "deepseek-web",
+    "grok-web",
+    "gemini-web",
+    "gemini-business",
+    "perplexity-web",
+    "blackbox-web",
+    "muse-spark-web",
+    "copilot-web",
+    "copilot-m365-web",
+    "t3-web",
+    "inner-ai",
+    "adapta-web",
+    "lmarena",
+    "yuanbao-web",
+    "huggingchat",
+    "poe-web",
+    "venice-web",
+    "v0-vercel-web",
+    "kimi-web",
+    "doubao-web",
+    "zai-web",
+    "zenmux-free",
+    "tencent-aistudio-web",
+    "tinycms-web",
+    "notion-web",
+    "hyperagent",
+    "conol-web",
+    "maxai",
+    "uc",
 }
 
 
@@ -41,14 +65,15 @@ _WEB_COOKIE_PROVIDERS = {
 # TTL Dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenTTL:
     """Computed time-to-live information for a JWT or session token."""
 
-    status: str = "unknown"         # "active" | "expiring_soon" | "expired" | "unknown"
-    remaining_secs: int = -1        # -1 = unknown
-    expires_at: str = "N/A"         # ISO-ish human-readable or "N/A"
-    label: str = "❓ Unknown"       # Ready-to-display label with emoji
+    status: str = "unknown"  # "active" | "expiring_soon" | "expired" | "unknown"
+    remaining_secs: int = -1  # -1 = unknown
+    expires_at: str = "N/A"  # ISO-ish human-readable or "N/A"
+    label: str = "❓ Unknown"  # Ready-to-display label with emoji
 
     @property
     def is_usable(self) -> bool:
@@ -108,6 +133,7 @@ def compute_token_ttl(payload: Optional[Dict[str, Any]]) -> TokenTTL:
 # Injection Result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class InjectionResult:
     """Outcome of a single ``inject_session_to_omniroute`` call."""
@@ -122,6 +148,7 @@ class InjectionResult:
 # ---------------------------------------------------------------------------
 # Core Functions
 # ---------------------------------------------------------------------------
+
 
 def get_db_path() -> Path:
     """Return the OmniRoute database path (centralised, testable)."""
@@ -150,19 +177,23 @@ def inject_session_to_omniroute(
     transaction with automatic rollback on failure.
     """
     if not provider:
-        return InjectionResult(success=False, provider=provider, account=name,
-                               message="Provider kosong", action="error")
+        return InjectionResult(
+            success=False, provider=provider, account=name, message="Provider kosong", action="error"
+        )
 
     err = _validate_token(token)
     if err:
-        return InjectionResult(success=False, provider=provider, account=name,
-                               message=err, action="error")
+        return InjectionResult(success=False, provider=provider, account=name, message=err, action="error")
 
     db = db_path or get_db_path()
     if not db.exists():
-        return InjectionResult(success=False, provider=provider, account=name,
-                               message=f"Database OmniRoute tidak ditemukan: {db}",
-                               action="error")
+        return InjectionResult(
+            success=False,
+            provider=provider,
+            account=name,
+            message=f"Database OmniRoute tidak ditemukan: {db}",
+            action="error",
+        )
 
     now = time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -197,7 +228,9 @@ def inject_session_to_omniroute(
             con.commit()
             log.info("OmniRoute inject %s: provider=%s account=%s", action, provider, name)
             return InjectionResult(
-                success=True, provider=provider, account=name,
+                success=True,
+                provider=provider,
+                account=name,
                 message=f"Berhasil {action} {provider} ({name})",
                 action=action,
             )
@@ -205,14 +238,18 @@ def inject_session_to_omniroute(
     except sqlite3.Error as exc:
         log.error("OmniRoute inject failed: %s", exc)
         return InjectionResult(
-            success=False, provider=provider, account=name,
+            success=False,
+            provider=provider,
+            account=name,
             message=f"Gagal menginjeksi ke OmniRoute: {exc}",
             action="error",
         )
     except Exception as exc:
         log.error("OmniRoute inject unexpected error: %s", exc)
         return InjectionResult(
-            success=False, provider=provider, account=name,
+            success=False,
+            provider=provider,
+            account=name,
             message=f"Error tak terduga: {exc}",
             action="error",
         )
@@ -256,18 +293,28 @@ def inject_bulk_sessions(
                 name = s.get("account", "")
 
                 if not provider:
-                    results.append(InjectionResult(
-                        success=False, provider=provider, account=name,
-                        message="Provider kosong", action="error",
-                    ))
+                    results.append(
+                        InjectionResult(
+                            success=False,
+                            provider=provider,
+                            account=name,
+                            message="Provider kosong",
+                            action="error",
+                        )
+                    )
                     continue
 
                 err = _validate_token(token)
                 if err:
-                    results.append(InjectionResult(
-                        success=False, provider=provider, account=name,
-                        message=err, action="error",
-                    ))
+                    results.append(
+                        InjectionResult(
+                            success=False,
+                            provider=provider,
+                            account=name,
+                            message=err,
+                            action="error",
+                        )
+                    )
                     continue
 
                 cur.execute("SELECT id FROM provider_connections WHERE provider=?", (provider,))
@@ -295,11 +342,15 @@ def inject_bulk_sessions(
                     )
                     action = "inserted"
 
-                results.append(InjectionResult(
-                    success=True, provider=provider, account=name,
-                    message=f"Berhasil {action} {provider} ({name})",
-                    action=action,
-                ))
+                results.append(
+                    InjectionResult(
+                        success=True,
+                        provider=provider,
+                        account=name,
+                        message=f"Berhasil {action} {provider} ({name})",
+                        action=action,
+                    )
+                )
 
             con.commit()
             log.info("OmniRoute bulk inject: %d sessions processed", len(results))

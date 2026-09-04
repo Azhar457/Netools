@@ -63,7 +63,10 @@ def run_monitor_cycle(standalone: bool = False) -> int:
 
     return len(dead_instances)
 
-def run_watchdog_loop(interval: int = MONITOR_DEFAULT_INTERVAL, standalone: bool = False, stop_event: Optional[threading.Event] = None) -> None:
+
+def run_watchdog_loop(
+    interval: int = MONITOR_DEFAULT_INTERVAL, standalone: bool = False, stop_event: Optional[threading.Event] = None
+) -> None:
     """Continuous watchdog loop."""
     log.info(f"Starting auto-heal watchdog every {interval}s (Standalone={standalone})...")
     while stop_event is None or not stop_event.is_set():
@@ -73,8 +76,10 @@ def run_watchdog_loop(interval: int = MONITOR_DEFAULT_INTERVAL, standalone: bool
             log.info(f"Monitor error: {e}")
         time.sleep(interval)
 
+
 _watchdog_thread: Optional[threading.Thread] = None
 _watchdog_stop_event: Optional[threading.Event] = None
+
 
 def start_watchdog_thread(interval: int = MONITOR_DEFAULT_INTERVAL, standalone: bool = False) -> None:
     """Start the auto-heal watchdog as a daemon background thread."""
@@ -90,6 +95,7 @@ def start_watchdog_thread(interval: int = MONITOR_DEFAULT_INTERVAL, standalone: 
         name="proxy-watchdog",
     )
     _watchdog_thread.start()
+
 
 def stop_watchdog() -> None:
     """Signal the watchdog thread to stop and wait for it to exit."""

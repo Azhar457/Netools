@@ -22,13 +22,9 @@ class TestDNSLeakEngine(unittest.TestCase):
 
         # 2. DNSSEC + ECS + Padding packet
         pkt_full = dns_leak.build_dns_query_packet(
-            "test.org",
-            tx_id=0x2222,
-            want_dnssec=True,
-            with_ecs=True,
-            with_padding_len=16
+            "test.org", tx_id=0x2222, want_dnssec=True, with_ecs=True, with_padding_len=16
         )
-        tx_id, flags, qd, an, ns, ar = struct.unpack(">HHHHHH", pkt_full[:12])
+        tx_id, _flags, qd, _an, _ns, ar = struct.unpack(">HHHHHH", pkt_full[:12])
         self.assertEqual(tx_id, 0x2222)
         self.assertEqual(ar, 1)
         self.assertIn(b"test", pkt_full)

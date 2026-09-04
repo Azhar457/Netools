@@ -1,0 +1,59 @@
+F821 Undefined name `Any`
+   --> netools/gui/app.py:297:34
+    |
+297 |     def select_tab(self, target: Any):
+    |                                  ^^^
+298 |         """Switch to tab by index (0-4), key ('dashboard', 'dns', 'proxy', 'settings', 'preferences'), or title."""
+299 |         key_map = {
+    |
+
+F811 [*] Redefinition of unused `get_locale` from line 10
+   --> netools/gui/view_dns.py:394:38
+    |
+392 |     def _open_canary_info(self):
+393 |         """User-friendly explainer + custom canary (domain/TLD) manager."""
+394 |         from netools.gui.i18n import get_locale
+    |                                      ^^^^^^^^^^ `get_locale` redefined here
+395 |
+396 |         loc = get_locale()
+    |
+   ::: netools/gui/view_dns.py:10:54
+    |
+  9 | from netools.adapters import platform_dns as sys_dns
+ 10 | from netools.gui.i18n import canary_info_paragraphs, get_locale, tr
+    |                                                      ---------- previous definition of `get_locale` here
+ 11 | from netools.gui.scrollable_dropdown import CTkScrollableDropdown
+ 12 | from netools.gui.theme import (
+    |
+help: Remove definition: `get_locale`
+    |
+393 |         """User-friendly explainer + custom canary (domain/TLD) manager."""
+    -         from netools.gui.i18n import get_locale
+394 |
+    |
+
+F841 Local variable `selected_label` is assigned to but never used
+   --> netools/gui/view_dns.py:917:9
+    |
+915 |         """Probe active resolvers (UDP / DoT / DoH) + TLS capability, then
+916 |         render the universal inspector window."""
+917 |         selected_label = self.iface_var.get()
+    |         ^^^^^^^^^^^^^^
+918 |         dev = self.active_interface
+    |
+help: Remove assignment to unused variable `selected_label`
+
+F841 Local variable `dot_state` is assigned to but never used
+   --> netools/gui/view_dns.py:934:25
+    |
+932 |                         dot_state = "Strict (+DNSOverTLS)"
+933 |                     elif "DNSOverTLS=opportunistic" in out:
+934 |                         dot_state = "Opportunistic (TLS 853)"
+    |                         ^^^^^^^^^
+935 |                 except Exception:
+936 |                     pass
+    |
+help: Remove assignment to unused variable `dot_state`
+
+Found 4 errors.
+[*] 1 fixable with the `--fix` option (2 hidden fixes can be enabled with the `--unsafe-fixes` option).

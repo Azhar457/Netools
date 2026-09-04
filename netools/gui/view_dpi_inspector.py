@@ -53,17 +53,21 @@ class DPIInspectorModal(ctk.CTkToplevel):
             hdr,
             text=tr("🔬 Multi-Layer Censorship & Deep Packet Inspection (DPI) Flow Analyzer"),
             font=Fonts.title(15),
-            text_color=ThemeManager.warning()
+            text_color=ThemeManager.warning(),
         ).pack(side="left", padx=20, pady=10)
 
         # 2. Input Control Card
-        card_input = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        card_input = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         card_input.pack(fill="x", padx=16, pady=8)
 
         r1 = ctk.CTkFrame(card_input, fg_color=ThemeManager.surface())
         r1.pack(fill="x", padx=14, pady=10)
 
-        ctk.CTkLabel(r1, text=tr("Target Domain / Hostname:"), font=Fonts.bold(12), text_color=ThemeManager.text()).pack(side="left", padx=(0, 8))
+        ctk.CTkLabel(
+            r1, text=tr("Target Domain / Hostname:"), font=Fonts.bold(12), text_color=ThemeManager.text()
+        ).pack(side="left", padx=(0, 8))
 
         self.entry_domain = ctk.CTkEntry(
             r1,
@@ -73,7 +77,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
             fg_color=ThemeManager.surface_alt(),
             border_color=ThemeManager.border(),
             text_color=ThemeManager.text(),
-            placeholder_text="e.g. dashboard.ngrok.com"
+            placeholder_text="e.g. dashboard.ngrok.com",
         )
         self.entry_domain.insert(0, self.default_domain)
         self.entry_domain.pack(side="left", padx=4)
@@ -87,7 +91,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
             hover_color=ThemeManager.accent(),
             height=36,
             width=180,
-            command=self.start_analysis
+            command=self.start_analysis,
         )
         self.btn_run.pack(side="left", padx=8)
 
@@ -95,7 +99,9 @@ class DPIInspectorModal(ctk.CTkToplevel):
         r2 = ctk.CTkFrame(card_input, fg_color=ThemeManager.surface())
         r2.pack(fill="x", padx=14, pady=(0, 8))
 
-        ctk.CTkLabel(r2, text=tr("Quick Test Presets:"), font=Fonts.regular(11), text_color=ThemeManager.text_muted()).pack(side="left", padx=(0, 6))
+        ctk.CTkLabel(
+            r2, text=tr("Quick Test Presets:"), font=Fonts.regular(11), text_color=ThemeManager.text_muted()
+        ).pack(side="left", padx=(0, 6))
 
         presets = ["dashboard.ngrok.com", "reddit.com", "discord.com", "cloudflare.com", "google.com"]
         for p in presets:
@@ -107,18 +113,20 @@ class DPIInspectorModal(ctk.CTkToplevel):
                 text_color=ThemeManager.text(),
                 hover_color=ThemeManager.surface_alt(),
                 height=26,
-                command=lambda val=p: self._set_preset(val)
+                command=lambda val=p: self._set_preset(val),
             ).pack(side="left", padx=3)
 
         # 3. Interactive Visual Node Flow Pipeline Card
-        self.card_nodes = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.card_nodes = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.card_nodes.pack(fill="x", padx=16, pady=4)
 
         ctk.CTkLabel(
             self.card_nodes,
             text=tr("📊 Network Handshake & OSI Stage Flow Diagram"),
             font=Fonts.subtitle(13),
-            text_color=ThemeManager.primary()
+            text_color=ThemeManager.primary(),
         ).pack(anchor="w", padx=14, pady=(8, 4))
 
         self.flow_container = ctk.CTkFrame(self.card_nodes, fg_color=ThemeManager.surface())
@@ -130,14 +138,22 @@ class DPIInspectorModal(ctk.CTkToplevel):
             ("A", tr("🌐 Node A\nDNS Resolution"), tr("Layer 7 (IP Lookup)")),
             ("B", tr("🔌 Node B\nTCP Port 443"), tr("Layer 4 (Routing & SYN)")),
             ("C", tr("🔒 Node C\nTLS SNI Handshake"), tr("Layer 7 DPI (ClientHello)")),
-            ("D", tr("🛡️ Node D\nSSL & MITM Cert"), tr("Layer 7 (Encryption Cert)"))
+            ("D", tr("🛡️ Node D\nSSL & MITM Cert"), tr("Layer 7 (Encryption Cert)")),
         ]
 
         for idx, (nid, title, subtitle) in enumerate(nodes_config):
-            card = ctk.CTkFrame(self.flow_container, fg_color=ThemeManager.surface_alt(), corner_radius=6, border_width=1, border_color=ThemeManager.border())
+            card = ctk.CTkFrame(
+                self.flow_container,
+                fg_color=ThemeManager.surface_alt(),
+                corner_radius=6,
+                border_width=1,
+                border_color=ThemeManager.border(),
+            )
             card.pack(side="left", fill="both", expand=True, padx=4, pady=2)
 
-            lbl_t = ctk.CTkLabel(card, text=title, font=Fonts.bold(11), text_color=ThemeManager.text(), justify="center")
+            lbl_t = ctk.CTkLabel(
+                card, text=title, font=Fonts.bold(11), text_color=ThemeManager.text(), justify="center"
+            )
             lbl_t.pack(pady=(6, 2))
 
             lbl_sub = ctk.CTkLabel(card, text=subtitle, font=Fonts.regular(9), text_color=ThemeManager.text_muted())
@@ -150,29 +166,29 @@ class DPIInspectorModal(ctk.CTkToplevel):
                 fg_color=ThemeManager.border(),
                 corner_radius=4,
                 width=80,
-                height=20
+                height=20,
             )
             badge.pack(pady=(2, 6))
 
-            self.node_widgets[nid] = {
-                "card": card,
-                "title": lbl_t,
-                "badge": badge
-            }
+            self.node_widgets[nid] = {"card": card, "title": lbl_t, "badge": badge}
 
             if idx < len(nodes_config) - 1:
-                arrow = ctk.CTkLabel(self.flow_container, text="▶", font=Fonts.bold(12), text_color=ThemeManager.text_muted())
+                arrow = ctk.CTkLabel(
+                    self.flow_container, text="▶", font=Fonts.bold(12), text_color=ThemeManager.text_muted()
+                )
                 arrow.pack(side="left", padx=1)
 
         # 4. Details Breakdown Card (Scrollable)
-        self.details_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.details_card = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.details_card.pack(fill="both", expand=True, padx=16, pady=4)
 
         ctk.CTkLabel(
             self.details_card,
             text=tr("📑 Stage-by-Stage Diagnostic Details"),
             font=Fonts.subtitle(11),
-            text_color=ThemeManager.text()
+            text_color=ThemeManager.text(),
         ).pack(anchor="w", padx=14, pady=(8, 4))
 
         self.details_scroll = ctk.CTkScrollableFrame(self.details_card, fg_color="transparent")
@@ -180,15 +196,19 @@ class DPIInspectorModal(ctk.CTkToplevel):
 
         self.lbl_initial_hint = ctk.CTkLabel(
             self.details_scroll,
-            text=tr("Masukkan nama domain dan klik 'Analyze Network Flow' untuk memeriksa jalur koneksi secara bertahap."),
+            text=tr(
+                "Masukkan nama domain dan klik 'Analyze Network Flow' untuk memeriksa jalur koneksi secara bertahap."
+            ),
             font=Fonts.regular(10),
             text_color=ThemeManager.text_muted(),
-            justify="left"
+            justify="left",
         )
         self.lbl_initial_hint.pack(anchor="w", padx=8, pady=6)
 
         # 5. Actionable Recommendation & Verdict Card
-        self.rec_card = ctk.CTkFrame(self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border())
+        self.rec_card = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
+        )
         self.rec_card.pack(fill="x", padx=16, pady=(4, 12))
 
         self.lbl_headline = ctk.CTkLabel(
@@ -196,18 +216,20 @@ class DPIInspectorModal(ctk.CTkToplevel):
             text=tr("⚪ Status: Siap melakukan analisis jaringan multi-layer."),
             font=Fonts.bold(11),
             text_color=ThemeManager.text(),
-            anchor="w"
+            anchor="w",
         )
         self.lbl_headline.pack(fill="x", padx=14, pady=(8, 2))
 
         self.lbl_recommendation = ctk.CTkLabel(
             self.rec_card,
-            text=tr("• Masukkan domain untuk melihat analisis apakah blokir terjadi di level DNS, IP Firewall, SNI DPI, atau SSL MITM."),
+            text=tr(
+                "• Masukkan domain untuk melihat analisis apakah blokir terjadi di level DNS, IP Firewall, SNI DPI, atau SSL MITM."
+            ),
             font=Fonts.regular(10),
             text_color=ThemeManager.text_muted(),
             justify="left",
             anchor="w",
-            wraplength=850
+            wraplength=850,
         )
         self.lbl_recommendation.pack(fill="x", padx=14, pady=(0, 8))
 
@@ -223,7 +245,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
             height=28,
-            command=self._go_to_proxy_tab
+            command=self._go_to_proxy_tab,
         )
         self.btn_proxy_shortcut.pack(side="left", padx=(0, 6))
 
@@ -235,7 +257,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
             text_color=ThemeManager.get("on_primary"),
             hover_color=ThemeManager.accent(),
             height=28,
-            command=self._go_to_dns_tab
+            command=self._go_to_dns_tab,
         )
         self.btn_dns_shortcut.pack(side="left", padx=6)
 
@@ -248,7 +270,7 @@ class DPIInspectorModal(ctk.CTkToplevel):
             hover_color=ThemeManager.surface_alt(),
             width=70,
             height=28,
-            command=self.destroy
+            command=self.destroy,
         ).pack(side="right")
 
     def _set_preset(self, dom: str):
@@ -275,8 +297,12 @@ class DPIInspectorModal(ctk.CTkToplevel):
         for child in self.details_scroll.winfo_children():
             child.destroy()
 
-        self.lbl_headline.configure(text=f"⏳ Sedang mendiagnosis koneksi ke '{domain}'...", text_color=ThemeManager.warning())
-        self.lbl_recommendation.configure(text="Menguji Layer 7 DNS -> Layer 4 TCP -> Layer 7 TLS SNI -> SSL Certificate...")
+        self.lbl_headline.configure(
+            text=f"⏳ Sedang mendiagnosis koneksi ke '{domain}'...", text_color=ThemeManager.warning()
+        )
+        self.lbl_recommendation.configure(
+            text="Menguji Layer 7 DNS -> Layer 4 TCP -> Layer 7 TLS SNI -> SSL Certificate..."
+        )
 
         def _bg():
             report = dpi_detector.diagnose_domain_reachability(domain, timeout=3.0)
@@ -321,20 +347,35 @@ class DPIInspectorModal(ctk.CTkToplevel):
             stage_frame.pack(fill="x", padx=4, pady=3)
 
             hdr_txt = f"{stage.name} — {stage.summary}"
-            status_color = ThemeManager.success() if stage.status == "PASS" else (
-                ThemeManager.danger() if stage.status == "BLOCKED" else (
-                    ThemeManager.warning() if stage.status == "WARN" else ThemeManager.text_muted()
+            status_color = (
+                ThemeManager.success()
+                if stage.status == "PASS"
+                else (
+                    ThemeManager.danger()
+                    if stage.status == "BLOCKED"
+                    else (ThemeManager.warning() if stage.status == "WARN" else ThemeManager.text_muted())
                 )
             )
 
-            ctk.CTkLabel(stage_frame, text=hdr_txt, font=Fonts.bold(10), text_color=status_color, anchor="w").pack(fill="x", padx=10, pady=(6, 2))
+            ctk.CTkLabel(stage_frame, text=hdr_txt, font=Fonts.bold(10), text_color=status_color, anchor="w").pack(
+                fill="x", padx=10, pady=(6, 2)
+            )
 
             for detail in stage.details:
-                ctk.CTkLabel(stage_frame, text=detail, font=Fonts.regular(9), text_color=ThemeManager.text(), anchor="w", justify="left").pack(fill="x", padx=14, pady=1)
+                ctk.CTkLabel(
+                    stage_frame,
+                    text=detail,
+                    font=Fonts.regular(9),
+                    text_color=ThemeManager.text(),
+                    anchor="w",
+                    justify="left",
+                ).pack(fill="x", padx=14, pady=1)
 
         # 3. Update Headline & Recommendation
-        headline_color = ThemeManager.success() if report.verdict == "CLEAN_REACHABLE" else (
-            ThemeManager.danger() if "BLOCKED" in report.verdict else ThemeManager.warning()
+        headline_color = (
+            ThemeManager.success()
+            if report.verdict == "CLEAN_REACHABLE"
+            else (ThemeManager.danger() if "BLOCKED" in report.verdict else ThemeManager.warning())
         )
         self.lbl_headline.configure(text=report.summary_headline, text_color=headline_color)
         self.lbl_recommendation.configure(text=f"💡 Rekomendasi Solusi: {report.recommendation}")

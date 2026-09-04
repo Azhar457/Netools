@@ -47,7 +47,7 @@ class TestProxyParsers(unittest.TestCase):
             "host": "vmess.example.com",
             "path": "/vmesspath",
             "tls": "tls",
-            "sni": "vmess.example.com"
+            "sni": "vmess.example.com",
         }
         b64_str = base64.b64encode(json.dumps(v_data).encode()).decode()
         uri = f"vmess://{b64_str}"
@@ -80,6 +80,7 @@ class TestProxyParsers(unittest.TestCase):
         self.assertEqual(len(proxies), 2)
         self.assertEqual(proxies[0]["server"], "1.1.1.1")
         self.assertEqual(proxies[1]["server"], "2.2.2.2")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

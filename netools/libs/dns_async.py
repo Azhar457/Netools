@@ -30,6 +30,7 @@ log = logging.getLogger(__name__)
 
 try:
     import aiodns
+
     _HAS_AIODNS = True
 except ImportError:
     _HAS_AIODNS = False
@@ -37,6 +38,7 @@ except ImportError:
 
 try:
     import uvloop as _uvloop
+
     _HAS_UVLOOP = True
 except ImportError:
     _HAS_UVLOOP = False
@@ -71,6 +73,7 @@ async def query_udp_dns_async(
         # Lazy fallback: run sync query in default executor.
         loop = asyncio.get_running_loop()
         from netools.libs.dns_benchmark import query_udp_dns
+
         return await loop.run_in_executor(None, query_udp_dns, ip, domain, timeout)
 
     try:

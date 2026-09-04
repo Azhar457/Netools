@@ -102,8 +102,10 @@ def get_connections() -> List[Dict[str, Any]]:
 
     # Fallback to local SQLite read if server requires dashboard session login
     try:
-        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
         import sqlite3
+
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
         if _DEFAULT_DB_PATH.exists():
             with sqlite3.connect(_DEFAULT_DB_PATH) as db:
                 db.row_factory = sqlite3.Row
@@ -120,16 +122,18 @@ def get_connections() -> List[Dict[str, Any]]:
                             pass
                     proxy_url = psd.get("connectionProxyUrl") or ""
                     proxy_enabled = bool(psd.get("connectionProxyEnabled") or (r["proxy_enabled"] and proxy_url))
-                    parsed.append({
-                        "id": r["id"],
-                        "name": r["name"] or r["provider"],
-                        "provider": r["provider"],
-                        "isActive": bool(r["is_active"]),
-                        "testStatus": r["test_status"],
-                        "connectionProxyUrl": proxy_url,
-                        "connectionProxyEnabled": proxy_enabled,
-                        "authType": r["auth_type"],
-                    })
+                    parsed.append(
+                        {
+                            "id": r["id"],
+                            "name": r["name"] or r["provider"],
+                            "provider": r["provider"],
+                            "isActive": bool(r["is_active"]),
+                            "testStatus": r["test_status"],
+                            "connectionProxyUrl": proxy_url,
+                            "connectionProxyEnabled": proxy_enabled,
+                            "authType": r["auth_type"],
+                        }
+                    )
                 return parsed
     except Exception:
         pass
@@ -164,11 +168,15 @@ def assign_proxy_to_connection(conn_id: str, proxy_url: str) -> Optional[Dict[st
 
     # Fallback: direct SQLite update
     try:
-        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
         import sqlite3
+
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
         if _DEFAULT_DB_PATH.exists():
             with sqlite3.connect(_DEFAULT_DB_PATH) as db:
-                row = db.execute("SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)).fetchone()
+                row = db.execute(
+                    "SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)
+                ).fetchone()
                 psd = {}
                 if row and row[0]:
                     try:
@@ -206,11 +214,15 @@ def remove_proxy_from_connection(conn_id: str) -> Optional[Dict[str, Any]]:
 
     # Fallback: direct SQLite update
     try:
-        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
         import sqlite3
+
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
         if _DEFAULT_DB_PATH.exists():
             with sqlite3.connect(_DEFAULT_DB_PATH) as db:
-                row = db.execute("SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)).fetchone()
+                row = db.execute(
+                    "SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)
+                ).fetchone()
                 psd = {}
                 if row and row[0]:
                     try:
@@ -229,8 +241,6 @@ def remove_proxy_from_connection(conn_id: str) -> Optional[Dict[str, Any]]:
     except Exception:
         pass
     return None
-
-
 
 
 def clear_all_connection_proxies() -> int:

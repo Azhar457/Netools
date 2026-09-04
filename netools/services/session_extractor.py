@@ -144,6 +144,7 @@ _REFRESH_SIGNALS = {"refresh", "refresh_token", "refreshToken"}
 # JWT Helpers
 # ---------------------------------------------------------------------------
 
+
 def decode_jwt_payload(token: str) -> Optional[Dict[str, Any]]:
     """Safely decode JWT payload without verification."""
     try:
@@ -205,6 +206,7 @@ def _is_access_token(payload: Dict[str, Any]) -> bool:
 # ---------------------------------------------------------------------------
 # Provider Identification from JWT payload
 # ---------------------------------------------------------------------------
+
 
 def _identify_provider_from_jwt(
     payload: Dict[str, Any],
@@ -294,6 +296,7 @@ def _identify_provider_from_cookie(
 # LevelDB Scanner (Chromium/Brave Local Storage)
 # ---------------------------------------------------------------------------
 
+
 def extract_chromium_storage(
     profile_dir: Path,
     browser_name: str,
@@ -354,20 +357,23 @@ def extract_chromium_storage(
 
                 # Compute TTL
                 from netools.services.omniroute_bridge import compute_token_ttl
+
                 ttl = compute_token_ttl(payload)
 
                 seen_tokens.add(token_str)
                 label = f"[{browser_name}] {prov} — {account}"
-                found.append({
-                    "browser": browser_name,
-                    "provider": prov,
-                    "account": account,
-                    "label": label,
-                    "token": token_str,
-                    "payload": payload,
-                    "source": "leveldb",
-                    "ttl": ttl,
-                })
+                found.append(
+                    {
+                        "browser": browser_name,
+                        "provider": prov,
+                        "account": account,
+                        "label": label,
+                        "token": token_str,
+                        "payload": payload,
+                        "source": "leveldb",
+                        "ttl": ttl,
+                    }
+                )
         except Exception:
             continue
 
@@ -377,6 +383,7 @@ def extract_chromium_storage(
 # ---------------------------------------------------------------------------
 # Browser Cookie Scanner (browser_cookie3 — decrypts httpOnly cookies)
 # ---------------------------------------------------------------------------
+
 
 def _get_browser_cookies(browser_name: str) -> List[dict]:
     """Get all cookies from a browser using browser_cookie3."""
@@ -413,7 +420,7 @@ def _get_browser_cookies(browser_name: str) -> List[dict]:
     ]
 
 
-def _is_valid_session_cookie(value: str) -> bool:
+def _is_valid_session_cookie(value: Optional[str]) -> bool:
     """Filter out obvious non-session cookies (timestamps, counters, etc.)."""
     if not value or len(value) < 10:
         return False
@@ -492,18 +499,28 @@ def extract_browser_cookies(
         label = f"[{browser_name}] {prov} — {domain}"
 
         # For cookies, payload is None (not a JWT)
-        found.append({
-            "browser": browser_name,
-            "provider": prov,
-            "account": domain,
-            "label": label,
-            "token": token_value,
-            "payload": None,
-            "source": "cookie",
-            "ttl": None,  # Cookie TTL unknown without JWT exp
-        })
+        found.append(
+            {
+                "browser": browser_name,
+                "provider": prov,
+                "account": domain,
+                "label": label,
+                "token": token_value,
+                "payload": None,
+                "source": "cookie",
+                "ttl": None,  # Cookie TTL unknown without JWT exp
+            }
+        )
 
     return found
+
+
+def _get_cookie_value(cookie_map: Dict[str, dict], name: str) -> Optional[str]:
+    """Safe extraction of cookie value, tolerating missing entries."""
+    cookie = cookie_map.get(name)
+    if not isinstance(cookie, dict):
+        return None
+    return cookie.get("value")
 
 
 def _extract_provider_cookie_value(prov: str, cookies: List[dict]) -> Optional[str]:
@@ -516,37 +533,41 @@ def _extract_provider_cookie_value(prov: str, cookies: List[dict]) -> Optional[s
 
     if prov == "chatgpt-web":
         # OmniRoute expects Playwright storage-state JSON format
-        tok = cookie_map.get("__Secure-next-auth.session-token", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "__Secure-next-auth.session-token")
         if not _is_valid_session_cookie(tok):
             return None
         # Build valid Playwright storage-state JSON matching OmniRoute's expectation
         storage_cookies = []
         for c in cookies:
             if "chatgpt.com" in c["domain"] or "openai.com" in c["domain"]:
-                storage_cookies.append({
-                    "name": c["name"],
-                    "value": c["value"],
-                    "domain": c["domain"],
-                    "path": c["path"] or "/",
-                    "expires": int(time.time()) + 86400 * 30,
-                    "httpOnly": True,
-                    "secure": True,
-                    "sameSite": "Lax",
-                })
+                storage_cookies.append(
+                    {
+                        "name": c["name"],
+                        "value": c["value"],
+                        "domain": c["domain"],
+                        "path": c["path"] or "/",
+                        "expires": int(time.time()) + 86400 * 30,
+                        "httpOnly": True,
+                        "secure": True,
+                        "sameSite": "Lax",
+                    }
+                )
         if storage_cookies:
             import json
-            return json.dumps({
-                "cookies": storage_cookies,
-                "origins": [{"origin": "https://chatgpt.com", "localStorage": []}],
-            })
-        return tok
 
+            return json.dumps(
+                {
+                    "cookies": storage_cookies,
+                    "origins": [{"origin": "https://chatgpt.com", "localStorage": []}],
+                }
+            )
+        return tok
 
     elif prov == "claude-web":
         # OmniRoute expects sessionKey or full Cookie header
         # Try sessionKey first, then sessionKeyV3
         for key_name in ["sessionKey", "sessionKeyV3"]:
-            tok = cookie_map.get(key_name, {}).get("value")
+            tok = _get_cookie_value(cookie_map, key_name)
             if tok and len(tok) > 10:
                 return tok
         # Fallback: full cookie header
@@ -562,36 +583,36 @@ def _extract_provider_cookie_value(prov: str, cookies: List[dict]) -> Optional[s
 
     elif prov == "kimi-web":
         # Token-based — kimi-auth cookie is a fallback
-        tok = cookie_map.get("kimi-auth", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "kimi-auth")
         if tok and len(tok) > 10:
             return tok
         return None
 
     elif prov == "zai-web":
         # Token-based — "token" cookie
-        tok = cookie_map.get("token", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "token")
         if not _is_valid_session_cookie(tok):
             return None
         return tok
 
     elif prov in ("gemini-web", "gemini-business"):
         # OmniRoute expects __Secure-1PSID + __Secure-1PSIDTS + __Secure-1PSIDCC
-        psid = cookie_map.get("__Secure-1PSID", {}).get("value")
+        psid = _get_cookie_value(cookie_map, "__Secure-1PSID")
         if not psid:
             return None
         parts = [f"__Secure-1PSID={psid}"]
-        psidts = cookie_map.get("__Secure-1PSIDTS", {}).get("value")
+        psidts = _get_cookie_value(cookie_map, "__Secure-1PSIDTS")
         if psidts:
             parts.append(f"__Secure-1PSIDTS={psidts}")
-        psidcc = cookie_map.get("__Secure-1PSIDCC", {}).get("value")
+        psidcc = _get_cookie_value(cookie_map, "__Secure-1PSIDCC")
         if psidcc:
             parts.append(f"__Secure-1PSIDCC={psidcc}")
         return "; ".join(parts)
 
     elif prov == "grok-web":
         # sso + sso-rw cookies
-        sso = cookie_map.get("sso", {}).get("value")
-        sso_rw = cookie_map.get("sso-rw", {}).get("value")
+        sso = _get_cookie_value(cookie_map, "sso")
+        sso_rw = _get_cookie_value(cookie_map, "sso-rw")
         if not sso:
             return None
         parts = [f"sso={sso}"]
@@ -600,31 +621,31 @@ def _extract_provider_cookie_value(prov: str, cookies: List[dict]) -> Optional[s
         return "; ".join(parts)
 
     elif prov == "perplexity-web":
-        tok = cookie_map.get("__Secure-next-auth.session-token", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "__Secure-next-auth.session-token")
         if not _is_valid_session_cookie(tok):
             return None
         return tok
 
     elif prov == "blackbox-web":
-        tok = cookie_map.get("__Secure-authjs.session-token", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "__Secure-authjs.session-token")
         if not tok:
             return None
         return f"__Secure-authjs.session-token={tok}"
 
     elif prov == "poe-web":
-        tok = cookie_map.get("p-b", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "p-b")
         if not _is_valid_session_cookie(tok):
             return None
         return f"p-b={tok}"
 
     elif prov == "venice-web":
-        tok = cookie_map.get("session", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "session")
         if not _is_valid_session_cookie(tok):
             return None
         return f"session={tok}"
 
     elif prov == "v0-vercel-web":
-        tok = cookie_map.get("__vercel_session", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "__vercel_session")
         if not tok:
             return None
         return f"__vercel_session={tok}"
@@ -677,8 +698,7 @@ def _extract_provider_cookie_value(prov: str, cookies: List[dict]) -> Optional[s
 
     elif prov == "lmarena":
         # Full cookie header from arena.ai
-        relevant = [c for c in cookies if "arena" in c["name"].lower()
-                     or c["name"] in ("cf_clearance", "__cf_bm")]
+        relevant = [c for c in cookies if "arena" in c["name"].lower() or c["name"] in ("cf_clearance", "__cf_bm")]
         if relevant:
             return _format_cookie_header(relevant)
         return None
@@ -718,6 +738,7 @@ def _extract_provider_cookie_value(prov: str, cookies: List[dict]) -> Optional[s
 # Firefox Multi-Profile Scanner
 # ---------------------------------------------------------------------------
 
+
 def _firefox_profile_dirs() -> List[Path]:
     """Find all Firefox profile directories."""
     profiles = []
@@ -748,6 +769,7 @@ def _firefox_profile_dirs() -> List[Path]:
 # Main extraction function
 # ---------------------------------------------------------------------------
 
+
 def extract_all_browser_sessions(
     browser_filter: str = "all",
     provider_filter: str = "all",
@@ -769,7 +791,8 @@ def extract_all_browser_sessions(
             # Multi-profile support for Firefox
             for fp in _firefox_profile_dirs():
                 items = extract_chromium_storage(
-                    fp, browser_name=b_name,
+                    fp,
+                    browser_name=b_name,
                     provider_filter=provider_filter,
                     custom_keyword=custom_keyword,
                 )
@@ -778,7 +801,8 @@ def extract_all_browser_sessions(
             for p in paths:
                 if p.exists():
                     items = extract_chromium_storage(
-                        p, browser_name=b_name,
+                        p,
+                        browser_name=b_name,
                         provider_filter=provider_filter,
                         custom_keyword=custom_keyword,
                     )
@@ -812,10 +836,6 @@ def extract_all_browser_sessions(
 
     # Sort by TTL status: active first, expiring soon, expired, unknown
     priority = {"active": 0, "expiring_soon": 1, "expired": 2, "unknown": 3}
-    unique_sessions.sort(
-        key=lambda s: priority.get(
-            s["ttl"].status if s.get("ttl") else "unknown", 3
-        )
-    )
+    unique_sessions.sort(key=lambda s: priority.get(s["ttl"].status if s.get("ttl") else "unknown", 3))
 
     return unique_sessions

@@ -1,9 +1,7 @@
 """Unit tests for token_rotator service and refresh token filtering."""
 
 import time
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from netools.services.session_extractor import (
     _is_access_token,
@@ -11,10 +9,10 @@ from netools.services.session_extractor import (
 )
 from netools.services.token_rotator import RotationEvent, TokenRotator
 
-
 # ---------------------------------------------------------------------------
 # _is_refresh_token Tests
 # ---------------------------------------------------------------------------
+
 
 class TestIsRefreshToken:
     def test_typ_refresh(self):
@@ -45,6 +43,7 @@ class TestIsRefreshToken:
 # ---------------------------------------------------------------------------
 # _is_access_token Tests
 # ---------------------------------------------------------------------------
+
 
 class TestIsAccessToken:
     def test_valid_access_token(self):
@@ -81,6 +80,7 @@ class TestIsAccessToken:
 # TokenRotator Tests
 # ---------------------------------------------------------------------------
 
+
 class TestTokenRotator:
     def test_init_defaults(self):
         r = TokenRotator()
@@ -106,10 +106,12 @@ class TestTokenRotator:
 
     def test_clear_tracking(self):
         r = TokenRotator()
-        r.track_sessions([
-            {"provider": "kimi-web", "account": "u1", "token": "t1"},
-            {"provider": "zai-web", "account": "u2", "token": "t2"},
-        ])
+        r.track_sessions(
+            [
+                {"provider": "kimi-web", "account": "u1", "token": "t1"},
+                {"provider": "zai-web", "account": "u2", "token": "t2"},
+            ]
+        )
         r.clear_tracking()
         assert r.tracked_count == 0
 
@@ -137,13 +139,15 @@ class TestTokenRotator:
         r = TokenRotator()
         # Simulate 120 rotation events
         for i in range(120):
-            r._rotation_history.append(RotationEvent(
-                timestamp=time.time(),
-                provider=f"prov-{i}",
-                account="user",
-                success=True,
-                message=f"event {i}",
-            ))
+            r._rotation_history.append(
+                RotationEvent(
+                    timestamp=time.time(),
+                    provider=f"prov-{i}",
+                    account="user",
+                    success=True,
+                    message=f"event {i}",
+                )
+            )
         # History should be trimmed to 50 when it exceeds 100
         assert len(r._rotation_history) <= 120  # In practice, trimmed on next rotation
 

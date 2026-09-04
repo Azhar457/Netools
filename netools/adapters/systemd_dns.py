@@ -16,7 +16,7 @@ def _split_host_port(ip: str):
     if ip.startswith("["):  # [IPv6]:port
         end = ip.rfind("]")
         host = ip[1:end]
-        port = ip[end + 2:] if end + 1 < len(ip) and ip[end + 1] == ":" else None
+        port = ip[end + 2 :] if end + 1 < len(ip) and ip[end + 1] == ":" else None
         return host, port
     if ip.count(":") == 1:  # IPv4:port
         host, _, port = ip.partition(":")
@@ -111,26 +111,24 @@ def get_network_interfaces() -> List[Dict[str, Any]]:
             if len(parts) >= 4:
                 dev, dev_type, state, conn = parts[0], parts[1], parts[2], parts[3]
                 if dev_type not in ("loopback", "bridge") and state in ("connected", "connecting"):
-                    is_def = (dev == default_dev)
+                    is_def = dev == default_dev
                     label = f"{dev} ({conn or dev_type}){' [Default]' if is_def else ''}"
-                    interfaces.append({
-                        "device": dev,
-                        "type": dev_type,
-                        "connection": conn,
-                        "label": label,
-                        "is_default": is_def
-                    })
+                    interfaces.append(
+                        {"device": dev, "type": dev_type, "connection": conn, "label": label, "is_default": is_def}
+                    )
     except Exception:
         pass
 
     if not interfaces and default_dev:
-        interfaces.append({
-            "device": default_dev,
-            "type": "ethernet",
-            "connection": default_dev,
-            "label": f"{default_dev} [Default]",
-            "is_default": True
-        })
+        interfaces.append(
+            {
+                "device": default_dev,
+                "type": "ethernet",
+                "connection": default_dev,
+                "label": f"{default_dev} [Default]",
+                "is_default": True,
+            }
+        )
 
     interfaces.sort(key=lambda x: 0 if x["is_default"] else 1)
     return interfaces
@@ -149,7 +147,9 @@ def get_interface_dns(device: str) -> List[str]:
 
     if not dns_servers:
         try:
-            out = subprocess.check_output(["nmcli", "-t", "-f", "IP4.DNS,IP6.DNS", "device", "show", device], text=True, stderr=subprocess.DEVNULL)
+            out = subprocess.check_output(
+                ["nmcli", "-t", "-f", "IP4.DNS,IP6.DNS", "device", "show", device], text=True, stderr=subprocess.DEVNULL
+            )
             for line in out.splitlines():
                 if ":" in line:
                     val = line.split(":", 1)[1].strip()
@@ -169,7 +169,13 @@ def get_interface_dns(device: str) -> List[str]:
     return dns_servers
 
 
-def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str] = None, enable_dot: bool = False, persistent: bool = True) -> bool:
+def apply_system_dns(
+    device: str,
+    ips: List[str],
+    connection_name: Optional[str] = None,
+    enable_dot: bool = False,
+    persistent: bool = True,
+) -> bool:
     """Set DNS on interface via resolvectl and NetworkManager atomically with at most 1 auth prompt."""
     valid_ips = _validate_ips(ips)
     if not valid_ips or not device:
@@ -181,8 +187,16 @@ def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str]
     # Note: nmcli ipv4.dns/ipv6.dns strictly rejects custom ports (e.g. 127.0.0.1:5353).
     # Custom ports are routed at runtime by systemd-resolved (resolvectl) in step 2.
     if persistent and connection_name:
-        nm_v4 = [_split_host_port(ip)[0] for ip in valid_ips if ":" not in _split_host_port(ip)[0] and _split_host_port(ip)[1] is None]
-        nm_v6 = [_split_host_port(ip)[0] for ip in valid_ips if ":" in _split_host_port(ip)[0] and _split_host_port(ip)[1] is None]
+        nm_v4 = [
+            _split_host_port(ip)[0]
+            for ip in valid_ips
+            if ":" not in _split_host_port(ip)[0] and _split_host_port(ip)[1] is None
+        ]
+        nm_v6 = [
+            _split_host_port(ip)[0]
+            for ip in valid_ips
+            if ":" in _split_host_port(ip)[0] and _split_host_port(ip)[1] is None
+        ]
 
         if nm_v4 or nm_v6:
             nm_args = ["nmcli", "connection", "modify", connection_name]
@@ -192,9 +206,8 @@ def apply_system_dns(device: str, ips: List[str], connection_name: Optional[str]
                 nm_args.extend(["ipv6.dns", " ".join(nm_v6), "ipv6.ignore-auto-dns", "yes"])
             cmds.append(nm_args)
 
-
     # 2. Runtime DNS via resolvectl (accepts <IP>[:PORT], e.g. 127.0.0.1:5353)
-    cmds.append(["resolvectl", "dns", device] + valid_ips)
+    cmds.append(["resolvectl", "dns", device, *valid_ips])
 
     # 3. Configure DNS-over-TLS (DoT)
     if enable_dot:
@@ -213,15 +226,24 @@ def restore_default_dns(device: str, connection_name: Optional[str] = None) -> b
     """Revert interface back to DHCP DNS atomically."""
     if not device:
         return False
-    cmds: List[List[str]] = [
-        ["resolvectl", "revert", device]
-    ]
+    cmds: List[List[str]] = [["resolvectl", "revert", device]]
     if connection_name:
-        cmds.append([
-            "nmcli", "connection", "modify", connection_name,
-            "ipv4.ignore-auto-dns", "no", "ipv4.dns", "",
-            "ipv6.ignore-auto-dns", "no", "ipv6.dns", ""
-        ])
+        cmds.append(
+            [
+                "nmcli",
+                "connection",
+                "modify",
+                connection_name,
+                "ipv4.ignore-auto-dns",
+                "no",
+                "ipv4.dns",
+                "",
+                "ipv6.ignore-auto-dns",
+                "no",
+                "ipv6.dns",
+                "",
+            ]
+        )
     cmds.append(["resolvectl", "flush-caches"])
     return _run_batched_commands(cmds)
 
