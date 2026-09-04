@@ -42,9 +42,12 @@ BROWSER_PATHS = {
 # Provider registry — all 25 OmniRoute web-cookie providers
 # ---------------------------------------------------------------------------
 
+# Provider registry — synced with OmniRoute upstream
+# src/shared/providers/webSessionCredentials.ts (v3.8.51)
 SUPPORTED_PROVIDERS = [
     ("all", "Semua Provider AI"),
     ("chatgpt-web", "ChatGPT Web (Plus/Pro)"),
+    ("chatgpt-web-codex", "ChatGPT Web (Codex)"),
     ("claude-web", "Claude Web"),
     ("deepseek-web", "DeepSeek Web"),
     ("gemini-web", "Gemini Web (Free)"),
@@ -68,6 +71,17 @@ SUPPORTED_PROVIDERS = [
     ("venice-web", "Venice Web (Privacy)"),
     ("v0-vercel-web", "v0 Vercel Web (Code Gen)"),
     ("zenmux-free", "ZenMux Free (Web)"),
+    # Providers synced from OmniRoute upstream (previously missing):
+    ("chatglm-web", "ChatGLM Web (Free)"),
+    ("conol-web", "Conol Web (Experimental)"),
+    ("duckduckgo-web", "DuckDuckGo Chat (Free)"),
+    ("manus-web", "Manus Web (Free)"),
+    ("notion-web", "Notion AI Web"),
+    ("tencent-aistudio-web", "Tencent AI Studio (Free)"),
+    ("tinycms-web", "TinyCMS Web"),
+    ("xiaomimimo-web", "Xiaomimimo Web (Free)"),
+    ("adobe-firefly", "Adobe Firefly (Image/Video)"),
+    ("hyperagent", "HyperAgent Web (Experimental)"),
     ("custom", "Kustom (Domain / Kata Kunci)"),
 ]
 
@@ -100,6 +114,29 @@ _COOKIE_PROVIDER_MAP = {
     "kimi.ai": ["kimi-auth"],
     "meta.ai": ["ecto_1_sess"],
     ".meta.ai": ["ecto_1_sess"],
+    # Synced from OmniRoute upstream
+    "duckduckgo.com": ["duckai"],
+    ".duckduckgo.com": ["duckai"],
+    "notion.so": ["token_v2"],
+    ".notion.so": ["token_v2"],
+    "app.notion.so": ["token_v2"],
+    ".app.notion.so": ["token_v2"],
+    "conol.ai": ["__Secure-better-auth.session_token"],
+    ".conol.ai": ["__Secure-better-auth.session_token"],
+    "manus.im": ["manus_session"],
+    ".manus.im": ["manus_session"],
+    "chatglm.cn": ["chatglm_session"],
+    ".chatglm.cn": ["chatglm_session"],
+    "aistudio.tencent.ai": ["session"],
+    ".aistudio.tencent.ai": ["session"],
+    "site.tinycms.xyz": ["app-config-uuid"],
+    ".site.tinycms.xyz": ["app-config-uuid"],
+    "aistudio.xiaomimimo.com": ["session"],
+    ".aistudio.xiaomimimo.com": ["session"],
+    "firefly.adobe.com": ["apsid"],
+    ".firefly.adobe.com": ["apsid"],
+    "hyperagent.com": ["session"],
+    ".hyperagent.com": ["session"],
 }
 
 # Domain patterns for provider identification from cookie domain
@@ -107,6 +144,8 @@ _COOKIE_DOMAIN_TO_PROVIDER = {
     "chatgpt.com": "chatgpt-web",
     "claude.ai": "claude-web",
     "google.com": "gemini-web",
+    "gemini.google.com": "gemini-web",
+    "business.gemini.google": "gemini-business",
     "perplexity.ai": "perplexity-web",
     "blackbox.ai": "blackbox-web",
     "poe.com": "poe-web",
@@ -115,12 +154,8 @@ _COOKIE_DOMAIN_TO_PROVIDER = {
     "huggingface.co": "huggingchat",
     "yuanbao.tencent.com": "yuanbao-web",
     "kimi.ai": "kimi-web",
-    "meta.ai": "muse-spark-web",
-    "chat.deepseek.com": "deepseek-web",
     "chat.z.ai": "zai-web",
     "grok.com": "grok-web",
-    "business.gemini.google": "gemini-business",
-    "gemini.google": "gemini-business",
     "copilot.microsoft.com": "copilot-web",
     "m365.cloud.microsoft": "copilot-m365-web",
     "t3.chat": "t3-web",
@@ -134,6 +169,18 @@ _COOKIE_DOMAIN_TO_PROVIDER = {
     "dola.com": "doubao-web",
     "www.dola.com": "doubao-web",
     "doubao.com": "doubao-web",
+    # Synced from OmniRoute upstream
+    "duckduckgo.com": "duckduckgo-web",
+    "notion.so": "notion-web",
+    "app.notion.so": "notion-web",
+    "conol.ai": "conol-web",
+    "manus.im": "manus-web",
+    "chatglm.cn": "chatglm-web",
+    "aistudio.tencent.ai": "tencent-aistudio-web",
+    "site.tinycms.xyz": "tinycms-web",
+    "aistudio.xiaomimimo.com": "xiaomimimo-web",
+    "firefly.adobe.com": "adobe-firefly",
+    "hyperagent.com": "hyperagent",
 }
 
 # JWT refresh token signals — skip these for ALL providers
@@ -595,6 +642,19 @@ def _extract_provider_cookie_value(prov: str, cookies: List[dict]) -> Optional[s
             return None
         return tok
 
+    elif prov == "chatgpt-web-codex":
+        # OmniRoute expects full ChatGPT Cookie header (not storage-state)
+        relevant = [c for c in cookies if c["name"].startswith("__Secure-")]
+        if relevant:
+            return _format_cookie_header(relevant)
+        tok = _get_cookie_value(cookie_map, "__Secure-next-auth.session-token")
+        if tok:
+            return f"__Secure-next-auth.session-token={tok}"
+        return None
+
+    elif prov == "deepseek-web":
+        return None  # userToken is in LevelDB, not cookies
+
     elif prov in ("gemini-web", "gemini-business"):
         # OmniRoute expects __Secure-1PSID + __Secure-1PSIDTS + __Secure-1PSIDCC
         psid = _get_cookie_value(cookie_map, "__Secure-1PSID")
@@ -650,12 +710,79 @@ def _extract_provider_cookie_value(prov: str, cookies: List[dict]) -> Optional[s
             return None
         return f"__vercel_session={tok}"
 
+    # Providers synced from OmniRoute upstream
+    elif prov == "duckduckgo-web":
+        tok = _get_cookie_value(cookie_map, "duckai")
+        if not tok:
+            return None
+        return f"duckai={tok}"
+
+    elif prov == "notion-web":
+        tok = _get_cookie_value(cookie_map, "token_v2")
+        if not tok:
+            return None
+        return tok  # OmniRoute expects VALUE only, not "token_v2=..."
+
+    elif prov == "conol-web":
+        tok = _get_cookie_value(cookie_map, "__Secure-better-auth.session_token")
+        if not tok:
+            return None
+        return f"__Secure-better-auth.session_token={tok}"
+
+    elif prov == "manus-web":
+        tok = _get_cookie_value(cookie_map, "manus_session")
+        if not tok:
+            return None
+        return f"manus_session={tok}"
+
+    elif prov == "chatglm-web":
+        tok = _get_cookie_value(cookie_map, "chatglm_session")
+        if not tok:
+            return None
+        return f"chatglm_session={tok}"
+
+    elif prov == "tencent-aistudio-web":
+        tok = _get_cookie_value(cookie_map, "session")
+        if not tok:
+            return None
+        return f"session={tok}"
+
+    elif prov == "tinycms-web":
+        tok = _get_cookie_value(cookie_map, "app-config-uuid")
+        if not tok:
+            return None
+        return tok
+
+    elif prov == "xiaomimimo-web":
+        tok = _get_cookie_value(cookie_map, "session")
+        if not tok:
+            return None
+        return f"session={tok}"
+
+    elif prov == "adobe-firefly":
+        # OmniRoute expects Bearer JWT (starts with eyJ), not cookie
+        tok = _get_cookie_value(cookie_map, "apsid")
+        if tok and tok.startswith("eyJ"):
+            return tok
+        # Fallback: scan for any JWT-length token in cookies
+        for name in ("auth_jwt", "authorization", "apsid"):
+            candidate = _get_cookie_value(cookie_map, name)
+            if candidate and candidate.startswith("eyJ"):
+                return candidate
+        return None
+
+    elif prov == "hyperagent":
+        tok = _get_cookie_value(cookie_map, "session")
+        if not tok:
+            return None
+        return f"session={tok}"
+
     elif prov == "huggingchat":
-        hf = cookie_map.get("hf-chat", {}).get("value")
+        hf = _get_cookie_value(cookie_map, "hf-chat")
         if not hf:
             return None
         parts = [f"hf-chat={hf}"]
-        tok = cookie_map.get("token", {}).get("value")
+        tok = _get_cookie_value(cookie_map, "token")
         if tok:
             parts.append(f"token={tok}")
         return "; ".join(parts)

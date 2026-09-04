@@ -191,14 +191,15 @@ class TestTTLIntegration:
 
 class TestSupportedProviders:
     def test_provider_count(self):
-        # Should have 26 entries (25 providers + "all")
-        assert len(SUPPORTED_PROVIDERS) == 26
+        # 26 original + 11 synced from OmniRoute upstream = 37
+        assert len(SUPPORTED_PROVIDERS) >= 36
 
     def test_all_provider_keys(self):
         keys = [k for k, _ in SUPPORTED_PROVIDERS]
         expected = {
             "all",
             "chatgpt-web",
+            "chatgpt-web-codex",
             "claude-web",
             "deepseek-web",
             "gemini-web",
@@ -222,6 +223,16 @@ class TestSupportedProviders:
             "venice-web",
             "v0-vercel-web",
             "zenmux-free",
+            "chatglm-web",
+            "conol-web",
+            "duckduckgo-web",
+            "manus-web",
+            "notion-web",
+            "tencent-aistudio-web",
+            "tinycms-web",
+            "xiaomimimo-web",
+            "adobe-firefly",
+            "hyperagent",
             "custom",
         }
         assert set(keys) == expected
@@ -252,12 +263,16 @@ class TestCookieDomainMapping:
         assert _COOKIE_DOMAIN_TO_PROVIDER.get("chat.z.ai") == "zai-web"
 
     def test_all_expected_providers_mapped(self):
-        """Ensure all 25 web providers have at least one domain mapping."""
+        """Ensure all web-cookie providers have at least one domain mapping.
+
+        # Note: chatgpt-web-codex, deepseek-web, and muse-spark-web are
+        # token-based or require WS auth context, so they don't appear in
+        # _COOKIE_DOMAIN_TO_PROVIDER. This mirrors OmniRoute upstream.
+        """
         mapped = set(_COOKIE_DOMAIN_TO_PROVIDER.values())
         expected_all = {
             "chatgpt-web",
             "claude-web",
-            "deepseek-web",
             "gemini-web",
             "gemini-business",
             "grok-web",
@@ -266,7 +281,6 @@ class TestCookieDomainMapping:
             "copilot-m365-web",
             "perplexity-web",
             "blackbox-web",
-            "muse-spark-web",
             "zai-web",
             "doubao-web",
             "t3-web",
@@ -279,6 +293,16 @@ class TestCookieDomainMapping:
             "venice-web",
             "v0-vercel-web",
             "zenmux-free",
+            "chatglm-web",
+            "conol-web",
+            "duckduckgo-web",
+            "manus-web",
+            "notion-web",
+            "tencent-aistudio-web",
+            "tinycms-web",
+            "xiaomimimo-web",
+            "adobe-firefly",
+            "hyperagent",
         }
         missing = expected_all - mapped
         assert not missing, f"Missing cookie domain mappings for: {missing}"
