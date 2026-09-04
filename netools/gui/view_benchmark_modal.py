@@ -872,8 +872,15 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 continue
             if slot == 0:
                 primary_provider_id = p_key
+            # Fill the assigned slot with the primary IP
             if len(ips) > 0:
                 entries[slot].insert(0, ips[0])
+            # Also populate secondary / tertiary slots from the same provider's
+            # other IPs if the slot is still empty — prevents the "3rd DNS
+            # server not recorded" regression after a smart-mix apply.
+            for extra_slot in range(slot + 1, 3):
+                if len(ips) > (extra_slot - slot) and not entries[extra_slot].get():
+                    entries[extra_slot].insert(0, ips[extra_slot - slot])
 
         self.dns_view.sync_after_external_apply(
             provider_id=primary_provider_id,
@@ -943,7 +950,17 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             if filled == 0:
                 primary_provider_id = p_key
             entries[filled].insert(0, ips[0])
-            filled += 1
+            # Populate secondary slots from remaining IPs of the same provider
+            # to avoid leaving slots empty (tertiary DNS regression fix).
+            extra_idx = 1
+            while filled + extra_idx < 3 and len(ips) > extra_idx:
+                target_entry = entries[filled + extra_idx]
+                if not target_entry.get():
+                    target_entry.insert(0, ips[extra_idx])
+                    extra_idx += 1
+                else:
+                    break
+            filled += extra_idx  # Advance by how many extra slots we filled
 
         if filled == 0:
             return

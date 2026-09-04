@@ -816,6 +816,10 @@ class DNSView(ctk.CTkFrame):
         self.on_preset_change(self.preset_var.get())
 
     def load_active_interface_dns(self, dev: str = None):
+        # If we're showing externally-applied benchmark results, don't wipe
+        # the entry widgets with system DNS — preserve user-visible state.
+        if getattr(self, "applied_source_kind", "preset") == "external":
+            return
         if not dev:
             selected_label = self.iface_var.get()
             dev = self.active_interface
