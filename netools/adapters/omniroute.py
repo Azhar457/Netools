@@ -259,9 +259,45 @@ def remove_proxy_from_connection(conn_id: str) -> Optional[Dict[str, Any]]:
 
 
 def clear_all_connection_proxies() -> int:
-    """Unlink and disable proxy on ALL connections in OmniRoute."""
-    conns = get_connections()
+    """Unlink and disable proxy on ALL connections in OmniRoute with fast atomic SQLite pass."""
     cleared = 0
+
+    # 1. Fast atomic SQLite pass if storage exists
+    try:
+        import json
+        import sqlite3
+
+        from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
+        if _DEFAULT_DB_PATH.exists():
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                rows = db.execute(
+                    "SELECT id, provider_specific_data FROM provider_connections WHERE proxy_enabled = 1"
+                ).fetchall()
+                for conn_id, raw_psd in rows:
+                    psd = {}
+                    if raw_psd:
+                        try:
+                            psd = json.loads(raw_psd)
+                        except Exception:
+                            pass
+                    psd["connectionProxyEnabled"] = False
+                    psd.pop("connectionProxyUrl", None)
+                    psd.pop("proxyPoolId", None)
+                    db.execute(
+                        "UPDATE provider_connections SET proxy_enabled = 0, provider_specific_data = ? WHERE id = ?",
+                        (json.dumps(psd), conn_id),
+                    )
+                    cleared += 1
+                db.commit()
+                if cleared > 0:
+                    log.info(f"Cleared proxy from {cleared} OmniRoute connections (atomic SQLite)")
+                    return cleared
+    except Exception as e:
+        log.debug("Failed atomic SQLite clear: %s", e)
+
+    # 2. Fallback to API queries
+    conns = get_connections()
     for conn in conns:
         spec = conn.get("providerSpecificData") or {}
         if (
@@ -278,6 +314,154 @@ def clear_all_connection_proxies() -> int:
 
 
 clear_all_proxies = clear_all_connection_proxies
+
+
+def clear_managed_pools() -> int:
+    """Clear all 'free-proxy-%' entries from OmniRoute's proxy_registry table atomically."""
+    import sqlite3
+
+    from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
+    if _DEFAULT_DB_PATH.exists():
+        try:
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                cur = db.execute("DELETE FROM proxy_registry WHERE name LIKE 'free-proxy-%'")
+                db.commit()
+                return cur.rowcount
+        except Exception as e:
+            log.debug("Batch SQLite clear error: %s", e)
+    return 0
+
+
+def assign_proxies_to_connections_batch(assignments: List[tuple[str, str]]) -> int:
+    """Assign proxies to multiple OmniRoute connections atomically (0 ms lag)."""
+    import json
+    import sqlite3
+
+    from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
+    count = 0
+    if _DEFAULT_DB_PATH.exists():
+        try:
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                for conn_id, proxy_url in assignments:
+                    row = db.execute(
+                        "SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)
+                    ).fetchone()
+                    psd = {}
+                    if row and row[0]:
+                        try:
+                            psd = json.loads(row[0])
+                        except Exception:
+                            pass
+                    psd["connectionProxyEnabled"] = True
+                    psd["connectionProxyUrl"] = proxy_url
+                    psd["connectionNoProxy"] = "localhost,127.0.0.1"
+                    db.execute(
+                        "UPDATE provider_connections SET proxy_enabled = 1, provider_specific_data = ? WHERE id = ?",
+                        (json.dumps(psd), conn_id),
+                    )
+                    count += 1
+                db.commit()
+            return count
+        except Exception as e:
+            log.debug("Batch assign SQLite error: %s", e)
+
+    # Fallback to parallel API calls
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        futures = [ex.submit(assign_proxy_to_connection, cid, url) for cid, url in assignments]
+        for f in concurrent.futures.as_completed(futures):
+            try:
+                if f.result():
+                    count += 1
+            except Exception:
+                pass
+    return count
+
+
+def add_proxy_pools_batch(pools: List[tuple[str, str]]) -> Dict[str, str]:
+    """Register multiple proxies in OmniRoute in a single atomic SQLite transaction."""
+    import datetime
+    import sqlite3
+    import urllib.parse
+    import uuid
+
+    from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
+
+    result: Dict[str, str] = {}
+    if _DEFAULT_DB_PATH.exists():
+        try:
+            now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            rows_to_insert = []
+            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+                for name, proxy_url in pools:
+                    parsed = urllib.parse.urlparse(proxy_url)
+                    scheme = parsed.scheme.lower() or "socks5"
+                    if scheme not in ("http", "https", "socks5"):
+                        scheme = "socks5"
+                    host = parsed.hostname or "127.0.0.1"
+                    port = parsed.port or 11080
+                    user = parsed.username or ""
+                    pw = parsed.password or ""
+
+                    row = db.execute(
+                        "SELECT id FROM proxy_registry WHERE host = ? AND port = ? AND username = ? LIMIT 1",
+                        (host, port, user),
+                    ).fetchone()
+                    if row:
+                        proxy_id = row[0]
+                        db.execute(
+                            "UPDATE proxy_registry SET name = ?, status = 'active', updated_at = ? WHERE id = ?",
+                            (name, now, proxy_id),
+                        )
+                    else:
+                        proxy_id = str(uuid.uuid4())
+                        rows_to_insert.append(
+                            (
+                                proxy_id,
+                                name,
+                                scheme,
+                                host,
+                                port,
+                                user,
+                                pw,
+                                "active",
+                                "manual",
+                                "Netools Sing-box Proxy Pool",
+                                "auto",
+                                now,
+                                now,
+                            )
+                        )
+                    result[name] = proxy_id
+                if rows_to_insert:
+                    db.executemany(
+                        """INSERT INTO proxy_registry
+                        (id, name, type, host, port, username, password, status, source, notes, family, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        rows_to_insert,
+                    )
+                db.commit()
+            return result
+        except Exception as e:
+            log.debug("Batch SQLite insert error: %s", e)
+
+    # Fallback to individual calls
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(add_proxy_pool, name, url): name for name, url in pools}
+        for f in concurrent.futures.as_completed(futures):
+            name = futures[f]
+            try:
+                pid = f.result()
+                if pid:
+                    result[name] = pid
+            except Exception:
+                pass
+    return result
 
 
 def assign_round_robin(proxies_or_pools: List[str]) -> int:

@@ -42,12 +42,10 @@ def show_pac_confirmation(parent_widget: ctk.CTkBaseClass, on_confirm: Callable[
         text_color=ThemeManager.warning(),
     ).pack(anchor="w", padx=16, pady=(14, 8))
 
-    body_text = (
-        tr(
-            "Mengaktifkan Server PAC Lokal akan mengarahkan lalu lintas jaringan browser atau sistem melalui proxy lokal Netools.\n\n"
-            "Pastikan Anda mempercayai proxy upstream yang sedang aktif sebelum melanjutkan.\n\n"
-            "Apakah Anda yakin ingin menyalakan PAC Server?"
-        )
+    body_text = tr(
+        "Mengaktifkan Server PAC Lokal akan mengarahkan lalu lintas jaringan browser atau sistem melalui proxy lokal Netools.\n\n"
+        "Pastikan Anda mempercayai proxy upstream yang sedang aktif sebelum melanjutkan.\n\n"
+        "Apakah Anda yakin ingin menyalakan PAC Server?"
     )
 
     ctk.CTkLabel(

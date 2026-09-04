@@ -31,45 +31,50 @@ from netools.state import load_state, save_state
 
 
 def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, Any]]:
-    """Fetch raw subscriptions from sources with retry and local cache fallback."""
+    """Fetch raw subscriptions from sources concurrently with cache fallback."""
     import json
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     all_proxies = []
     seen = set()
-    failed_sources = 0
     cache_file = RUNTIME_DIR / "last_known_proxies.json"
+    failed_sources = 0
 
-    for url in PROXY_SOURCES:
-        source_success = False
+    def _fetch_source(url: str) -> tuple[bool, List[Dict[str, Any]]]:
         for attempt in range(2):
             try:
-                raw = fetch_text(url)
-                parsed = extract_all_proxies(raw, max_count=max_count)
-                for p in parsed:
+                raw = fetch_text(url, timeout=3.5)
+                return True, extract_all_proxies(raw, max_count=max_count)
+            except Exception as e:
+                if attempt == 1:
+                    log.warning(f"Failed fetching source {url}: {e}")
+                time.sleep(0.15)
+        return False, []
+
+    # Parallel fetch of all sources simultaneously
+    with ThreadPoolExecutor(max_workers=min(len(PROXY_SOURCES), 6)) as ex:
+        futures = [ex.submit(_fetch_source, url) for url in PROXY_SOURCES]
+        for f in as_completed(futures):
+            try:
+                success, candidates = f.result()
+                if not success:
+                    failed_sources += 1
+                for p in candidates:
                     key = f"{p['server']}:{p['server_port']}"
                     if key not in seen:
                         seen.add(key)
                         all_proxies.append(p)
-                        if len(all_proxies) >= max_count:
-                            break
-                source_success = True
-                break  # Success on this source
-            except Exception as e:
-                if attempt == 1:
-                    log.warning(f"Failed fetching source {url}: {e}")
-                time.sleep(0.5)
-        if not source_success:
-            failed_sources += 1
+            except Exception:
+                failed_sources += 1
 
     if all_proxies:
-        # Cache last-known-good proxies
         try:
             cache_file.write_text(json.dumps(all_proxies, indent=2), encoding="utf-8")
         except Exception:
             pass
-        return all_proxies
+        return all_proxies[:max_count]
 
-    # Offline/Fallback recovery from cache if ALL network sources failed
+    # Offline / Fallback recovery from cache only if ALL remote sources failed
     if failed_sources == len(PROXY_SOURCES) and cache_file.exists():
         try:
             log.warning("All remote proxy sources failed; falling back to local proxy cache")
@@ -79,7 +84,7 @@ def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, An
         except Exception:
             pass
 
-    return all_proxies
+    return all_proxies[:max_count]
 
 
 def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
@@ -100,22 +105,32 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
         if proc:
             started.append((name, port, proxy, proc))
 
-    # Wait for instances to start listening (poll-based, max 3s)
-    for _, port, _, _ in started:
-        wait_for_port(port, timeout=3.0)
+    # Fast non-blocking parallel port readiness poll (all ports checked simultaneously)
+    pending_ports = {port for _, port, _, _ in started}
+    deadline = time.monotonic() + 2.0
+    while pending_ports and time.monotonic() < deadline:
+        ready = {p for p in pending_ports if is_port_open(p, timeout=0.03)}
+        pending_ports -= ready
+        if not pending_ports:
+            break
+        time.sleep(0.03)
 
-    # Parallel Upstream Testing (All 20 instances tested concurrently)
+    # Parallel Upstream Testing (All instances tested concurrently with 2.5s timeout)
     alive = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=15) as ex:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(len(started), 1)) as ex:
         futures = {
-            ex.submit(probe_socks_upstream, port): (name, port, proxy, proc) for name, port, proxy, proc in started
+            ex.submit(probe_socks_upstream, port, timeout=2.5): (name, port, proxy, proc)
+            for name, port, proxy, proc in started
         }
         for future in concurrent.futures.as_completed(futures):
             name, port, proxy, proc = futures[future]
-            if future.result():
-                alive.append((name, port, proxy, proc))
-            else:
-                log.warning(f"{name} failed upstream test, killing")
+            try:
+                if future.result():
+                    alive.append((name, port, proxy, proc))
+                else:
+                    log.warning(f"{name} failed upstream test, killing")
+                    proc.kill()
+            except Exception:
                 try:
                     proc.kill()
                 except Exception:
@@ -126,20 +141,39 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
     state = {"instances": {}, "updated_at": datetime.now().isoformat()}
     active_count = 0
 
+    # Batch register pools to OmniRoute
+    omni_pools_batch = []
+    nr_pools_batch = []
+    for idx, (_, port, _, _) in enumerate(alive):
+        pool_name = f"free-proxy-{idx}"
+        socks_url = f"socks5://127.0.0.1:{port}"
+        omni_pools_batch.append((pool_name, socks_url))
+        nr_pools_batch.append((pool_name, socks_url))
+
+    omni_pool_ids: Dict[str, str] = {}
+    nr_pool_ids: Dict[str, str] = {}
+    if not standalone and alive:
+        if or_adapt.is_healthy():
+            omni_pool_ids = or_adapt.add_proxy_pools_batch(omni_pools_batch)
+        if nr_adapt.is_healthy():
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+                f_map = {ex.submit(nr_adapt.add_proxy_pool, p_name, p_url): p_name for p_name, p_url in nr_pools_batch}
+                for f in concurrent.futures.as_completed(f_map):
+                    p_name = f_map[f]
+                    try:
+                        pid = f.result()
+                        if pid:
+                            nr_pool_ids[p_name] = pid
+                    except Exception:
+                        pass
+
     for name, port, proxy, proc in alive:
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         socks_url = f"socks5://127.0.0.1:{port}"
         http_url = f"http://127.0.0.1:{port + HTTP_PORT_OFFSET}"
-
         pool_name = f"free-proxy-{active_count}"
-        pool_id = None
-        omni_pool_id = None
-
-        if not standalone:
-            if nr_adapt.is_healthy():
-                pool_id = nr_adapt.add_proxy_pool(pool_name, socks_url)
-            if or_adapt.is_healthy():
-                omni_pool_id = or_adapt.add_proxy_pool(pool_name, socks_url)
+        pool_id = nr_pool_ids.get(pool_name)
+        omni_pool_id = omni_pool_ids.get(pool_name)
 
         state["instances"][name] = {
             "name": name,
@@ -160,25 +194,29 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
         pool_str = f" → pool {pool_name}" if (pool_id or omni_pool_id) else (" (standalone)" if standalone else "")
         log.info(f"{name}: {proxy['type']} → {proxy['server']}:{proxy.get('server_port', '')} → port {port}{pool_str}")
 
-    # Assign proxy to 9Router / OmniRoute connections
+    # Assign proxy to 9Router / OmniRoute connections concurrently
     if not standalone and active_count > 0:
-        if nr_adapt.is_healthy():
-            conns = nr_adapt.get_connections()
-            for idx, c in enumerate(conns):
-                p_idx = idx % active_count
-                p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
-                res = nr_adapt.assign_proxy_to_connection(c["id"], p_url)
-                if res:
-                    log.info(f"9Router connection {c['id'][:12]}: proxy → {p_url}")
-
         if or_adapt.is_healthy():
             conns = or_adapt.get_connections()
+            or_assignments = []
             for idx, c in enumerate(conns):
                 p_idx = idx % active_count
                 p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
-                res = or_adapt.assign_proxy_to_connection(c["id"], p_url)
-                if res:
-                    log.info(f"OmniRoute connection {c['id'][:12]}: proxy → {p_url}")
+                or_assignments.append((c["id"], p_url))
+            assigned_count = or_adapt.assign_proxies_to_connections_batch(or_assignments)
+            log.info(f"OmniRoute: {assigned_count}/{len(conns)} connections bound to proxy pool (atomic)")
+
+        if nr_adapt.is_healthy():
+            conns = nr_adapt.get_connections()
+            nr_assignments = []
+            for idx, c in enumerate(conns):
+                p_idx = idx % active_count
+                p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
+                nr_assignments.append((c["id"], p_url))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
+                f_list = [ex.submit(nr_adapt.assign_proxy_to_connection, cid, url) for cid, url in nr_assignments]
+                concurrent.futures.wait(f_list, timeout=4.0)
+            log.info(f"9Router: {len(conns)} connections bound to proxy pool (concurrent)")
 
     save_state(state)
     mode_str = " (Standalone Mode)" if standalone else " → Active Gateway Proxy Pool"
@@ -203,11 +241,7 @@ def stop_proxy_pool(standalone: bool = False) -> None:
         if or_adapt.is_healthy():
             log.info("Clearing proxy from all OmniRoute connections and pools...")
             or_adapt.clear_all_connection_proxies()
-            pools = or_adapt.get_existing_pools()
-            for name, pool_id in pools.items():
-                if name.startswith("free-proxy-"):
-                    or_adapt.delete_proxy_pool(pool_id)
-                    print(f"Deleted OmniRoute pool: {name}")
+            or_adapt.clear_managed_pools()
 
     # Wipe scratch files
     for f in CONFIGS_DIR.glob("*.json"):
@@ -292,3 +326,23 @@ def start_single_instance(
         "pool_name": pool_name,
         "started_at": now_str,
     }
+
+
+# ---------------------------------------------------------------------------
+# Process Exit Cleanup Guard
+# ---------------------------------------------------------------------------
+
+import atexit
+
+
+def _auto_cleanup_on_exit():
+    """Ensure any active proxy pool, routes, and instances are cleanly released when process terminates."""
+    try:
+        import logging
+        logging.disable(logging.CRITICAL)
+        stop_proxy_pool(standalone=False)
+    except Exception:
+        pass
+
+
+atexit.register(_auto_cleanup_on_exit)

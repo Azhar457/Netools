@@ -126,6 +126,7 @@ def cmd_gui(args):
     """Launch Desktop GUI All-In-One."""
     from netools.gui.app import main as run_gui
 
+    _register_graceful_shutdown(standalone=getattr(args, "no_9r", False))
     run_gui(no_splash=getattr(args, "no_splash", False))
 
 
