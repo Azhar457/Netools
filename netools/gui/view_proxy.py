@@ -19,6 +19,26 @@ from netools.services import pac_service, proxy_service, watchdog_service
 from netools.state import load_state
 
 
+# Pool heatmap color + glyph mapping. See tests/test_pool_heatmap.py.
+_HEATMAP_COLORS = {
+    "alive": ("#10b981", "●"),                              # green dot
+    "spawn_failed": ("#6b7280", "○"),                        # grey empty
+    "upstream_probe_failed": ("#ef4444", "✕"),               # red x
+    "probe_exception:TimeoutError": ("#ef4444", "✕"),
+    "probe_exception:ConnectionRefusedError": ("#ef4444", "✕"),
+    "probe_exception:ConnectionResetError": ("#ef4444", "✕"),
+    "probe_exception:OSError": ("#ef4444", "✕"),
+}
+
+
+def _port_state_to_color(reason: str) -> tuple:
+    """Return (hex_color, glyph) for the pool heatmap.
+
+    Pure function so it can be unit-tested without a Tk root.
+    """
+    return _HEATMAP_COLORS.get(reason, ("#f59e0b", "?"))  # amber = unknown
+
+
 class ProxyView(ctk.CTkFrame):
     def __init__(self, parent, main_app):
         super().__init__(parent, fg_color=ThemeManager.bg(), corner_radius=0)
