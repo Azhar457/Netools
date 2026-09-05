@@ -8,7 +8,7 @@ from tkinter import ttk
 import customtkinter as ctk
 
 from netools.adapters import platform_proxy
-from netools.config import HTTP_PORT_OFFSET, SOCKS5_PORT_START
+from netools.config import HTTP_PORT_OFFSET, MAX_INSTANCES, SOCKS5_PORT_START
 
 from netools.gui.i18n import tr
 from netools.gui.theme import (
@@ -172,6 +172,23 @@ class ProxyView(ctk.CTkFrame):
         self.btn_pac_toggle.pack(side="right", padx=(4, 0))
 
 
+        # Pool Heatmap: one cell per sing-box instance (up to MAX_INSTANCES).
+        # Each cell shows the live state of that slot using the same color
+        # palette as the diagnostic reasons (alive, spawn_failed, etc).
+        self.heatmap_frame = ctk.CTkFrame(
+            self, fg_color=ThemeManager.surface(), corner_radius=6,
+            border_width=1, border_color=ThemeManager.border(),
+        )
+        self.heatmap_frame.pack(fill="x", padx=16, pady=(4, 0))
+        self.heatmap_cells = []
+        for i in range(MAX_INSTANCES):
+            cell = ctk.CTkLabel(
+                self.heatmap_frame, text="○", width=28, height=28,
+                font=("Segoe UI Symbol", 14), text_color="#6b7280",
+            )
+            cell.grid(row=0, column=i, padx=2, pady=4)
+            self.heatmap_cells.append(cell)
+
         # Status Summary Bar
         self.summary_card = ctk.CTkFrame(
             self, fg_color=ThemeManager.surface(), corner_radius=8, border_width=1, border_color=ThemeManager.border()
@@ -278,10 +295,22 @@ class ProxyView(ctk.CTkFrame):
             srv = f"{data.get('server', '')}:{data.get('server_port', '')}"
             pool = data.get("pool_name") or data.get("pool_id") or "—"
             dns_engine = "SOCKS5h Remote"
+            reason = data.get("reason", "alive")
             age = data.get("started_at", "Just now")
-            status = "🟢 Alive"
+            status = "🟢 Alive" if reason == "alive" else f"🔴 {reason}"
 
             self.tree.insert("", "end", values=(name, proto, srv, port, http_p, pool, dns_engine, status, age))
+
+        # Update heatmap cells: one per slot index
+        for i in range(MAX_INSTANCES):
+            slot_name = f"sb-{i:02d}"
+            slot = insts.get(slot_name)
+            reason = (slot or {}).get("reason", "spawn_failed")
+            color, glyph = _port_state_to_color(reason)
+            try:
+                self.heatmap_cells[i].configure(text=glyph, text_color=color)
+            except (IndexError, AttributeError):
+                pass
 
         cnt = len(insts)
         self.lbl_summary.configure(
