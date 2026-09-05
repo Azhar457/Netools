@@ -22,6 +22,25 @@ def run_monitor_cycle(standalone: bool = False) -> int:
     """Single monitor pass: test all active instances, replace dead ones."""
     state = load_state()
     instances = state.get("instances", {})
+
+    # Kill switch restore: if a kill switch is armed and the pool has
+    # recovered (at least one alive instance), disarm the firewall block.
+    restore_fn = state.get("_kill_switch_restore")
+    if restore_fn is not None:
+        alive_count = sum(
+            1 for info in instances.values() if info.get("reason") == "alive"
+        )
+        if alive_count > 0:
+            try:
+                restore_fn()
+                log.info("kill_switch disarmed: proxy recovered, outbound restored")
+            except Exception as e:
+                log.warning(f"kill_switch disarm failed: {e}")
+            finally:
+                state["_kill_switch_restore"] = None
+                from netools.state import save_state
+                save_state(state)
+
     if not instances:
         return 0
 

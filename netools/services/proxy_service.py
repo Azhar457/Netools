@@ -99,8 +99,16 @@ def fetch_and_parse_proxies(max_count: int = 250) -> List[Dict[str, Any]]:
     return all_proxies[:max_count]
 
 
-def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
-    """Start full proxy pool with high-speed parallel testing, multi-round replenishment, and backend sync."""
+def start_proxy_pool(
+    max_instances: int = MAX_INSTANCES,
+    standalone: bool = False,
+    kill_switch: bool = False,
+) -> Dict[str, Any]:
+    """Start full proxy pool with high-speed parallel testing, multi-round replenishment, and backend sync.
+
+    kill_switch: when True, if no proxy comes up alive, block all outbound
+                 traffic at the firewall until the watchdog restores connectivity.
+    """
     log.info("Stopping old instances...")
     stop_proxy_pool(standalone=standalone)
 
@@ -289,6 +297,18 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
     mode_str = " (Standalone Mode)" if standalone else " → Active Gateway Proxy Pool"
     log.info(f"{active_count} proxies active{mode_str}")
 
+    # Kill switch: if requested and the pool came up empty, block all outbound
+    # traffic at the firewall. The watchdog will call the restore callable
+    # once it has at least one alive instance again.
+    kill_switch_restore = None
+    if kill_switch and active_count == 0 and not standalone:
+        try:
+            from netools.adapters import kill_switch as _ks
+            kill_switch_restore = _ks.arm_block_all()
+            log.warning("kill_switch armed: outbound blocked until proxy recovers")
+        except Exception as e:
+            log.warning(f"Could not arm kill switch: {e}")
+
     # Auto-arm the watchdog so silent pool death is impossible.
     # Caller can still disable this by passing standalone=True (offline management).
     if not standalone:
@@ -298,6 +318,10 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
             log.info("Auto-heal watchdog armed (15s interval)")
         except Exception as e:
             log.warning(f"Could not arm watchdog: {e}")
+
+    # Stash the kill switch restore callable so the watchdog can find it.
+    if kill_switch_restore is not None:
+        state["_kill_switch_restore"] = kill_switch_restore
 
     return state
 

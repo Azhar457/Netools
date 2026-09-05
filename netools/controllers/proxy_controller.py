@@ -16,15 +16,22 @@ class ProxyController(BaseController):
     def start_pool(
         self,
         standalone: bool = False,
+        kill_switch: bool = False,
         on_success: Optional[Callable[[Dict[str, Any]], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
     ) -> None:
-        """Asynchronously start all sing-box proxy instances and register with gateways."""
+        """Asynchronously start all sing-box proxy instances and register with gateways.
+
+        kill_switch: when True, if no proxy comes up alive, block all outbound
+                     traffic at the firewall until a proxy recovers. Privacy
+                     guarantee - the user is air-gapped instead of leaking.
+        """
         self.run_async(
             proxy_service.start_proxy_pool,
             on_success=on_success,
             on_error=on_error,
             standalone=standalone,
+            kill_switch=kill_switch,
         )
 
     def stop_pool(
