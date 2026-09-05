@@ -288,6 +288,17 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
     save_state(state)
     mode_str = " (Standalone Mode)" if standalone else " → Active Gateway Proxy Pool"
     log.info(f"{active_count} proxies active{mode_str}")
+
+    # Auto-arm the watchdog so silent pool death is impossible.
+    # Caller can still disable this by passing standalone=True (offline management).
+    if not standalone:
+        try:
+            from netools.services import watchdog_service
+            watchdog_service.start_watchdog_thread(interval=15, standalone=standalone)
+            log.info("Auto-heal watchdog armed (15s interval)")
+        except Exception as e:
+            log.warning(f"Could not arm watchdog: {e}")
+
     return state
 
 

@@ -53,3 +53,20 @@ class TestWatchdogService(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWatchdogAutoArm(unittest.TestCase):
+    """start_proxy_pool must arm the watchdog so silent pool death is impossible."""
+
+    @patch("netools.services.watchdog_service.start_watchdog_thread")
+    @patch("netools.services.proxy_service.sb_drv")
+    @patch("netools.services.proxy_service.fetch_and_parse_proxies")
+    def test_pool_starts_arms_watchdog(self, mock_fetch, mock_sb, mock_arm):
+        from netools.services.proxy_service import start_proxy_pool
+
+        mock_fetch.return_value = []
+        mock_sb.build_singbox_config.return_value = {}
+        mock_sb.start_singbox_instance.return_value = None
+
+        start_proxy_pool(max_instances=1, standalone=False)
+        mock_arm.assert_called_once()
