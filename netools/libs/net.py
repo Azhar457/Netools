@@ -230,3 +230,53 @@ def ping_ip(ip: str, count: int = 1, timeout: float = 1.5) -> Optional[float]:
 
     # Fallback to UDP port 53 probe
     return ping_dns_udp(ip, timeout=timeout)
+
+
+def measure_bandwidth_mbps(
+    host: str = "127.0.0.1",
+    port: int = 80,
+    timeout_s: float = 3.0,
+    max_bytes: int = 256 * 1024,
+) -> Optional[float]:
+    """Estimate a TCP peer's bandwidth by reading up to max_bytes of an HTTP 204 response.
+
+    Returns Mbps (float) or None on any failure. Used for proxy pool ranking,
+    not for benchmarking; precision is intentionally loose (~0.5Mbps).
+
+    Note: this is HEAD-equivalent, no app-level payload. The 256KB cap keeps
+    health-check traffic under ~0.5MB per probe * 20 instances = 10MB/min.
+    """
+    import socket
+    import time
+
+    if timeout_s <= 0:
+        return None
+
+    sock = None
+    try:
+        sock = socket.create_connection((host, port), timeout=timeout_s)
+        sock.sendall(
+            b"GET /generate_204 HTTP/1.1\r\n"
+            b"Host: speed.cloudflare.com\r\n"
+            b"Connection: close\r\n\r\n"
+        )
+        t0 = time.perf_counter()
+        received = 0
+        while received < max_bytes:
+            chunk = sock.recv(min(65536, max_bytes - received))
+            if not chunk:
+                break
+            received += len(chunk)
+        dt = time.perf_counter() - t0
+        if dt <= 0 or received == 0:
+            return None
+        # bits / seconds -> megabits / second
+        return (received * 8) / (dt * 1_000_000)
+    except Exception:
+        return None
+    finally:
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:
+                pass
