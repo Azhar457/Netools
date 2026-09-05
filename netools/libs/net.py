@@ -94,10 +94,10 @@ def probe_socks_upstream(
     port: int, test_url: str = "https://www.gstatic.com/generate_204", timeout: float = 5.0
 ) -> bool:
     """Validate that a local SOCKS5 proxy can route traffic upstream via curl socks5h (pure-Python fallback)."""
+    if not is_port_open(port, timeout=0.1):
+        return False
     if shutil.which("curl") is None:
         return probe_socks_upstream_python(port, test_url=test_url, timeout=timeout)
-    if not is_port_open(port):
-        return False
     try:
         res = subprocess.run(
             [

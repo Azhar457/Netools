@@ -209,7 +209,7 @@ def parse_proxy_uri(uri: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def extract_all_proxies(raw_text: str, max_count: int = 20) -> List[Dict[str, Any]]:
+def extract_all_proxies(raw_text: str, max_count: int = 100) -> List[Dict[str, Any]]:
     """Parse entire proxy subscription text and deduplicate by host:port."""
     text = decode_base64_if_needed(raw_text)
     lines = text.strip().splitlines()
@@ -223,7 +223,11 @@ def extract_all_proxies(raw_text: str, max_count: int = 20) -> List[Dict[str, An
             continue
         p = parse_proxy_uri(line)
         if p and p.get("server") and p.get("server_port"):
-            key = f"{p['server']}:{p['server_port']}"
+            server = str(p.get("server", "")).strip()
+            port = p.get("server_port", 0)
+            if not server or "/" in server or " " in server or not (1 <= port <= 65535):
+                continue
+            key = f"{server}:{port}"
             if key not in seen:
                 seen.add(key)
                 proxies.append(p)

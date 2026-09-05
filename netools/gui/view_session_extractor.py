@@ -52,13 +52,14 @@ class SessionExtractorView(ctk.CTkFrame):
     def apply_theme(self):
         self.configure(fg_color=ThemeManager.bg())
         for attr, key in [
-            ("hdr", "fg_color"),
-            ("card_interactive", "fg_color"),
-            ("card_rotator", "fg_color"),
-            ("card_tokens", "fg_color"),
+            ("hdr", "bg"),
+            ("card_interactive", "surface"),
+            ("card_rotator", "surface"),
+            ("card_tokens", "surface"),
         ]:
             if hasattr(self, attr):
                 getattr(self, attr).configure(fg_color=getattr(ThemeManager, key)())
+
 
         if hasattr(self, "lbl_title"):
             self.lbl_title.configure(text_color=ThemeManager.primary())

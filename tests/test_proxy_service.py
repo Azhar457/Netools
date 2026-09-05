@@ -44,3 +44,35 @@ class TestProxyService(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestProxyPoolDiagnostics(unittest.TestCase):
+    """Pipeline must report per-instance failure reasons, not just 'killed'."""
+
+    @patch("netools.services.proxy_service.sb_drv")
+    @patch("netools.services.proxy_service.fetch_and_parse_proxies")
+    def test_start_proxy_pool_records_failure_reasons(self, mock_fetch, mock_sb):
+        from netools.services.proxy_service import start_proxy_pool
+
+        mock_fetch.return_value = [
+            {"type": "shadowsocks", "server": "127.0.0.1", "server_port": 1,
+             "method": "x", "password": "y"}
+        ]
+        # Sing-box process "succeeds" but is immediately killed when probe fails
+        mock_proc = MagicMock()
+        mock_sb.build_singbox_config.return_value = {"inbounds": [], "outbounds": []}
+        mock_sb.start_singbox_instance.return_value = mock_proc
+
+        result = start_proxy_pool(max_instances=1, standalone=True)
+
+        instances = result.get("instances", {})
+        # Slot exists with a reason field
+        self.assertEqual(len(instances), 1, "exactly one slot attempted")
+        first = next(iter(instances.values()))
+        self.assertIn("reason", first,
+                      f"per-instance diagnostic missing; got keys: {list(first.keys())}")
+        # Allowed reasons for a dead proxy: spawn_failed, upstream_probe_failed,
+        # or any probe_exception:<Name>
+        self.assertIn(first["reason"],
+                      ["spawn_failed", "upstream_probe_failed"],
+                      f"unexpected reason: {first['reason']}")

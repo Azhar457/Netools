@@ -19,6 +19,21 @@ echo "==> [2/4] Compiling lean onedir bundle with PyInstaller..."
 rm -rf dist/netools build/netools build/AppDir
 .venv/bin/pyinstaller -y --clean netools.spec
 
+# Ensure test files and testing suites are strictly excluded from the bundle
+rm -rf dist/netools/_internal/tests dist/netools/_internal/test dist/netools/_internal/tcl*/*/tcltest* 2>/dev/null || true
+find dist/netools -type d \( -name "tests" -o -name "test" -o -name ".pytest_cache" \) -exec rm -rf {} + 2>/dev/null || true
+find dist/netools -type f \( -name "test_*.py*" -o -name "*_test.py*" -o -name "*tcltest*" \) -delete 2>/dev/null || true
+
+# Prune unused heavy format decoders and plugins from Pillow
+rm -f dist/netools/_internal/pillow.libs/libavif* \
+      dist/netools/_internal/pillow.libs/libopenjp2* \
+      dist/netools/_internal/pillow.libs/libtiff* \
+      dist/netools/_internal/pillow.libs/libwebp* 2>/dev/null || true
+
+find dist/netools/_internal/PIL/ -maxdepth 1 -type f -name "*ImagePlugin*" \
+    ! -name "PngImagePlugin*" ! -name "IcoImagePlugin*" ! -name "JpegImagePlugin*" ! -name "BmpImagePlugin*" \
+    -delete 2>/dev/null || true
+
 # Prune heavy unused CJK multibyte codecs
 rm -f dist/netools/_internal/python3.*/lib-dynload/_codecs_*.so 2>/dev/null || true
 
@@ -35,6 +50,13 @@ rm -rf dist/netools/_internal/tcl*/tzdata \
        dist/netools/_internal/tcl*/encoding/cp8[0-6]* \
        dist/netools/_internal/tcl*/encoding/cp87* \
        dist/netools/_internal/tcl*/encoding/cp9* 2>/dev/null || true
+
+# Prune heavy host system icons, themes, and locales pulled by GTK hook
+rm -rf dist/netools/_internal/share/icons \
+       dist/netools/_internal/share/locale \
+       dist/netools/_internal/share/themes \
+       dist/netools/_internal/share/fontconfig \
+       dist/netools/_internal/share/mime 2>/dev/null || true
 
 # Prune unneeded static assets (keep essential icon-256 and logo)
 rm -f dist/netools/_internal/assets/icon-512.png dist/netools/_internal/assets/logo.png 2>/dev/null || true
@@ -106,7 +128,7 @@ fi
 
 echo "==> [4/4] Creating SquashFS & Generating Netools-x86_64.AppImage..."
 rm -f build/app.squashfs dist/Netools-x86_64.AppImage
-mksquashfs build/AppDir build/app.squashfs -root-owned -noappend -b 1048576 -comp zstd -Xcompression-level 13
+mksquashfs build/AppDir build/app.squashfs -root-owned -noappend -b 1048576 -comp zstd -Xcompression-level 22
 cat build/runtime-x86_64 build/app.squashfs > dist/Netools-x86_64.AppImage
 chmod +x dist/Netools-x86_64.AppImage
 

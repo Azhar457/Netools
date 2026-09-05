@@ -361,14 +361,16 @@ class NetoolsApp(ctk.CTk):
     def force_exit(self):
         """Completely exit the application (stops all background services)."""
         try:
-            from netools.adapters import singbox
+            from netools.adapters import platform_proxy, singbox
             from netools.services import doh_service, pac_service, proxy_service, watchdog_service
 
+            platform_proxy.disable_system_proxy()
             pac_service.stop_pac_server()
             doh_service.stop_doh_forwarder()
             proxy_service.stop_proxy_pool()
             singbox.stop_all_singbox_instances()
             watchdog_service.stop_watchdog()
+
         except Exception:
             pass
         if hasattr(self, "tray") and self.tray:

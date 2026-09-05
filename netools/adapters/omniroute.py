@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from netools.config import OMNIROUTE_TOKEN, OMNIROUTE_URL
 from netools.middlewares.backend_guard import safe_backend_call
+from netools.services.omniroute_bridge import _DEFAULT_DB_PATH, connect_db
 
 _CURRENT_URL = OMNIROUTE_URL
 _CURRENT_TOKEN = OMNIROUTE_TOKEN
@@ -107,7 +108,7 @@ def get_connections() -> List[Dict[str, Any]]:
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
         if _DEFAULT_DB_PATH.exists():
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 db.row_factory = sqlite3.Row
                 rows = db.execute(
                     "SELECT id, name, provider, is_active, test_status, proxy_enabled, provider_specific_data, auth_type FROM provider_connections ORDER BY created_at DESC"
@@ -156,7 +157,7 @@ def get_existing_pools() -> Dict[str, str]:
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
         if _DEFAULT_DB_PATH.exists():
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 db.row_factory = sqlite3.Row
                 rows = db.execute("SELECT id, name FROM proxy_registry").fetchall()
                 return {r["name"]: r["id"] for r in rows if r["name"]}
@@ -188,7 +189,7 @@ def assign_proxy_to_connection(conn_id: str, proxy_url: str) -> Optional[Dict[st
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
         if _DEFAULT_DB_PATH.exists():
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 row = db.execute(
                     "SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)
                 ).fetchone()
@@ -234,7 +235,7 @@ def remove_proxy_from_connection(conn_id: str) -> Optional[Dict[str, Any]]:
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
         if _DEFAULT_DB_PATH.exists():
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 row = db.execute(
                     "SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)
                 ).fetchone()
@@ -270,7 +271,7 @@ def clear_all_connection_proxies() -> int:
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
         if _DEFAULT_DB_PATH.exists():
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 rows = db.execute(
                     "SELECT id, provider_specific_data FROM provider_connections WHERE proxy_enabled = 1"
                 ).fetchall()
@@ -324,7 +325,7 @@ def clear_managed_pools() -> int:
 
     if _DEFAULT_DB_PATH.exists():
         try:
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 cur = db.execute("DELETE FROM proxy_registry WHERE name LIKE 'free-proxy-%'")
                 db.commit()
                 return cur.rowcount
@@ -343,7 +344,7 @@ def assign_proxies_to_connections_batch(assignments: List[tuple[str, str]]) -> i
     count = 0
     if _DEFAULT_DB_PATH.exists():
         try:
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 for conn_id, proxy_url in assignments:
                     row = db.execute(
                         "SELECT provider_specific_data FROM provider_connections WHERE id = ?", (conn_id,)
@@ -395,7 +396,7 @@ def add_proxy_pools_batch(pools: List[tuple[str, str]]) -> Dict[str, str]:
         try:
             now = datetime.datetime.now(datetime.timezone.utc).isoformat()
             rows_to_insert = []
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 for name, proxy_url in pools:
                     parsed = urllib.parse.urlparse(proxy_url)
                     scheme = parsed.scheme.lower() or "socks5"
@@ -526,7 +527,7 @@ def add_proxy_pool(name: str, proxy_url: str) -> Optional[str]:
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
         if _DEFAULT_DB_PATH.exists():
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 row = db.execute(
                     "SELECT id FROM proxy_registry WHERE host = ? AND port = ? AND username = ? LIMIT 1",
                     (host, port, username),
@@ -569,7 +570,7 @@ def delete_proxy_pool(pool_id: str) -> bool:
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
         if _DEFAULT_DB_PATH.exists():
-            with sqlite3.connect(_DEFAULT_DB_PATH) as db:
+            with connect_db(_DEFAULT_DB_PATH) as db:
                 db.execute("DELETE FROM proxy_registry WHERE id = ?", (pool_id,))
                 db.commit()
                 return True

@@ -54,21 +54,30 @@ def auto_detect_9router_token() -> str:
         return env_token
 
     try:
-        home = Path.home()
-        m_id_file = home / ".9router" / "machine-id"
-        secret_file = home / ".9router" / "auth" / "cli-secret"
+        candidate_dirs = [Path.home() / ".9router"]
+        userprofile = os.getenv("USERPROFILE")
+        if userprofile:
+            candidate_dirs.append(Path(userprofile) / ".9router")
+        appdata = os.getenv("APPDATA")
+        if appdata:
+            candidate_dirs.append(Path(appdata) / "9router")
 
-        if m_id_file.exists() and secret_file.exists():
-            import hashlib
+        for r_dir in candidate_dirs:
+            m_id_file = r_dir / "machine-id"
+            secret_file = r_dir / "auth" / "cli-secret"
 
-            m_id = m_id_file.read_text(encoding="utf-8").strip()
-            secret = secret_file.read_text(encoding="utf-8").strip()
-            if m_id and secret:
-                return hashlib.sha256((m_id + "9r-cli-auth" + secret).encode("utf-8")).hexdigest()[:16]
+            if m_id_file.exists() and secret_file.exists():
+                import hashlib
+
+                m_id = m_id_file.read_text(encoding="utf-8").strip()
+                secret = secret_file.read_text(encoding="utf-8").strip()
+                if m_id and secret:
+                    return hashlib.sha256((m_id + "9r-cli-auth" + secret).encode("utf-8")).hexdigest()[:16]
     except Exception:
         pass
 
     return ""
+
 
 
 # Configuration File Support (~/.config/netools/config.json)

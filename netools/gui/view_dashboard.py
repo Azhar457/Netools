@@ -8,7 +8,9 @@ import customtkinter as ctk
 
 from netools.adapters import ninerouter as nr_adapt
 from netools.adapters import platform_dns as sys_dns
+from netools.adapters import platform_proxy
 from netools.config import SOCKS5_PORT_START
+
 from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,
@@ -59,7 +61,16 @@ class DashboardView(ctk.CTkFrame):
                 border_color=ThemeManager.border(),
                 text_color=ThemeManager.primary(),
             )
+        if hasattr(self, "btn_os_proxy_action"):
+            sys_status = platform_proxy.get_system_proxy_status()
+            if not sys_status.get("enabled"):
+                self.btn_os_proxy_action.configure(
+                    fg_color=ThemeManager.border(),
+                    text_color=ThemeManager.text(),
+                    hover_color=ThemeManager.surface_alt(),
+                )
         if hasattr(self, "lbl_proxy_stat"):
+
             self.lbl_proxy_stat.configure(text_color=ThemeManager.text_muted())
         if hasattr(self, "lbl_pac_stat"):
             self.lbl_pac_stat.configure(text_color=ThemeManager.text_muted())
@@ -317,6 +328,19 @@ class DashboardView(ctk.CTkFrame):
         )
         self.btn_pac_action.pack(side="left", padx=4)
 
+        self.btn_os_proxy_action = ctk.CTkButton(
+            self.pac_url_frame,
+            text=tr("⚡ Set as OS Proxy"),
+            font=Fonts.bold(12),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            height=34,
+            command=self.toggle_os_proxy,
+        )
+        self.btn_os_proxy_action.pack(side="left", padx=4)
+
+
     def refresh(self):
         def _bg():
             # 1. Proxy
@@ -363,6 +387,23 @@ class DashboardView(ctk.CTkFrame):
             self.btn_pac_action.configure(
                 text=tr("🟢 Start PAC"), fg_color=ThemeManager.success(), hover_color=ThemeManager.accent()
             )
+
+        sys_status = platform_proxy.get_system_proxy_status()
+        if sys_status.get("enabled"):
+            self.btn_os_proxy_action.configure(
+                text=tr("⚡ Disable OS Proxy"),
+                fg_color=ThemeManager.success(),
+                hover_color=ThemeManager.accent(),
+                text_color=ThemeManager.get("on_primary"),
+            )
+        else:
+            self.btn_os_proxy_action.configure(
+                text=tr("⚡ Set as OS Proxy"),
+                fg_color=ThemeManager.border(),
+                hover_color=ThemeManager.surface_alt(),
+                text_color=ThemeManager.text(),
+            )
+
 
     def on_start_pool(self):
         self.main_app.show_toast(tr("Memulai Turbo Proxy Pool..."), level="info")
@@ -415,3 +456,22 @@ class DashboardView(ctk.CTkFrame):
                 self.refresh()
 
             show_pac_confirmation(self, _start)
+
+    def toggle_os_proxy(self):
+        sys_status = platform_proxy.get_system_proxy_status()
+        if sys_status.get("enabled"):
+            platform_proxy.disable_system_proxy()
+            self.main_app.show_toast(tr("System Proxy dinonaktifkan (kembali ke Direct)."), level="info")
+        else:
+            if not pac_service.is_pac_server_running():
+                pac_service.start_pac_server()
+            pac_url = pac_service.get_pac_url()
+            ok = platform_proxy.enable_system_proxy(pac_url)
+            if ok:
+                self.main_app.show_toast(tr("✓ System Proxy aktif di seluruh OS (PAC & SOCKS5)!"), level="success")
+            else:
+                self.main_app.show_toast(tr("Gagal mengaktifkan System Proxy pada OS ini."), level="error")
+        self.refresh()
+        if hasattr(self.main_app, "proxy_view"):
+            self.main_app.proxy_view.refresh()
+

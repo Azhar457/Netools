@@ -91,6 +91,7 @@ def start_singbox_instance(name: str, config: Dict[str, Any]) -> Optional[subpro
             stdout=log_file,
             stderr=subprocess.STDOUT,
             creationflags=creationflags,
+            start_new_session=(sys.platform != "win32"),
         )
         pid_path.write_text(str(proc.pid), encoding="utf-8")
         return proc
@@ -107,7 +108,13 @@ def stop_singbox_instance(name: str) -> None:
     if pid_file.exists():
         try:
             pid = int(pid_file.read_text().strip())
-            os.kill(pid, signal.SIGTERM)
+            if sys.platform == "win32":
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
+            else:
+                try:
+                    os.killpg(pid, signal.SIGTERM)
+                except Exception:
+                    os.kill(pid, signal.SIGTERM)
         except (ProcessLookupError, ValueError):
             pass
         except Exception:
@@ -124,4 +131,5 @@ def stop_all_singbox_instances() -> None:
     for pid_file in PID_DIR.glob("*.pid"):
         name = pid_file.stem
         stop_singbox_instance(name)
+
     # NOTE: deliberately NOT running pkill — we only kill PIDs we spawned

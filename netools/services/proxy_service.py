@@ -30,26 +30,28 @@ from netools.libs.parsers import extract_all_proxies
 from netools.state import load_state, save_state
 
 
-def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, Any]]:
-    """Fetch raw subscriptions from sources concurrently with cache fallback."""
+def fetch_and_parse_proxies(max_count: int = 250) -> List[Dict[str, Any]]:
+    """Fetch raw subscriptions from sources concurrently with cache fallback and protocol interleaving."""
     import json
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
-    all_proxies = []
-    seen = set()
     cache_file = RUNTIME_DIR / "last_known_proxies.json"
     failed_sources = 0
+
+    per_source_limit = max(max_count // max(len(PROXY_SOURCES), 1) * 2, 80)
 
     def _fetch_source(url: str) -> tuple[bool, List[Dict[str, Any]]]:
         for attempt in range(2):
             try:
                 raw = fetch_text(url, timeout=3.5)
-                return True, extract_all_proxies(raw, max_count=max_count)
+                return True, extract_all_proxies(raw, max_count=per_source_limit)
             except Exception as e:
                 if attempt == 1:
                     log.warning(f"Failed fetching source {url}: {e}")
                 time.sleep(0.15)
         return False, []
+
+    source_results: List[List[Dict[str, Any]]] = []
 
     # Parallel fetch of all sources simultaneously
     with ThreadPoolExecutor(max_workers=min(len(PROXY_SOURCES), 6)) as ex:
@@ -59,13 +61,23 @@ def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, An
                 success, candidates = f.result()
                 if not success:
                     failed_sources += 1
-                for p in candidates:
-                    key = f"{p['server']}:{p['server_port']}"
-                    if key not in seen:
-                        seen.add(key)
-                        all_proxies.append(p)
+                elif candidates:
+                    source_results.append(candidates)
             except Exception:
                 failed_sources += 1
+
+    # Interleave results across sources to maximize protocol & subnet diversity
+    all_proxies = []
+    seen = set()
+    max_len = max((len(c) for c in source_results), default=0)
+    for i in range(max_len):
+        for s_list in source_results:
+            if i < len(s_list):
+                p = s_list[i]
+                key = f"{p['server']}:{p['server_port']}"
+                if key not in seen:
+                    seen.add(key)
+                    all_proxies.append(p)
 
     if all_proxies:
         try:
@@ -88,63 +100,97 @@ def fetch_and_parse_proxies(max_count: int = MAX_INSTANCES) -> List[Dict[str, An
 
 
 def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = False) -> Dict[str, Any]:
-    """Start full proxy pool with high-speed parallel testing and backend sync."""
+    """Start full proxy pool with high-speed parallel testing, multi-round replenishment, and backend sync."""
     log.info("Stopping old instances...")
     stop_proxy_pool(standalone=standalone)
 
     log.info("Downloading fresh proxy configs...")
-    proxies = fetch_and_parse_proxies(max_instances)
-    log.info(f"Parsed {len(proxies)} unique candidate proxies")
+    candidate_pool = fetch_and_parse_proxies(max_count=max(max_instances * 15, 300))
+    log.info(f"Parsed {len(candidate_pool)} unique candidate proxies")
 
-    started = []  # (name, port, proxy, proc)
-    for i, proxy in enumerate(proxies[:max_instances]):
-        port = SOCKS5_PORT_START + i
-        name = f"sb-{i:02d}"
-        config = sb_drv.build_singbox_config(proxy, port)
-        proc = sb_drv.start_singbox_instance(name, config)
-        if proc:
-            started.append((name, port, proxy, proc))
+    # Multi-round adaptive replenishment
+    verified_alive: Dict[int, tuple[str, Dict[str, Any], Any]] = {}  # port -> (name, proxy, proc)
+    slot_diagnostics: Dict[int, str] = {}  # port -> final reason
+    slot_meta: Dict[int, tuple[str, Dict[str, Any]]] = {}  # port -> (name, proxy) for all attempts
+    cand_idx = 0
+    max_rounds = 4
 
-    # Fast non-blocking parallel port readiness poll (all ports checked simultaneously)
-    pending_ports = {port for _, port, _, _ in started}
-    deadline = time.monotonic() + 2.0
-    while pending_ports and time.monotonic() < deadline:
-        ready = {p for p in pending_ports if is_port_open(p, timeout=0.03)}
-        pending_ports -= ready
-        if not pending_ports:
+    for _round_num in range(1, max_rounds + 1):
+        unfilled_slots = [
+            i for i in range(max_instances)
+            if (SOCKS5_PORT_START + i) not in verified_alive
+        ]
+        if not unfilled_slots or cand_idx >= len(candidate_pool):
             break
-        time.sleep(0.03)
 
-    # Parallel Upstream Testing (All instances tested concurrently with 4s timeout)
-    alive = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(len(started), 1)) as ex:
-        futures = {
-            ex.submit(probe_socks_upstream, port, timeout=4.0): (name, port, proxy, proc)
-            for name, port, proxy, proc in started
-        }
-        for future in concurrent.futures.as_completed(futures):
-            name, port, proxy, proc = futures[future]
-            try:
-                if future.result():
-                    alive.append((name, port, proxy, proc))
-                else:
-                    log.warning(f"{name} failed upstream test, killing")
-                    proc.kill()
-            except Exception:
+        round_slots: Dict[int, tuple[str, Dict[str, Any], Any, str]] = {}
+        for slot in unfilled_slots:
+            if cand_idx >= len(candidate_pool):
+                break
+            port = SOCKS5_PORT_START + slot
+            name = f"sb-{slot:02d}"
+            proxy = candidate_pool[cand_idx]
+            cand_idx += 1
+            config = sb_drv.build_singbox_config(proxy, port)
+            proc = sb_drv.start_singbox_instance(name, config)
+            reason = "alive" if proc else "spawn_failed"
+            round_slots[port] = (name, proxy, proc, reason)
+            slot_meta[port] = (name, proxy)  # record meta even if spawn failed
+
+        if not round_slots:
+            break
+
+        # Fast parallel port readiness poll
+        pending_ports = set(round_slots.keys())
+        deadline = time.monotonic() + 1.5
+        while pending_ports and time.monotonic() < deadline:
+            ready = {p for p in pending_ports if is_port_open(p, timeout=0.03)}
+            pending_ports -= ready
+            if not pending_ports:
+                break
+            time.sleep(0.03)
+
+        # Parallel Upstream Testing
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max(len(round_slots), 1)) as ex:
+            futs = {
+                ex.submit(probe_socks_upstream, port, timeout=3.5): port
+                for port in round_slots
+            }
+            for future in concurrent.futures.as_completed(futs):
+                port = futs[future]
+                name, proxy, proc, _ = round_slots[port]
                 try:
-                    proc.kill()
-                except Exception:
-                    pass
+                    if future.result():
+                        verified_alive[port] = (name, proxy, proc)
+                        slot_diagnostics[port] = "alive"
+                    else:
+                        proc.kill()
+                        slot_diagnostics[port] = "upstream_probe_failed"
+                except Exception as exc:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+                    slot_diagnostics[port] = f"probe_exception:{type(exc).__name__}"
+                # Always record the slot attempt (alive or dead) for diagnostics
+                slot_meta[port] = (name, proxy)
 
-    alive.sort(key=lambda e: e[1])  # Keep sequential port order
+        if len(verified_alive) >= max_instances:
+            break
+
+    # Sort verified instances by port number
+    alive_items = [
+        (verified_alive[p][0], p, verified_alive[p][1], verified_alive[p][2])
+        for p in sorted(verified_alive.keys())
+    ]
 
     state = {"instances": {}, "updated_at": datetime.now().isoformat()}
     active_count = 0
 
-    # Batch register pools to OmniRoute
+    # Batch register pools to OmniRoute & 9Router
     omni_pools_batch = []
     nr_pools_batch = []
-    for idx, (_, port, _, _) in enumerate(alive):
+    for idx, (_, port, _, _) in enumerate(alive_items):
         pool_name = f"free-proxy-{idx}"
         socks_url = f"socks5://127.0.0.1:{port}"
         omni_pools_batch.append((pool_name, socks_url))
@@ -152,7 +198,7 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
 
     omni_pool_ids: Dict[str, str] = {}
     nr_pool_ids: Dict[str, str] = {}
-    if not standalone and alive:
+    if not standalone and alive_items:
         if or_adapt.is_healthy():
             omni_pool_ids = or_adapt.add_proxy_pools_batch(omni_pools_batch)
         if nr_adapt.is_healthy():
@@ -167,7 +213,7 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
                     except Exception:
                         pass
 
-    for name, port, proxy, proc in alive:
+    for name, port, proxy, proc in alive_items:
         now_str = time.strftime("%Y-%m-%d %H:%M:%S")
         socks_url = f"socks5://127.0.0.1:{port}"
         http_url = f"http://127.0.0.1:{port + HTTP_PORT_OFFSET}"
@@ -189,19 +235,41 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
             "omni_pool_id": omni_pool_id,
             "pool_name": pool_name,
             "started_at": now_str,
+            "reason": "alive",
         }
         active_count += 1
         pool_str = f" → pool {pool_name}" if (pool_id or omni_pool_id) else (" (standalone)" if standalone else "")
         log.info(f"{name}: {proxy['type']} → {proxy['server']}:{proxy.get('server_port', '')} → port {port}{pool_str}")
 
-    # Assign proxy to 9Router / OmniRoute connections concurrently
+    # Record diagnostics for slots that were attempted but did not come up alive.
+    # Operators need to see WHY a proxy failed (spawn, probe, exception) not just
+    # the count of failures.
+    alive_ports = {p for _, p, _, _ in alive_items}
+    for port, (name, proxy) in slot_meta.items():
+        if port in alive_ports:
+            continue
+        reason = slot_diagnostics.get(port, "unknown")
+        state["instances"][name] = {
+            "name": name,
+            "port": port,
+            "http_port": port + HTTP_PORT_OFFSET,
+            "proxy_type": proxy["type"],
+            "server": proxy["server"],
+            "server_port": proxy.get("server_port", 0),
+            "pool_name": None,
+            "started_at": None,
+            "reason": reason,
+        }
+        log.info(f"{name} [{reason}]: {proxy['type']} → {proxy['server']}:{proxy.get('server_port', '')} → port {port}")
+
+    # Assign proxy to 9Router / OmniRoute connections using ONLY verified alive ports
     if not standalone and active_count > 0:
+        alive_socks_urls = [f"socks5://127.0.0.1:{port}" for _, port, _, _ in alive_items]
         if or_adapt.is_healthy():
             conns = or_adapt.get_connections()
             or_assignments = []
             for idx, c in enumerate(conns):
-                p_idx = idx % active_count
-                p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
+                p_url = alive_socks_urls[idx % len(alive_socks_urls)]
                 or_assignments.append((c["id"], p_url))
             assigned_count = or_adapt.assign_proxies_to_connections_batch(or_assignments)
             log.info(f"OmniRoute: {assigned_count}/{len(conns)} connections bound to proxy pool (atomic)")
@@ -210,8 +278,7 @@ def start_proxy_pool(max_instances: int = MAX_INSTANCES, standalone: bool = Fals
             conns = nr_adapt.get_connections()
             nr_assignments = []
             for idx, c in enumerate(conns):
-                p_idx = idx % active_count
-                p_url = f"socks5://127.0.0.1:{SOCKS5_PORT_START + p_idx}"
+                p_url = alive_socks_urls[idx % len(alive_socks_urls)]
                 nr_assignments.append((c["id"], p_url))
             with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
                 f_list = [ex.submit(nr_adapt.assign_proxy_to_connection, cid, url) for cid, url in nr_assignments]
@@ -340,9 +407,15 @@ def _auto_cleanup_on_exit():
     try:
         import logging
         logging.disable(logging.CRITICAL)
+        try:
+            from netools.adapters import platform_proxy
+            platform_proxy.disable_system_proxy()
+        except Exception:
+            pass
         stop_proxy_pool(standalone=False)
     except Exception:
         pass
+
 
 
 atexit.register(_auto_cleanup_on_exit)

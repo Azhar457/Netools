@@ -7,7 +7,9 @@ from tkinter import ttk
 
 import customtkinter as ctk
 
+from netools.adapters import platform_proxy
 from netools.config import HTTP_PORT_OFFSET, SOCKS5_PORT_START
+
 from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,
@@ -34,8 +36,17 @@ class ProxyView(ctk.CTkFrame):
             self.btn_refresh.configure(
                 fg_color=ThemeManager.border(), text_color=ThemeManager.text(), hover_color=ThemeManager.surface_alt()
             )
+        if hasattr(self, "btn_sys_proxy_toggle"):
+            sys_status = platform_proxy.get_system_proxy_status()
+            if not sys_status.get("enabled"):
+                self.btn_sys_proxy_toggle.configure(
+                    fg_color=ThemeManager.border(),
+                    text_color=ThemeManager.text(),
+                    hover_color=ThemeManager.surface_alt(),
+                )
         if hasattr(self, "summary_card"):
             self.summary_card.configure(fg_color=ThemeManager.surface(), border_color=ThemeManager.border())
+
         if hasattr(self, "lbl_summary"):
             self.lbl_summary.configure(text_color=ThemeManager.text_muted())
         if hasattr(self, "tbl_frame"):
@@ -114,6 +125,19 @@ class ProxyView(ctk.CTkFrame):
         )
         self.chk_watchdog.pack(side="left", padx=14)
 
+        # System Proxy Toggle Button
+        self.btn_sys_proxy_toggle = ctk.CTkButton(
+            self.hdr,
+            text=tr("⚡ OS Proxy: OFF"),
+            font=Fonts.bold(12),
+            fg_color=ThemeManager.border(),
+            text_color=ThemeManager.text(),
+            hover_color=ThemeManager.surface_alt(),
+            height=36,
+            command=self.toggle_system_proxy,
+        )
+        self.btn_sys_proxy_toggle.pack(side="right", padx=(4, 0))
+
         # PAC Toggle Button
         self.btn_pac_toggle = ctk.CTkButton(
             self.hdr,
@@ -126,6 +150,7 @@ class ProxyView(ctk.CTkFrame):
             command=self.toggle_pac,
         )
         self.btn_pac_toggle.pack(side="right", padx=(4, 0))
+
 
         # Status Summary Bar
         self.summary_card = ctk.CTkFrame(
@@ -252,6 +277,23 @@ class ProxyView(ctk.CTkFrame):
                 text=tr("🟢 Start PAC"), fg_color=ThemeManager.primary(), hover_color=ThemeManager.accent()
             )
 
+        sys_status = platform_proxy.get_system_proxy_status()
+        if sys_status.get("enabled"):
+            self.btn_sys_proxy_toggle.configure(
+                text=tr("⚡ OS Proxy: ON"),
+                fg_color=ThemeManager.success(),
+                hover_color=ThemeManager.accent(),
+                text_color=ThemeManager.get("on_primary"),
+            )
+        else:
+            self.btn_sys_proxy_toggle.configure(
+                text=tr("⚡ OS Proxy: OFF"),
+                fg_color=ThemeManager.border(),
+                hover_color=ThemeManager.surface_alt(),
+                text_color=ThemeManager.text(),
+            )
+
+
     def refresh(self):
         try:
             self._populate_sync()
@@ -310,3 +352,22 @@ class ProxyView(ctk.CTkFrame):
                 self.refresh()
 
             show_pac_confirmation(self, _start)
+
+    def toggle_system_proxy(self):
+        sys_status = platform_proxy.get_system_proxy_status()
+        if sys_status.get("enabled"):
+            platform_proxy.disable_system_proxy()
+            self.main_app.show_toast(tr("System Proxy dinonaktifkan (kembali ke Direct)."), level="info")
+        else:
+            if not pac_service.is_pac_server_running():
+                pac_service.start_pac_server()
+            pac_url = pac_service.get_pac_url()
+            ok = platform_proxy.enable_system_proxy(pac_url)
+            if ok:
+                self.main_app.show_toast(tr("✓ System Proxy aktif di seluruh OS (PAC & SOCKS5)!"), level="success")
+            else:
+                self.main_app.show_toast(tr("Gagal mengaktifkan System Proxy pada OS ini."), level="error")
+        self.refresh()
+        if hasattr(self.main_app, "dashboard_view"):
+            self.main_app.dashboard_view.refresh()
+

@@ -5,7 +5,10 @@ All SQLite interactions with OmniRoute's storage.sqlite go through this module.
 Provides reliable transaction handling, input validation, and TTL awareness.
 """
 
+import os
+import platform
 import sqlite3
+import sys
 import time
 import uuid
 from dataclasses import dataclass
@@ -17,10 +20,51 @@ from netools.libs.logger import get_logger
 log = get_logger(__name__)
 
 # ---------------------------------------------------------------------------
-# Constants
+# Constants & Cross-Platform Path Resolution
 # ---------------------------------------------------------------------------
 
-_DEFAULT_DB_PATH = Path.home() / ".omniroute" / "storage.sqlite"
+def _find_omniroute_db_path() -> Path:
+    """Resolve OmniRoute storage.sqlite location across Linux, macOS, and Windows."""
+    env_path = os.getenv("OMNIROUTE_DB_PATH")
+    if env_path:
+        p = Path(env_path)
+        if p.exists():
+            return p
+
+    candidates: List[Path] = [Path.home() / ".omniroute" / "storage.sqlite"]
+    sys_plat = sys.platform.lower()
+
+    if "win32" in sys_plat or "windows" in platform.system().lower():
+        for env_var in ("APPDATA", "LOCALAPPDATA", "USERPROFILE"):
+            val = os.getenv(env_var)
+            if val:
+                candidates.append(Path(val) / "OmniRoute" / "storage.sqlite")
+                candidates.append(Path(val) / ".omniroute" / "storage.sqlite")
+    elif "darwin" in sys_plat or "darwin" in platform.system().lower():
+        candidates.append(Path.home() / "Library" / "Application Support" / "OmniRoute" / "storage.sqlite")
+    else:
+        xdg_data = os.getenv("XDG_DATA_HOME")
+        if xdg_data:
+            candidates.append(Path(xdg_data) / "omniroute" / "storage.sqlite")
+
+    for c in candidates:
+        if c.exists():
+            return c
+
+    return Path.home() / ".omniroute" / "storage.sqlite"
+
+
+_DEFAULT_DB_PATH = _find_omniroute_db_path()
+
+
+def connect_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
+    """Create an SQLite connection with 5000ms busy timeout to prevent lock errors."""
+    target = db_path or _find_omniroute_db_path()
+    con = sqlite3.connect(str(target), timeout=5.0)
+    con.execute("PRAGMA busy_timeout = 5000")
+    return con
+
+
 _TTL_ACTIVE_THRESHOLD = 3600  # < 1 hour remaining → expiring_soon
 _TOKEN_MAX_LENGTH = 16_384  # sanity cap for stored token
 
@@ -28,6 +72,7 @@ _TOKEN_MAX_LENGTH = 16_384  # sanity cap for stored token
 _WEB_COOKIE_PROVIDERS = {
     "chatgpt-web",
     "chatgpt-web-codex",
+
     "claude-web",
     "deepseek-web",
     "grok-web",
@@ -198,7 +243,7 @@ def inject_session_to_omniroute(
     now = time.strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        with sqlite3.connect(str(db)) as con:
+        with connect_db(db) as con:
             cur = con.cursor()
             cur.execute("SELECT id FROM provider_connections WHERE provider=?", (provider,))
             row = cur.fetchone()
@@ -284,7 +329,7 @@ def inject_bulk_sessions(
     now = time.strftime("%Y-%m-%d %H:%M:%S")
 
     try:
-        with sqlite3.connect(str(db)) as con:
+        with connect_db(db) as con:
             cur = con.cursor()
 
             for s in sessions:

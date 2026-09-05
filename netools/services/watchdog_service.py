@@ -110,3 +110,9 @@ def stop_watchdog() -> None:
     _watchdog_thread = None
     _watchdog_stop_event = None
     log.info("Watchdog stopped")
+
+
+def is_watchdog_running() -> bool:
+    """Return True if the auto-heal watchdog daemon thread is alive."""
+    return bool(_watchdog_thread and _watchdog_thread.is_alive())
+
