@@ -24,6 +24,7 @@ from netools.config import (
     RUNTIME_DIR,
     SOCKS5_PORT_START,
     STATE_FILE,
+    UPSTREAM_TEST_TIMEOUT,
 )
 from netools.libs.net import fetch_text, is_port_open, probe_socks_upstream, wait_for_port
 from netools.libs.parsers import extract_all_proxies
@@ -161,7 +162,7 @@ def start_proxy_pool(
         # Parallel Upstream Testing
         with concurrent.futures.ThreadPoolExecutor(max_workers=max(len(round_slots), 1)) as ex:
             futs = {
-                ex.submit(probe_socks_upstream, port, timeout=3.5): port
+                ex.submit(probe_socks_upstream, port, timeout=UPSTREAM_TEST_TIMEOUT): port
                 for port in round_slots
             }
             for future in concurrent.futures.as_completed(futs):

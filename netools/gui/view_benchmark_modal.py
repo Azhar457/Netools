@@ -860,13 +860,17 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             (smart.get("dotcom", {}).get("key"), smart.get("dotcom", {})),
         ]
 
-        entries = self.dns_view.dns1_entry, self.dns_view.dns2_entry, self.dns_view.dns3_entry
+        entries = [self.dns_view.dns1_entry, self.dns_view.dns2_entry, self.dns_view.dns3_entry]
         for entry in entries:
             entry.delete(0, "end")
 
         primary_provider_id = None
+        used_ips = set()
+        fallback_ips = []
+
+        # Pass 1: Assign each Smart Mix pick to its dedicated slot with strict deduplication
         for slot, (p_key, item) in enumerate(picks):
-            if not item:
+            if not item or not p_key:
                 continue
             provider = self.providers.get(p_key, {})
             ips = self.dns_view.compute_provider_ips(provider, p_key, self._family_label(mode_key))
@@ -874,15 +878,27 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 continue
             if slot == 0:
                 primary_provider_id = p_key
-            # Fill the assigned slot with the primary IP
-            if len(ips) > 0:
-                entries[slot].insert(0, ips[0])
-            # Also populate secondary / tertiary slots from the same provider's
-            # other IPs if the slot is still empty — prevents the "3rd DNS
-            # server not recorded" regression after a smart-mix apply.
-            for extra_slot in range(slot + 1, 3):
-                if len(ips) > (extra_slot - slot) and not entries[extra_slot].get():
-                    entries[extra_slot].insert(0, ips[extra_slot - slot])
+
+            chosen_ip = next((ip for ip in ips if ip not in used_ips), None)
+            if chosen_ip:
+                used_ips.add(chosen_ip)
+                entries[slot].delete(0, "end")
+                entries[slot].insert(0, chosen_ip)
+
+            # Collect remaining unused IPs from this provider for backfilling empty slots
+            for ip in ips:
+                if ip not in used_ips and ip not in fallback_ips:
+                    fallback_ips.append(ip)
+
+        # Pass 2: Backfill any remaining empty slots from fallback_ips
+        for entry in entries:
+            if not entry.get().strip():
+                for ip in fallback_ips:
+                    if ip not in used_ips:
+                        used_ips.add(ip)
+                        entry.delete(0, "end")
+                        entry.insert(0, ip)
+                        break
 
         self.dns_view.sync_after_external_apply(
             provider_id=primary_provider_id,
@@ -951,6 +967,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
                 continue
             if filled == 0:
                 primary_provider_id = p_key
+            entries[filled].delete(0, "end")
             entries[filled].insert(0, ips[0])
             # Populate secondary slots from remaining IPs of the same provider
             # to avoid leaving slots empty (tertiary DNS regression fix).
@@ -958,6 +975,7 @@ class GRCBenchmarkModal(ctk.CTkToplevel):
             while filled + extra_idx < 3 and len(ips) > extra_idx:
                 target_entry = entries[filled + extra_idx]
                 if not target_entry.get():
+                    target_entry.delete(0, "end")
                     target_entry.insert(0, ips[extra_idx])
                     extra_idx += 1
                 else:

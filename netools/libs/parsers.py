@@ -32,10 +32,15 @@ def parse_ss_uri(uri: str) -> Optional[Dict[str, Any]]:
             return None
 
         try:
-            decoded = base64.b64decode(encoded_part + "==").decode()
+            decoded = base64.b64decode(encoded_part + "==").decode("utf-8", errors="strict")
+            if ":" not in decoded:
+                return None
             method, password = decoded.split(":", 1)
         except Exception:
-            method, password = encoded_part, ""
+            return None
+
+        if not method or not password:
+            return None
 
         if "#" in server_part:
             server_part, tag = server_part.rsplit("#", 1)
@@ -44,11 +49,15 @@ def parse_ss_uri(uri: str) -> Optional[Dict[str, Any]]:
             tag = f"ss-{server_part.split(':')[0]}"
 
         host, port = server_part.rsplit(":", 1)
+        port_num = int(port)
+        if not (1 <= port_num <= 65535):
+            return None
+
         return {
             "type": "shadowsocks",
             "tag": tag,
             "server": host,
-            "server_port": int(port),
+            "server_port": port_num,
             "method": method,
             "password": password,
         }

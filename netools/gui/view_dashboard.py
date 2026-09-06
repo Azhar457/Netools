@@ -113,7 +113,7 @@ class DashboardView(ctk.CTkFrame):
         # Instant synchronous state (0 ms lag)
         st = load_state()
         insts = st.get("instances", {})
-        active_cnt = len(insts)
+        active_cnt = sum(1 for d in insts.values() if d.get("reason") == "alive")
         prox_init = f"Status: {'🟢 ' + str(active_cnt) + ' Proxies Active' if active_cnt > 0 else '⚪ Idle / Stopped'}\nPorts: {SOCKS5_PORT_START} - {SOCKS5_PORT_START + max(0, active_cnt - 1)}"
         pac_active = pac_service.is_pac_server_running()
         pac_init = f"Status: {'🟢 Active (Listening)' if pac_active else '⚪ Inactive (Stopped)'}\nEndpoint: {pac_service.get_pac_url()}"
@@ -346,7 +346,7 @@ class DashboardView(ctk.CTkFrame):
             # 1. Proxy
             st = load_state()
             insts = st.get("instances", {})
-            active_cnt = len(insts)
+            active_cnt = sum(1 for d in insts.values() if d.get("reason") == "alive")
             prox_txt = f"Status: {'🟢 ' + str(active_cnt) + ' Proxies Active' if active_cnt > 0 else '⚪ Idle / Stopped'}\nPorts: {SOCKS5_PORT_START} - {SOCKS5_PORT_START + max(0, active_cnt - 1)}"
 
             # 2. PAC

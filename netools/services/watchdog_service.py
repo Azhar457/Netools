@@ -46,6 +46,9 @@ def run_monitor_cycle(standalone: bool = False) -> int:
 
     dead_instances = []
     for name, info in list(instances.items()):
+        # Skip diagnostic records for slots that were never successfully started
+        if info.get("reason") in ("upstream_probe_failed", "spawn_failed") and not info.get("started_at"):
+            continue
         port = info["port"]
         if not is_port_open(port) or not probe_socks_upstream(port):
             dead_instances.append((name, info))

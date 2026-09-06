@@ -64,9 +64,6 @@ def build_singbox_config(proxy: Dict[str, Any], local_port: int) -> Dict[str, An
             outbound,
             {"type": "direct", "tag": "direct"},
         ],
-        "route": {
-            "auto_detect_interface": True,
-        },
     }
 
 

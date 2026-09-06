@@ -289,15 +289,17 @@ class ProxyView(ctk.CTkFrame):
             self.tree.delete(item)
 
         for name, data in sorted(insts.items()):
+            reason = data.get("reason", "alive")
+            if reason != "alive":
+                continue
             port = data.get("port", 11080)
             http_p = port + HTTP_PORT_OFFSET
             proto = data.get("proxy_type") or data.get("protocol") or "shadowsocks"
             srv = f"{data.get('server', '')}:{data.get('server_port', '')}"
             pool = data.get("pool_name") or data.get("pool_id") or "—"
             dns_engine = "SOCKS5h Remote"
-            reason = data.get("reason", "alive")
             age = data.get("started_at", "Just now")
-            status = "🟢 Alive" if reason == "alive" else f"🔴 {reason}"
+            status = "🟢 Alive"
 
             self.tree.insert("", "end", values=(name, proto, srv, port, http_p, pool, dns_engine, status, age))
 
@@ -312,7 +314,7 @@ class ProxyView(ctk.CTkFrame):
             except (IndexError, AttributeError):
                 pass
 
-        cnt = len(insts)
+        cnt = sum(1 for d in insts.values() if d.get("reason") == "alive")
         self.lbl_summary.configure(
             text=f"Instances: {cnt} active | SOCKS: {SOCKS5_PORT_START}–{SOCKS5_PORT_START + max(0, cnt - 1)} | HTTP: {SOCKS5_PORT_START + HTTP_PORT_OFFSET}–{SOCKS5_PORT_START + HTTP_PORT_OFFSET + max(0, cnt - 1)} | Upstream: gstatic 204"
         )

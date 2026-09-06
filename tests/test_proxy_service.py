@@ -49,9 +49,10 @@ if __name__ == "__main__":
 class TestProxyPoolDiagnostics(unittest.TestCase):
     """Pipeline must report per-instance failure reasons, not just 'killed'."""
 
+    @patch("netools.services.proxy_service.probe_socks_upstream", return_value=False)
     @patch("netools.services.proxy_service.sb_drv")
     @patch("netools.services.proxy_service.fetch_and_parse_proxies")
-    def test_start_proxy_pool_records_failure_reasons(self, mock_fetch, mock_sb):
+    def test_start_proxy_pool_records_failure_reasons(self, mock_fetch, mock_sb, mock_probe):
         from netools.services.proxy_service import start_proxy_pool
 
         mock_fetch.return_value = [
