@@ -9,7 +9,7 @@ Implements true 3-Tier Latency Measurement & Verification:
 Verification Layer:
 - Hijack Detection (Anti-ISP Sinkhole / Private IP Redirection Check)
 - EDNS0 & DNSSEC Support Validation (RFC 6891 OPT RR + DO bit)
-- Coefficient of Variation (CV = σ / μ) Stability Index & Reliability %
+- Coefficient of Variation (CV = sigma / mu) Stability Index & Reliability %  # noqa: RUF002
 - Turbo Mode / Max Latency Cutoff (< 200ms) for 5x Faster Benchmark
 - Enhanced Smart Mix with Strict 3-Resolver Deduplication
 - Zero External Dependencies (Standard Python Socket, SSL, struct & urllib)

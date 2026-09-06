@@ -9,7 +9,6 @@ import customtkinter as ctk
 
 from netools.adapters import platform_proxy
 from netools.config import HTTP_PORT_OFFSET, MAX_INSTANCES, SOCKS5_PORT_START
-
 from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,
@@ -17,7 +16,6 @@ from netools.gui.theme import (
 )
 from netools.services import pac_service, proxy_service, watchdog_service
 from netools.state import load_state
-
 
 # Pool heatmap color + glyph mapping. See tests/test_pool_heatmap.py.
 _HEATMAP_COLORS = {

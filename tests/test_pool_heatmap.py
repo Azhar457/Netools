@@ -22,7 +22,7 @@ class TestHeatmapColorMatrix(unittest.TestCase):
         self.assertEqual(glyph, "○")
 
     def test_probe_exception_timeout_is_red(self):
-        color, glyph = _port_state_to_color("probe_exception:TimeoutError")
+        color, _ = _port_state_to_color("probe_exception:TimeoutError")
         self.assertEqual(color, "#ef4444")
 
     def test_unknown_is_amber(self):

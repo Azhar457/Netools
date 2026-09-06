@@ -184,7 +184,6 @@ def assign_proxy_to_connection(conn_id: str, proxy_url: str) -> Optional[Dict[st
 
     # Fallback: direct SQLite update
     try:
-        import sqlite3
 
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
@@ -230,7 +229,6 @@ def remove_proxy_from_connection(conn_id: str) -> Optional[Dict[str, Any]]:
 
     # Fallback: direct SQLite update
     try:
-        import sqlite3
 
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
@@ -266,7 +264,6 @@ def clear_all_connection_proxies() -> int:
     # 1. Fast atomic SQLite pass if storage exists
     try:
         import json
-        import sqlite3
 
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
@@ -319,9 +316,7 @@ clear_all_proxies = clear_all_connection_proxies
 
 def clear_managed_pools() -> int:
     """Clear all 'free-proxy-%' entries from OmniRoute's proxy_registry table atomically."""
-    import sqlite3
 
-    from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
     if _DEFAULT_DB_PATH.exists():
         try:
@@ -337,9 +332,7 @@ def clear_managed_pools() -> int:
 def assign_proxies_to_connections_batch(assignments: List[tuple[str, str]]) -> int:
     """Assign proxies to multiple OmniRoute connections atomically (0 ms lag)."""
     import json
-    import sqlite3
 
-    from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
     count = 0
     if _DEFAULT_DB_PATH.exists():
@@ -385,11 +378,9 @@ def assign_proxies_to_connections_batch(assignments: List[tuple[str, str]]) -> i
 def add_proxy_pools_batch(pools: List[tuple[str, str]]) -> Dict[str, str]:
     """Register multiple proxies in OmniRoute in a single atomic SQLite transaction."""
     import datetime
-    import sqlite3
     import urllib.parse
     import uuid
 
-    from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 
     result: Dict[str, str] = {}
     if _DEFAULT_DB_PATH.exists():
@@ -521,7 +512,6 @@ def add_proxy_pool(name: str, proxy_url: str) -> Optional[str]:
     # 2. Fallback to direct SQLite insertion into proxy_registry
     try:
         import datetime
-        import sqlite3
         import uuid
 
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
@@ -565,7 +555,6 @@ def delete_proxy_pool(pool_id: str) -> bool:
 
     # 2. Fallback to direct SQLite deletion
     try:
-        import sqlite3
 
         from netools.services.omniroute_bridge import _DEFAULT_DB_PATH
 

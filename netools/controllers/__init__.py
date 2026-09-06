@@ -11,7 +11,7 @@ from netools.controllers.system_proxy_controller import SystemProxyController
 
 __all__ = [
     "BaseController",
-    "ProxyController",
     "GatewayController",
+    "ProxyController",
     "SystemProxyController",
 ]

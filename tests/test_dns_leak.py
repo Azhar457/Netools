@@ -15,7 +15,7 @@ class TestDNSLeakEngine(unittest.TestCase):
         # 1. Plain query packet
         pkt_plain = dns_leak.build_dns_query_packet("example.com", tx_id=0x1111, want_dnssec=False)
         self.assertTrue(len(pkt_plain) > 12)
-        tx_id, flags, qd, an, ns, ar = struct.unpack(">HHHHHH", pkt_plain[:12])
+        tx_id, _flags, qd, _an, _ns, ar = struct.unpack(">HHHHHH", pkt_plain[:12])
         self.assertEqual(tx_id, 0x1111)
         self.assertEqual(qd, 1)
         self.assertEqual(ar, 0)

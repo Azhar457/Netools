@@ -6,8 +6,7 @@ Enables and disables system-wide PAC (Proxy Auto-Configuration) and SOCKS/HTTP p
 import os
 import shutil
 import subprocess
-import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from netools.libs.env import get_os_type
 from netools.libs.logger import get_logger

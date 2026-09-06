@@ -33,9 +33,10 @@ def test_doh_forwarder_returns_ported_localhost():
         def show_toast(self, *a, **k):
             pass
 
+    import typing
     class FakeView:
         main_app = FakeApp()
-        providers = {
+        providers: typing.ClassVar[dict] = {
             "alidns": {
                 "name": "AliDNS",
                 "doh_url": "https://dns.alidns.com/dns-query",

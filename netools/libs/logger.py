@@ -5,6 +5,7 @@ Provides formatted, colorized terminal output and persistent log file rotation.
 
 import logging
 import sys
+import typing
 from typing import Dict
 
 from netools.config import LOGS_DIR
@@ -13,7 +14,7 @@ from netools.config import LOGS_DIR
 class ColoredFormatter(logging.Formatter):
     """Custom ANSI colored formatter for CLI output."""
 
-    COLORS: Dict[int, str] = {
+    COLORS: typing.ClassVar[Dict[int, str]] = {
         logging.DEBUG: "\033[0;36m",  # Cyan
         logging.INFO: "\033[0;32m",  # Green
         logging.WARNING: "\033[1;33m",  # Yellow

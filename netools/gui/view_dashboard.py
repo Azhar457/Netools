@@ -10,7 +10,6 @@ from netools.adapters import ninerouter as nr_adapt
 from netools.adapters import platform_dns as sys_dns
 from netools.adapters import platform_proxy
 from netools.config import SOCKS5_PORT_START
-
 from netools.gui.i18n import tr
 from netools.gui.theme import (
     Fonts,

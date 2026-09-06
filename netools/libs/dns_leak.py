@@ -169,7 +169,7 @@ def parse_dns_response_extended(data: bytes) -> DNSResponse:
         offset = _parse_name(offset)
         if offset + 10 > len(data):
             break
-        rtype, rclass, ttl, rdlength = struct.unpack(">HHIH", data[offset : offset + 10])
+        rtype, _rclass, ttl, rdlength = struct.unpack(">HHIH", data[offset : offset + 10])
         offset += 10
         res.ttl_list.append(ttl)
         if rtype == 1 and rdlength == 4 and offset + 4 <= len(data):  # A record

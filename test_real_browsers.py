@@ -5,7 +5,7 @@ Scans actual browser LevelDB on this machine and reports what tokens are found.
 Run this while logged into Kimi/Z.ai in your browser.
 """
 
-import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -16,9 +16,9 @@ from netools.services.session_extractor import (
     BROWSER_PATHS,
     decode_jwt_payload,
     extract_all_browser_sessions,
-    extract_chromium_storage,
 )
-from netools.services.omniroute_bridge import compute_token_ttl
+
+JWT_PATTERN = re.compile(rb"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+")
 
 
 def scan_raw_leveldb():
@@ -26,9 +26,6 @@ def scan_raw_leveldb():
     print("=" * 70)
     print("RAW LevelDB SCAN — All JWT tokens found in browser storage")
     print("=" * 70)
-
-    import re
-    jwt_pattern = re.compile(rb"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+")
 
     for b_name, paths in BROWSER_PATHS.items():
         for base_path in paths:
@@ -62,7 +59,7 @@ def _scan_leveldb_dir(ldb_dir: Path, browser_label: str):
     for f in files:
         try:
             raw = f.read_bytes()
-            matches = jwt_pattern.findall(raw)
+            matches = JWT_PATTERN.findall(raw)
             for m in matches:
                 total_jwts += 1
                 token_str = m.decode("ascii")
@@ -187,7 +184,7 @@ def test_kimi_specific():
 
         # Validate token structure
         payload = s.get("payload", {})
-        print(f"    Payload checks:")
+        print("    Payload checks:")
         print(f"      has app_id='kimi': {payload.get('app_id') == 'kimi'}")
         print(f"      has aud with kimi.ai: {'kimi.ai' in payload.get('aud', [])}")
         print(f"      has sub (account): {'sub' in payload and bool(payload['sub'])}")
@@ -228,7 +225,7 @@ def test_zai_specific():
 
         # Validate token structure
         payload = s.get("payload", {})
-        print(f"    Payload checks:")
+        print("    Payload checks:")
         print(f"      has email: {'email' in payload} → {payload.get('email', 'N/A')}")
         print(f"      has id: {'id' in payload} → {payload.get('id', 'N/A')}")
         print(f"      payload size: {len(payload)} keys")
@@ -255,7 +252,7 @@ def test_injection():
         print("\n  No Kimi or Z.ai sessions to inject.")
         return
 
-    from netools.services.omniroute_bridge import inject_session_to_omniroute, get_db_path
+    from netools.services.omniroute_bridge import get_db_path, inject_session_to_omniroute
     db = get_db_path()
     print(f"\n  OmniRoute DB: {db}")
     print(f"  DB exists: {db.exists()}")

@@ -37,7 +37,7 @@ def _run_iptables(args: list) -> tuple[bool, str]:
         return False, "iptables not found"
     try:
         r = subprocess.run(
-            ["iptables"] + args,
+            ["iptables", *args],
             capture_output=True,
             text=True,
             timeout=5,
