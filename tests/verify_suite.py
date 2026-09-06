@@ -15,6 +15,8 @@ sys.path.insert(0, str(BASE_DIR))
 class TestNetoolsCore(unittest.TestCase):
     def test_01_config_and_paths(self):
         from netools import config
+        
+        config.ensure_runtime_dirs()
 
         self.assertTrue(config.BASE_DIR.exists())
         self.assertTrue(config.RUNTIME_DIR.exists())
